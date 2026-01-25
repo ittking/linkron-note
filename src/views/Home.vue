@@ -1,7 +1,7 @@
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
 import { getCurrentWindow } from '@tauri-apps/api/window'
-import { X, Minus, Maximize2, BookOpen, Terminal, Settings, Minimize2 } from 'lucide-vue-next'
+import { BookOpen, Terminal, Settings, Minimize2 } from 'lucide-vue-next'
 
 const droppedContent = ref({ type: '', content: '' })
 const isDragging = ref(false)
@@ -100,10 +100,10 @@ function handleDrop(e) {
 // 监听 Tauri 文件拖拽事件
 async function setupTauriFileDrop() {
   const window = getCurrentWindow()
-  
+
   unlistenFileDrop = await window.onFileDropEvent((event) => {
     const { payload } = event
-    
+
     if (payload.type === 'hover') {
       isDragging.value = true
     } else if (payload.type === 'drop') {
@@ -150,110 +150,45 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <main 
-    class="bg-black/90 min-h-screen flex flex-col"
-    @dragenter="handleDragEnter"
-    @dragleave="handleDragLeave"
-    @dragover="handleDragOver"
-    @drop="handleDrop"
-  >
+  <main class="bg-black/90 min-h-screen flex flex-col" @dragenter="handleDragEnter" @dragleave="handleDragLeave"
+    @dragover="handleDragOver" @drop="handleDrop">
     <!-- 顶部控制栏 -->
-    <div 
-      data-tauri-drag-region
-      class="h-9 bg-[#1c1c21] border-b border-[#2a2a32] flex items-center justify-between px-3 flex-shrink-0"
-    >
-      <!-- 左侧：Mac 窗口控制按钮 -->
+    <div data-tauri-drag-region
+      class="h-9 bg-[#1c1c21] border-b border-[#2a2a32] flex items-center justify-between px-3 flex-shrink-0">
+      <!-- 左侧：终端图标和名称 -->
       <div class="flex items-center gap-2">
-        <button class="w-3.5 h-3.5 rounded-full bg-[#ff5f57] hover:brightness-110 transition-all flex items-center justify-center">
-          <X :size="8" class="text-[#ff5f57]" />
-        </button>
-        <button class="w-3.5 h-3.5 rounded-full bg-[#ffbd2e] hover:brightness-110 transition-all flex items-center justify-center">
-          <Minus :size="8" class="text-[#ffbd2e]" />
-        </button>
-        <button class="w-3.5 h-3.5 rounded-full bg-[#28c840] hover:brightness-110 transition-all flex items-center justify-center">
-          <Maximize2 :size="8" class="text-[#28c840]" />
-        </button>
+        <Terminal :size="16" class="text-[#00ff88]" />
+        <span class="text-sm font-medium text-[#e8e8ed]">ITERM</span>
       </div>
 
       <!-- 右侧：功能按钮 -->
       <div class="flex items-center gap-1">
-        <button 
+        <button
           class="w-6.5 h-6.5 rounded hover:bg-[#2a2a32] text-[#6b6b76] hover:text-[#e8e8ed] transition-all flex items-center justify-center"
-          title="笔记"
-        >
+          title="笔记">
           <BookOpen :size="13" />
         </button>
-        <button 
+        <button
           class="w-6.5 h-6.5 rounded hover:bg-[#2a2a32] text-[#6b6b76] hover:text-[#e8e8ed] transition-all flex items-center justify-center"
-          title="终端"
-        >
+          title="终端">
           <Terminal :size="13" />
         </button>
-        <button 
+        <button
           class="w-6.5 h-6.5 rounded hover:bg-[#2a2a32] text-[#6b6b76] hover:text-[#e8e8ed] transition-all flex items-center justify-center"
-          title="设置"
-        >
+          title="设置">
           <Settings :size="13" />
         </button>
-        <button 
+        <button
           class="w-6.5 h-6.5 rounded hover:bg-[#2a2a32] text-[#6b6b76] hover:text-[#e8e8ed] transition-all flex items-center justify-center"
-          title="收缩"
-        >
+          title="收缩">
           <Minimize2 :size="13" />
         </button>
       </div>
     </div>
 
     <!-- 子页面内容区域 -->
-    <div class="flex-1 flex items-center justify-center p-4 overflow-hidden">
-      <div class="w-full max-w-2xl">
-        <!-- 拖放区域指示 -->
-        <div 
-          :class="[
-            'w-full px-8 py-12 rounded-lg transition-colors border-2 border-dashed',
-            isDragging 
-              ? 'bg-blue-600/30 border-blue-500 text-blue-300' 
-              : 'bg-[#141417] border-[#2a2a32] text-[#6b6b76]'
-          ]"
-        >
-          <div class="text-center">
-            <div class="text-2xl mb-2">
-              {{ isDragging ? '📥' : '📤' }}
-            </div>
-            <div>{{ isDragging ? '释放以添加内容' : '拖拽文本、图片或链接到这里' }}</div>
-          </div>
-        </div>
-        
-        <!-- 显示拖拽的内容 -->
-        <div v-if="droppedContent.content" class="w-full mt-4">
-          <!-- 图片类型 -->
-          <div v-if="droppedContent.type === 'image'" class="px-6 py-4 bg-green-600/30 border border-green-500 rounded-lg text-green-300">
-            <div class="text-sm mb-2">拖拽的图片:</div>
-            <div v-if="droppedContent.fileName" class="text-xs mb-2 text-green-400">{{ droppedContent.fileName }}</div>
-            <img :src="droppedContent.content" class="max-w-full max-h-64 rounded" alt="拖拽的图片" />
-          </div>
-          
-          <!-- URL 类型 -->
-          <div v-else-if="droppedContent.type === 'url'" class="px-6 py-4 bg-blue-600/30 border border-blue-500 rounded-lg text-blue-300">
-            <div class="text-sm mb-2">拖拽的链接:</div>
-            <a :href="droppedContent.content" target="_blank" class="font-mono break-all hover:underline">
-              {{ droppedContent.content }}
-            </a>
-          </div>
-          
-          <!-- 文本类型 -->
-          <div v-else-if="droppedContent.type === 'text'" class="px-6 py-4 bg-yellow-600/30 border border-yellow-500 rounded-lg text-yellow-300">
-            <div class="text-sm mb-2">拖拽的文本:</div>
-            <div class="font-mono break-all whitespace-pre-wrap">{{ droppedContent.content }}</div>
-          </div>
-          
-          <!-- 文件类型 -->
-          <div v-else-if="droppedContent.type === 'file'" class="px-6 py-4 bg-purple-600/30 border border-purple-500 rounded-lg text-purple-300">
-            <div class="text-sm mb-2">拖拽的文件:</div>
-            <div class="font-mono break-all">{{ droppedContent.content }}</div>
-          </div>
-        </div>
-      </div>
+    <div class="flex-1 overflow-hidden">
+      <router-view />
     </div>
   </main>
 </template>
