@@ -2,7 +2,7 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import { getCurrentWindow } from '@tauri-apps/api/window'
 
-const droppedUrl = ref('')
+const droppedContent = ref({ type: '', content: '' })
 const isDragging = ref(false)
 let unlistenFileDrop = null
 
@@ -29,33 +29,70 @@ function handleDrop(e) {
   e.preventDefault()
   isDragging.value = false
 
-  // 获取拖拽的数据
   const data = e.dataTransfer
 
-  // 检查是否是 URL/链接
+  // 1. 检查是否是图片
+  if (data.types.includes('Files') && data.files.length > 0) {
+    const file = data.files[0]
+    if (file.type.startsWith('image/')) {
+      const reader = new FileReader()
+      reader.onload = (event) => {
+        droppedContent.value = {
+          type: 'image',
+          content: event.target.result,
+          fileName: file.name
+        }
+        console.log('拖拽的图片:', file.name)
+      }
+      reader.readAsDataURL(file)
+      return
+    }
+  }
+
+  // 2. 检查是否是 URL/链接
   if (data.types.includes('text/uri-list')) {
     const url = data.getData('text/uri-list')
-    droppedUrl.value = url.trim()
-    console.log('拖拽的链接:', droppedUrl.value)
-  } 
-  // 检查是否是纯文本（可能是 URL）
-  else if (data.types.includes('text/plain')) {
+    droppedContent.value = {
+      type: 'url',
+      content: url.trim()
+    }
+    console.log('拖拽的链接:', url.trim())
+    return
+  }
+
+  // 3. 检查是否是纯文本
+  if (data.types.includes('text/plain')) {
     const text = data.getData('text/plain')
     // 简单的 URL 验证
     if (text.startsWith('http://') || text.startsWith('https://')) {
-      droppedUrl.value = text.trim()
-      console.log('拖拽的文本链接:', droppedUrl.value)
+      droppedContent.value = {
+        type: 'url',
+        content: text.trim()
+      }
+      console.log('拖拽的文本链接:', text.trim())
+    } else {
+      droppedContent.value = {
+        type: 'text',
+        content: text.trim()
+      }
+      console.log('拖拽的文本:', text.trim())
     }
+    return
   }
-  // 检查是否是 HTML（包含链接）
-  else if (data.types.includes('text/html')) {
+
+  // 4. 检查是否是 HTML（包含链接）
+  if (data.types.includes('text/html')) {
     const html = data.getData('text/html')
     // 提取 HTML 中的链接
     const urlMatch = html.match(/href="([^"]+)"/)
     if (urlMatch && urlMatch[1]) {
-      droppedUrl.value = urlMatch[1]
-      console.log('从 HTML 提取的链接:', droppedUrl.value)
+      droppedContent.value = {
+        type: 'url',
+        content: urlMatch[1]
+      }
+      console.log('从 HTML 提取的链接:', urlMatch[1])
     }
+    return
   }
 }
 
@@ -70,12 +107,28 @@ async function setupTauriFileDrop() {
       isDragging.value = true
     } else if (payload.type === 'drop') {
       isDragging.value = false
-      // 检查拖拽的是否是 URL 文件（.url 或 .webloc）
       const paths = payload.paths || []
       paths.forEach(path => {
-        if (path.endsWith('.url') || path.endsWith('.webloc')) {
-          console.log('检测到 URL 快捷方式:', path)
-          // 这里可以读取 .url 文件内容提取实际 URL
+        console.log('拖拽的文件路径:', path)
+        // 可以根据文件扩展名判断类型
+        if (path.match(/\.(jpg|jpeg|png|gif|webp|bmp)$/i)) {
+          droppedContent.value = {
+            type: 'image',
+            content: `file://${path}`,
+            fileName: path.split(/[/\\]/).pop()
+          }
+        } else if (path.endsWith('.url') || path.endsWith('.webloc')) {
+          droppedContent.value = {
+            type: 'url',
+            content: path,
+            fileName: path.split(/[/\\]/).pop()
+          }
+        } else {
+          droppedContent.value = {
+            type: 'file',
+            content: path,
+            fileName: path.split(/[/\\]/).pop()
+          }
         }
       })
     } else if (payload.type === 'cancelled') {
@@ -103,7 +156,7 @@ onUnmounted(() => {
     @dragover="handleDragOver"
     @drop="handleDrop"
   >
-    <div class="flex flex-col items-center gap-4">
+    <div class="flex flex-col items-center gap-4 w-full max-w-2xl px-4">
       <!-- 可拖拽区域 -->
       <div 
         data-tauri-drag-region 
@@ -115,19 +168,48 @@ onUnmounted(() => {
       <!-- 拖放区域指示 -->
       <div 
         :class="[
-          'px-8 py-4 rounded-lg transition-colors border-2 border-dashed',
+          'w-full px-8 py-12 rounded-lg transition-colors border-2 border-dashed',
           isDragging 
             ? 'bg-blue-600/30 border-blue-500 text-blue-300' 
             : 'bg-gray-800 border-gray-600 text-gray-400'
         ]"
       >
-        {{ isDragging ? '释放以添加链接' : '拖拽链接到这里' }}
+        <div class="text-center">
+          <div class="text-2xl mb-2">
+            {{ isDragging ? '📥' : '📤' }}
+          </div>
+          <div>{{ isDragging ? '释放以添加内容' : '拖拽文本、图片或链接到这里' }}</div>
+        </div>
       </div>
       
-      <!-- 显示拖拽的链接 -->
-      <div v-if="droppedUrl" class="px-8 py-4 bg-green-600/30 border border-green-500 rounded-lg text-green-300 max-w-md break-all">
-        <div class="text-sm mb-1">拖拽的链接:</div>
-        <div class="font-mono">{{ droppedUrl }}</div>
+      <!-- 显示拖拽的内容 -->
+      <div v-if="droppedContent.content" class="w-full">
+        <!-- 图片类型 -->
+        <div v-if="droppedContent.type === 'image'" class="px-6 py-4 bg-green-600/30 border border-green-500 rounded-lg text-green-300">
+          <div class="text-sm mb-2">拖拽的图片:</div>
+          <div v-if="droppedContent.fileName" class="text-xs mb-2 text-green-400">{{ droppedContent.fileName }}</div>
+          <img :src="droppedContent.content" class="max-w-full max-h-64 rounded" alt="拖拽的图片" />
+        </div>
+        
+        <!-- URL 类型 -->
+        <div v-else-if="droppedContent.type === 'url'" class="px-6 py-4 bg-blue-600/30 border border-blue-500 rounded-lg text-blue-300">
+          <div class="text-sm mb-2">拖拽的链接:</div>
+          <a :href="droppedContent.content" target="_blank" class="font-mono break-all hover:underline">
+            {{ droppedContent.content }}
+          </a>
+        </div>
+        
+        <!-- 文本类型 -->
+        <div v-else-if="droppedContent.type === 'text'" class="px-6 py-4 bg-yellow-600/30 border border-yellow-500 rounded-lg text-yellow-300">
+          <div class="text-sm mb-2">拖拽的文本:</div>
+          <div class="font-mono break-all whitespace-pre-wrap">{{ droppedContent.content }}</div>
+        </div>
+        
+        <!-- 文件类型 -->
+        <div v-else-if="droppedContent.type === 'file'" class="px-6 py-4 bg-purple-600/30 border border-purple-500 rounded-lg text-purple-300">
+          <div class="text-sm mb-2">拖拽的文件:</div>
+          <div class="font-mono break-all">{{ droppedContent.content }}</div>
+        </div>
       </div>
     </div>
   </main>
