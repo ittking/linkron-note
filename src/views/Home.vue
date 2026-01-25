@@ -25,7 +25,7 @@ function getCurrentTitle() {
 </script>
 
 <template>
-  <main class="min-h-screen bg-[#1c1c21] flex flex-col rounded-xl overflow-hidden border border-[#2a2a32]">
+  <main class="h-full bg-[#1c1c21] flex flex-col rounded-xl overflow-hidden border border-[#2a2a32]">
     <!-- 顶部控制栏 -->
     <div class="select-none h-9 border-b border-[#2a2a32] flex items-center justify-between px-3 flex-shrink-0"
       data-tauri-drag-region>
