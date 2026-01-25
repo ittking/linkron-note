@@ -5,7 +5,7 @@ const themeConfig = {
   token: {
     colorPrimary: '#00ff88',
   },
-  algorithm: theme.compactAlgorithm,
+  algorithm: [theme.compactAlgorithm, theme.darkAlgorithm],
 }
 </script>
 
