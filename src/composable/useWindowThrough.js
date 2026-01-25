@@ -12,6 +12,7 @@ export function useWindowThrough() {
   const currentWindow = ref(null);
   const windowPosition = ref({ x: 0, y: 0 });
   const scaleFactor = ref(1);
+  const mutationObserver = ref(null);
 
   /**
    * 初始化窗口
@@ -228,6 +229,81 @@ export function useWindowThrough() {
     await updateWindowInfo();
     scanThroughElements();
     await startListening();
+    
+    // 监听 DOM 变化，自动重新扫描元素
+    setupMutationObserver();
+  }
+
+  /**
+   * 设置 MutationObserver 监听 DOM 变化
+   */
+  function setupMutationObserver() {
+    // 如果已经有观察器，先停止
+    if (mutationObserver.value) {
+      stopMutationObserver();
+    }
+
+    // 创建新的观察器
+    mutationObserver.value = new MutationObserver((mutations) => {
+      let needsRescan = false;
+      
+      mutations.forEach((mutation) => {
+        // 检查是否有属性变化
+        if (mutation.type === 'attributes' && mutation.attributeName === 'through-listener') {
+          needsRescan = true;
+        }
+        
+        // 检查是否有子节点变化（新增/删除元素）
+        if (mutation.type === 'childList') {
+          // 检查新增的节点
+          mutation.addedNodes.forEach((node) => {
+            if (node.nodeType === Node.ELEMENT_NODE) {
+              if (node.hasAttribute('through-listener') || 
+                  node.querySelector('[through-listener]')) {
+                needsRescan = true;
+              }
+            }
+          });
+          
+          // 检查删除的节点
+          mutation.removedNodes.forEach((node) => {
+            if (node.nodeType === Node.ELEMENT_NODE) {
+              if (node.hasAttribute('through-listener') || 
+                  node.querySelector('[through-listener]')) {
+                needsRescan = true;
+              }
+            }
+          });
+        }
+      });
+
+      // 如果需要重新扫描
+      if (needsRescan) {
+        console.log('检测到 DOM 变化，重新扫描元素');
+        scanThroughElements();
+      }
+    });
+
+    // 开始观察整个文档
+    mutationObserver.value.observe(document.body, {
+      attributes: true,
+      attributeFilter: ['through-listener'],
+      childList: true,
+      subtree: true,
+    });
+
+    console.log('MutationObserver 已启动');
+  }
+
+  /**
+   * 停止 MutationObserver
+   */
+  function stopMutationObserver() {
+    if (mutationObserver.value) {
+      mutationObserver.value.disconnect();
+      mutationObserver.value = null;
+      console.log('MutationObserver 已停止');
+    }
   }
 
   /**
@@ -235,6 +311,7 @@ export function useWindowThrough() {
    */
   async function unregister() {
     await stopListening();
+    stopMutationObserver();
     registeredElements.value.clear();
   }
 
