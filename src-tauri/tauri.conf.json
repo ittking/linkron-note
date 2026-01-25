@@ -13,8 +13,11 @@
     "windows": [
       {
         "title": "iterm",
-        "width": 800,
-        "height": 600
+        "width": 320,
+        "height": 680,
+        "transparent": true,
+        "decorations": false,
+        "center": true
       }
     ],
     "security": {
