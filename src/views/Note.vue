@@ -252,25 +252,25 @@ function handleConfirmOk() {
     <div class="h-full flex flex-col" @dragenter="handleDragEnter" @dragleave="handleDragLeave"
         @dragover="handleDragOver" @drop="handleDrop">
         <!-- 搜索栏 -->
-        <div class="px-4 py-3 border-b border-[#2a2a32]">
+        <div class="px-4 py-3 border-b border-base-300">
             <div class="relative">
-                <Search :size="16" class="absolute left-3 top-1/2 -translate-y-1/2 text-[#4a4a55]" />
-                <input 
-                    v-model="searchKeyword" 
+                <Search :size="16" class="absolute left-3 top-1/2 -translate-y-1/2 text-base-content/40" />
+                <input
+                    v-model="searchKeyword"
                     @input="handleSearch"
-                    type="text" 
-                    placeholder="搜索笔记..." 
-                    class="w-full pl-9 pr-3 py-2 bg-[#1a1a1f] border border-[#2a2a32] rounded-lg text-[#e8e8ed] placeholder-[#4a4a55] focus:outline-none focus:border-[#00ff88] transition-colors"
+                    type="text"
+                    placeholder="搜索笔记..."
+                    class="w-full pl-9 pr-3 py-2 bg-base-200 border border-base-300 rounded-lg text-base-content placeholder-base-content/40 focus:outline-none focus:border-primary transition-colors"
                 />
             </div>
         </div>
 
         <!-- 笔记列表 -->
         <div class="flex-1 overflow-hidden">
-            <div class="p-3 h-full overflow-y-auto" style="scrollbar-width: thin; scrollbar-color: #3a3a45 transparent;">
-                <div v-if="notes.length === 0" class="flex flex-col items-center justify-center h-full text-[#4a4a55] text-center p-5">
+            <div class="p-3 h-full overflow-y-auto" style="scrollbar-width: thin; scrollbar-color: base-content/20 transparent;">
+                <div v-if="notes.length === 0" class="flex flex-col items-center justify-center h-full text-base-content/40 text-center p-5">
                     <div class="text-5xl mb-4 opacity-50">📝</div>
-                    <div class="text-base font-medium mb-2 text-[#6b6b76]">暂无笔记</div>
+                    <div class="text-base font-medium mb-2 text-base-content/60">暂无笔记</div>
                     <div class="text-sm leading-relaxed max-w-[240px]">拖拽链接、文字或图片到这里创建笔记</div>
                 </div>
 
@@ -281,23 +281,23 @@ function handleConfirmOk() {
 
         <!-- 拖拽遮罩 -->
         <div
-            :class="['fixed inset-0 bg-[rgba(0,255,136,0.05)] border-2 border-dashed border-[#00ff88] flex flex-col items-center justify-center z-[100] opacity-0 pointer-events-none transition-opacity duration-200', { 'opacity-100 pointer-events-auto': isDragging }]">
-            <div class="text-5xl text-[#00ff88] mb-4 animate-bounce">📥</div>
-            <div class="text-base font-medium text-[#00ff88] mb-2">释放以创建笔记</div>
-            <div class="text-sm text-[#6b6b76]">支持链接、文字、图片</div>
+            :class="['fixed inset-0 bg-primary/5 border-2 border-dashed border-primary flex flex-col items-center justify-center z-[100] opacity-0 pointer-events-none transition-opacity duration-200', { 'opacity-100 pointer-events-auto': isDragging }]">
+            <div class="text-5xl text-primary mb-4 animate-bounce">📥</div>
+            <div class="text-base font-medium text-primary mb-2">释放以创建笔记</div>
+            <div class="text-sm text-base-content/60">支持链接、文字、图片</div>
         </div>
 
         <!-- 笔记详情抽屉 -->
         <div :class="['fixed inset-x-0 bottom-0 z-[50] transition-transform duration-300', drawerVisible ? 'translate-y-0' : 'translate-y-full']">
-            <div class="bg-[#1a1a1f] border-t border-[#2a2a32] rounded-t-2xl max-h-[90vh] overflow-y-auto">
+            <div class="bg-base-200 border-t border-base-300 rounded-t-2xl max-h-[90vh] overflow-y-auto">
                 <!-- 抽屉头部 -->
-                <div class="sticky top-0 bg-[#1a1a1f] border-b border-[#2a2a32] px-4 py-3 flex items-center justify-between">
-                    <h3 class="text-lg font-medium text-[#e8e8ed]">{{ drawerTitle }}</h3>
+                <div class="sticky top-0 bg-base-200 border-b border-base-300 px-4 py-3 flex items-center justify-between">
+                    <h3 class="text-lg font-medium text-base-content">{{ drawerTitle }}</h3>
                     <div class="flex items-center gap-2">
                         <button v-if="isEditMode" @click="saveDrawer" class="btn btn-sm btn-success text-success-content">
                             保存
                         </button>
-                        <button @click="closeDrawer" class="btn btn-sm btn-ghost text-[#a0a0a0] hover:text-[#e8e8ed]">
+                        <button @click="closeDrawer" class="btn btn-sm btn-ghost text-base-content/60 hover:text-base-content">
                             <X :size="18" />
                         </button>
                     </div>
@@ -308,24 +308,24 @@ function handleConfirmOk() {
                     <!-- 图片展示 -->
                     <div v-if="drawerImages.length > 0" class="flex gap-3 mb-4 flex-wrap">
                         <img v-for="(img, index) in drawerImages" :key="index" :src="img"
-                            class="w-full max-w-[180px] rounded-lg object-cover border border-[#2a2a32]" alt="Note image" />
+                            class="w-full max-w-[180px] rounded-lg object-cover border border-base-300" alt="Note image" />
                     </div>
 
                     <!-- 内容 -->
-                    <div v-if="drawerContent" class="text-sm leading-[1.7] text-[#e8e8ed]">
+                    <div v-if="drawerContent" class="text-sm leading-[1.7] text-base-content">
                         <div v-if="!isEditMode">{{ drawerContent }}</div>
-                        <textarea 
+                        <textarea
                             v-else
                             v-model="drawerContent"
                             placeholder="输入笔记内容..."
                             rows="8"
-                            class="w-full p-3 bg-[#0a0a0b] border border-[#2a2a32] rounded-lg text-[#e8e8ed] placeholder-[#4a4a55] focus:outline-none focus:border-[#00ff88] transition-colors resize-none"
+                            class="w-full p-3 bg-base-300 border border-base-300 rounded-lg text-base-content placeholder-base-content/40 focus:outline-none focus:border-primary transition-colors resize-none"
                         ></textarea>
                     </div>
 
                     <!-- 来源链接 -->
-                    <div v-if="drawerSourceUrl" class="mt-4 pt-4 border-t border-[#2a2a32] text-xs text-[#4a4a55]">
-                        来源: <a :href="drawerSourceUrl" target="_blank" class="text-[#60a5fa] hover:underline flex items-center gap-1">
+                    <div v-if="drawerSourceUrl" class="mt-4 pt-4 border-t border-base-300 text-xs text-base-content/40">
+                        来源: <a :href="drawerSourceUrl" target="_blank" class="text-primary hover:underline flex items-center gap-1">
                             {{ drawerSourceUrl }}
                             <ExternalLink :size="12" />
                         </a>
@@ -341,11 +341,11 @@ function handleConfirmOk() {
 
         <!-- 确认对话框 -->
         <dialog :open="confirmVisible" class="modal">
-            <div class="modal-box bg-[#1a1a1f] border border-[#2a2a32]">
-                <h3 class="font-bold text-lg text-[#e8e8ed]">{{ confirmTitle }}</h3>
-                <p class="py-4 text-[#a0a0a0]">{{ confirmContent }}</p>
+            <div class="modal-box bg-base-200 border border-base-300">
+                <h3 class="font-bold text-lg text-base-content">{{ confirmTitle }}</h3>
+                <p class="py-4 text-base-content/60">{{ confirmContent }}</p>
                 <div class="modal-action">
-                    <button @click="confirmVisible = false" class="btn btn-ghost text-[#a0a0a0] hover:text-[#e8e8ed]">取消</button>
+                    <button @click="confirmVisible = false" class="btn btn-ghost text-base-content/60 hover:text-base-content">取消</button>
                     <button @click="handleConfirmOk" class="btn btn-error text-error-content">删除</button>
                 </div>
             </div>

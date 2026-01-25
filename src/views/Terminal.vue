@@ -1,5 +1,5 @@
 <template>
-  <div class="h-full flex items-center justify-center text-[#6b6b76]">
+  <div class="h-full flex items-center justify-center text-base-content/60">
     <div>终端页面</div>
   </div>
 </template>

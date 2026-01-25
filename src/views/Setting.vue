@@ -62,28 +62,30 @@
               <label class="label">
                 <span class="label-text text-xs">当前主题</span>
               </label>
-              <select v-model="currentTheme" @change="changeTheme" class="select select-bordered select-sm w-full">
+              <select v-model="currentTheme" @change="changeTheme(currentTheme)" class="select select-bordered select-sm w-full">
                 <option v-for="theme in themes" :key="theme" :value="theme">{{ theme }}</option>
               </select>
             </div>
-            <div class="grid grid-cols-5 gap-2">
+            <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2">
               <div
                 v-for="theme in themes"
                 :key="theme"
                 @click="changeTheme(theme)"
                 :class="[
-                  'cursor-pointer rounded border-2 p-2 text-center text-xs transition-all',
-                  currentTheme === theme ? 'border-primary scale-105' : 'border-base-300 hover:border-primary'
+                  'cursor-pointer rounded-lg border-2 p-2 transition-all hover:scale-105',
+                  currentTheme === theme ? 'border-primary ring-2 ring-primary ring-opacity-50' : 'border-base-300 hover:border-primary'
                 ]"
                 :data-theme="theme"
               >
-                <div class="flex flex-col items-center gap-1">
+                <div class="flex flex-col items-center gap-2">
                   <div class="flex gap-1">
-                    <div class="w-3 h-3 rounded bg-primary"></div>
-                    <div class="w-3 h-3 rounded bg-secondary"></div>
-                    <div class="w-3 h-3 rounded bg-accent"></div>
+                    <div class="w-4 h-4 rounded bg-primary flex items-center justify-center text-[10px] font-bold text-base-content">A</div>
+                    <div class="w-4 h-4 rounded bg-secondary flex items-center justify-center text-[10px] font-bold text-base-content">A</div>
+                    <div class="w-4 h-4 rounded bg-accent flex items-center justify-center text-[10px] font-bold text-base-content">A</div>
+                    <div class="w-4 h-4 rounded bg-neutral flex items-center justify-center text-[10px] font-bold text-base-content">A</div>
+                    <div class="w-4 h-4 rounded bg-base-300 flex items-center justify-center text-[10px] font-bold text-base-content">A</div>
                   </div>
-                  <span class="truncate w-full">{{ theme }}</span>
+                  <span class="text-xs font-medium truncate w-full text-center">{{ theme }}</span>
                 </div>
               </div>
             </div>
@@ -147,7 +149,12 @@ const themes = [
   'night',
   'coffee',
   'winter',
-  'procyon'
+  'dim',
+  'nord',
+  'sunset',
+  'caramellatte',
+  'abyss',
+  'silk'
 ]
 
 // 初始化

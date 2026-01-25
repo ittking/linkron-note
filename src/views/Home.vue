@@ -25,34 +25,34 @@ function getCurrentTitle() {
 </script>
 
 <template>
-  <main class="h-full bg-[#1c1c21] flex flex-col rounded-xl overflow-hidden border border-[#2a2a32]">
+  <main class="h-full bg-base-100 flex flex-col overflow-hidden border border-base-300">
     <!-- 顶部控制栏 -->
-    <div class="select-none h-9 border-b border-[#2a2a32] flex items-center justify-between px-3 flex-shrink-0"
+    <div class="select-none h-9 border-b border-base-300 flex items-center justify-between px-3 flex-shrink-0"
       data-tauri-drag-region>
       <!-- 左侧：终端图标和名称 -->
       <div class="flex items-center gap-2">
-        <Terminal :size="16" class="text-[#00ff88]" />
-        <span class="text-sm font-medium text-[#e8e8ed]">ITERM</span>
+        <Terminal :size="16" class="text-primary" />
+        <span class="text-sm font-medium text-base-content">ITERM</span>
       </div>
 
       <!-- 中间：当前页面标题 -->
-      <div class="flex-1 text-[#a0a0a0] text-center text-xs" data-tauri-drag-region>{{ getCurrentTitle() }}</div>
+      <div class="flex-1 text-base-content/60 text-center text-xs" data-tauri-drag-region>{{ getCurrentTitle() }}</div>
 
       <!-- 右侧：功能按钮 -->
-      <div class="flex items-center gap-1.5 text-[#a0a0a0]">
+      <div class="flex items-center gap-1.5 text-base-content/60">
         <button v-for="tab in tabs" :key="tab.path" @click="navigateTo(tab.path)" :class="[
           'btn btn-ghost btn-sm w-6 h-6 min-h-0 p-0 rounded relative flex items-center justify-center',
           isActive(tab.path)
-            ? 'text-[#00ff88] bg-[rgba(0,255,136,0.1)]'
-            : 'hover:text-[#d0d0d0] hover:bg-[#2a2a32]'
+            ? 'text-primary bg-primary/10'
+            : 'hover:text-base-content hover:bg-base-200'
         ]" :title="tab.name">
           <component :is="tab.icon" :size="14" />
           <!-- 选中状态底部指示条 -->
           <span v-if="isActive(tab.path)"
-            class="absolute bottom-[-1px] left-1/2 -translate-x-1/2 w-5 h-0.5 bg-[#00ff88] rounded-full"></span>
+            class="absolute bottom-[-1px] left-1/2 -translate-x-1/2 w-5 h-0.5 bg-primary rounded-full"></span>
         </button>
         <button
-          class="btn btn-ghost btn-sm w-6 h-6 min-h-0 p-0 rounded hover:bg-[#2a2a32] text-[#a0a0a0] hover:text-[#d0d0d0] flex items-center justify-center"
+          class="btn btn-ghost btn-sm w-6 h-6 min-h-0 p-0 rounded hover:bg-base-200 text-base-content/60 hover:text-base-content flex items-center justify-center"
           title="收缩">
           <Minimize2 :size="14" />
         </button>
