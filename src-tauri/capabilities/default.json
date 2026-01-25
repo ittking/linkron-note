@@ -1,1 +1,23 @@
-{"$schema": "../gen/schemas/desktop-schema.json", "identifier": "default", "description": "Capability for the main window", "windows": ["main"], "permissions": ["core:default", "opener:default", "core:window:allow-set-ignore-cursor-events", "core:window:allow-start-dragging"]}
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Capability for the main window",
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    "opener:default",
+    "core:window:allow-set-ignore-cursor-events",
+    "core:window:allow-start-dragging",
+    "store:allow-get",
+    "store:allow-set",
+    "store:allow-delete",
+    "store:allow-clear",
+    "store:allow-has",
+    "store:allow-keys",
+    "store:allow-values",
+    "store:allow-entries",
+    "store:allow-length",
+    "store:allow-load",
+    "store:allow-save"
+  ]
+}
