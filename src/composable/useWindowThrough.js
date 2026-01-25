@@ -10,6 +10,8 @@ export function useWindowThrough() {
   const registeredElements = ref(new Map());
   const unlistenFn = ref(null);
   const currentWindow = ref(null);
+  const windowPosition = ref({ x: 0, y: 0 });
+  const scaleFactor = ref(1);
 
   /**
    * 初始化窗口
@@ -17,6 +19,24 @@ export function useWindowThrough() {
   async function initWindow() {
     if (!currentWindow.value) {
       currentWindow.value = getCurrentWindow();
+    }
+  }
+
+  /**
+   * 获取窗口位置和缩放比例
+   */
+  async function updateWindowInfo() {
+    try {
+      await initWindow();
+      const pos = await currentWindow.value.outerPosition();
+      const scale = await currentWindow.value.scaleFactor();
+      
+      windowPosition.value = { x: pos.x, y: pos.y };
+      scaleFactor.value = scale;
+      
+      console.log('窗口信息:', { position: windowPosition.value, scaleFactor: scale });
+    } catch (error) {
+      console.error("获取窗口信息失败:", error);
     }
   }
 
@@ -34,19 +54,29 @@ export function useWindowThrough() {
   }
 
   /**
-   * 获取元素的屏幕坐标和尺寸
+   * 获取元素的屏幕坐标和尺寸（适配显示器缩放）
    * @param {HTMLElement} element - 目标元素
    * @returns {Object} 包含屏幕坐标和尺寸的对象
    */
   function getElementScreenBounds(element) {
     const rect = element.getBoundingClientRect();
+    const scale = scaleFactor.value;
+    const winX = windowPosition.value.x;
+    const winY = windowPosition.value.y;
+    
+    // 将元素相对坐标转换为屏幕绝对坐标，并应用缩放比例
+    const screenX = winX + rect.left * scale;
+    const screenY = winY + rect.top * scale;
+    const screenWidth = rect.width * scale;
+    const screenHeight = rect.height * scale;
+    
     return {
-      x: rect.left,
-      y: rect.top,
-      width: rect.width,
-      height: rect.height,
-      right: rect.right,
-      bottom: rect.bottom,
+      x: screenX,
+      y: screenY,
+      width: screenWidth,
+      height: screenHeight,
+      right: screenX + screenWidth,
+      bottom: screenY + screenHeight,
     };
   }
 
@@ -125,6 +155,9 @@ export function useWindowThrough() {
     }
 
     try {
+      // 获取窗口信息（位置和缩放比例）
+      await updateWindowInfo();
+      
       // 启动后端鼠标监听
       await invoke("start_mouse_listener");
 
@@ -179,6 +212,7 @@ export function useWindowThrough() {
    */
   async function register() {
     await nextTick();
+    await updateWindowInfo();
     scanThroughElements();
     await startListening();
   }
@@ -198,5 +232,7 @@ export function useWindowThrough() {
     unregister,
     rescanElements,
     setWindowIgnore,
+    windowPosition,
+    scaleFactor,
   };
 }
