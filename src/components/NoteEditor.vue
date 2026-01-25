@@ -4,11 +4,12 @@ import { useEditor, EditorContent } from '@tiptap/vue-3'
 import StarterKit from '@tiptap/starter-kit'
 import Image from '@tiptap/extension-image'
 import Underline from '@tiptap/extension-underline'
+import Highlight from '@tiptap/extension-highlight'
 import Placeholder from '@tiptap/extension-placeholder'
 import { 
   Hash, 
   Image as ImageIcon, 
-  Type, 
+  Highlighter, 
   ListOrdered, 
   List, 
   Send 
@@ -51,6 +52,9 @@ const editor = useEditor({
       allowBase64: true,
     }),
     Underline,
+    Highlight.configure({
+      multicolor: true,
+    }),
     Placeholder.configure({
       placeholder: props.placeholder,
     }),
@@ -89,8 +93,8 @@ const hasContent = computed(() => {
 })
 
 // 工具栏操作
-function toggleBold() {
-  editor.value?.chain().focus().toggleBold().run()
+function toggleHighlight() {
+  editor.value?.chain().focus().toggleHighlight().run()
 }
 
 function toggleBulletList() {
@@ -161,14 +165,14 @@ function handleSubmit() {
           />
         </button>
 
-        <!-- 字体样式 Aa -->
+        <!-- 背景高亮 -->
         <button
-          @click="toggleBold"
+          @click="toggleHighlight"
           class="w-6 h-6 rounded-md flex items-center justify-center text-base-content/50 hover:text-base-content hover:bg-base-200 transition-all duration-200"
-          :class="{ 'text-primary bg-primary/10': editor?.isActive('bold') }"
-          title="加粗"
+          :class="{ 'text-primary bg-primary/10': editor?.isActive('highlight') }"
+          title="背景高亮"
         >
-          <Type :size="14" />
+          <Highlighter :size="14" />
         </button>
 
         <!-- 有序列表 -->
@@ -257,5 +261,12 @@ function handleSubmit() {
 
 :deep(.ProseMirror u) {
   text-decoration: underline;
+}
+
+:deep(.ProseMirror mark) {
+  background-color: #fef08a;
+  color: inherit;
+  padding: 0.1em 0.2em;
+  border-radius: 0.2em;
 }
 </style>
