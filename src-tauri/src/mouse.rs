@@ -109,7 +109,6 @@ pub fn start_mouse_listener(app_handle: tauri::AppHandle) -> Result<String, Stri
             };
             
             if let Some(evt) = mouse_event {
-                println!("鼠标事件: {:?}", evt);
                 // 发送事件到前端
                 if let Err(e) = app_handle.emit("mouse-event", evt) {
                     eprintln!("发送鼠标事件失败: {:?}", e);
