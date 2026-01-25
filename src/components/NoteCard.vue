@@ -1,11 +1,11 @@
 <script setup>
-import { computed, ref } from 'vue'
-import { MoreVertical, ExternalLink, Edit, Trash2 } from 'lucide-vue-next'
+import { computed, ref, onMounted, onBeforeUnmount } from 'vue'
+import { MoreHorizontal, ExternalLink, Edit, Trash2 } from 'lucide-vue-next'
 import dayjs from 'dayjs'
-import relativeTime from 'dayjs/plugin/relativeTime'
+import weekday from 'dayjs/plugin/weekday'
 import 'dayjs/locale/zh-cn'
 
-dayjs.extend(relativeTime)
+dayjs.extend(weekday)
 dayjs.locale('zh-cn')
 
 const props = defineProps({
@@ -19,26 +19,12 @@ const emit = defineEmits(['click', 'open', 'edit', 'delete'])
 
 const menuVisible = ref(false)
 
-// 格式化日期
+// 格式化日期 - 精确到秒，包含星期
 const formattedDate = computed(() => {
-  return dayjs(props.note.createdAt).format('YYYY-MM-DD HH:mm')
-})
-
-// 相对时间
-const relativeTimeText = computed(() => {
-  const now = dayjs()
-  const noteTime = dayjs(props.note.createdAt)
-  const diffHours = now.diff(noteTime, 'hour')
-  
-  if (diffHours < 1) {
-    return '刚刚'
-  } else if (diffHours < 24) {
-    return noteTime.fromNow()
-  } else if (diffHours < 24 * 7) {
-    return noteTime.fromNow()
-  } else {
-    return formattedDate.value
-  }
+  const date = dayjs(props.note.createdAt)
+  const weekdayMap = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六']
+  const weekday = weekdayMap[date.day()]
+  return date.format('YYYY-MM-DD HH:mm:ss') + ' ' + weekday
 })
 
 // 菜单项点击处理
@@ -57,6 +43,22 @@ function handleMenuClick(action) {
 function handleCardClick() {
   emit('click', props.note)
 }
+
+// 点击外部关闭菜单
+function handleClickOutside(event) {
+  if (menuVisible.value) {
+    menuVisible.value = false
+  }
+}
+
+// 生命周期钩子
+onMounted(() => {
+  document.addEventListener('click', handleClickOutside)
+})
+
+onBeforeUnmount(() => {
+  document.removeEventListener('click', handleClickOutside)
+})
 </script>
 
 <template>
@@ -66,13 +68,13 @@ function handleCardClick() {
   >
     <!-- 顶部：日期 + 菜单 -->
     <div class="flex items-center justify-between mb-3">
-      <span class="text-xs text-base-content/50">{{ relativeTimeText }}</span>
+      <span class="text-xs text-base-content/50">{{ formattedDate }}</span>
       <div class="relative">
         <button
           @click.stop="menuVisible = !menuVisible"
           class="w-6 h-6 rounded flex items-center justify-center text-base-content/40 hover:text-base-content hover:bg-base-200 transition-colors"
         >
-          <MoreVertical :size="16" />
+          <MoreHorizontal :size="20" />
         </button>
         
         <!-- 下拉菜单 -->
