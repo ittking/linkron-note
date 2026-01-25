@@ -19,7 +19,9 @@
         "decorations": false,
         "center": true,
         "alwaysOnTop": true,
-        "skipTaskbar": true
+        "skipTaskbar": true,
+        "acceptFirstMouse": true,
+        "dragDropEnabled": false
       }
     ],
     "security": { "csp": null }
