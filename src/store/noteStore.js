@@ -62,7 +62,6 @@ export function useNoteStore() {
     const newNote = {
       id: generateId(),
       type: noteData.type || 'text',
-      title: noteData.title || '未命名笔记',
       content: noteData.content || '',
       sourceUrl: noteData.sourceUrl || '',
       images: noteData.images || [],
@@ -88,7 +87,8 @@ export function useNoteStore() {
     if (index !== -1) {
       notes[index] = {
         ...notes[index],
-        ...updates,
+        content: updates.content || notes[index].content,
+        images: updates.images || notes[index].images,
         updatedAt: new Date().toISOString()
       }
       await store.set('notes', notes)

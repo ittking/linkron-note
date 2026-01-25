@@ -1,6 +1,12 @@
 <script setup>
 import { computed, ref } from 'vue'
 import { MoreVertical, ExternalLink, Edit, Trash2 } from 'lucide-vue-next'
+import dayjs from 'dayjs'
+import relativeTime from 'dayjs/plugin/relativeTime'
+import 'dayjs/locale/zh-cn'
+
+dayjs.extend(relativeTime)
+dayjs.locale('zh-cn')
 
 const props = defineProps({
   note: {
@@ -15,27 +21,24 @@ const menuVisible = ref(false)
 
 // 格式化日期
 const formattedDate = computed(() => {
-  const date = new Date(props.note.createdAt)
-  const now = new Date()
-  const diff = now - date
-
-  if (diff < 60000) return '刚刚'
-  if (diff < 3600000) return Math.floor(diff / 60000) + '分钟前'
-  if (diff < 86400000) return Math.floor(diff / 3600000) + '小时前'
-  if (diff < 604800000) return Math.floor(diff / 86400000) + '天前'
-
-  return date.toLocaleDateString('zh-CN')
+  return dayjs(props.note.createdAt).format('YYYY-MM-DD HH:mm')
 })
 
-// 类型标签样式
-const typeConfig = {
-  link: { label: '链接', color: 'text-info' },
-  image: { label: '图片', color: 'text-warning' },
-  text: { label: '文字', color: 'text-secondary' }
-}
-
-const typeInfo = computed(() => {
-  return typeConfig[props.note.type] || typeConfig.text
+// 相对时间
+const relativeTimeText = computed(() => {
+  const now = dayjs()
+  const noteTime = dayjs(props.note.createdAt)
+  const diffHours = now.diff(noteTime, 'hour')
+  
+  if (diffHours < 1) {
+    return '刚刚'
+  } else if (diffHours < 24) {
+    return noteTime.fromNow()
+  } else if (diffHours < 24 * 7) {
+    return noteTime.fromNow()
+  } else {
+    return formattedDate.value
+  }
 })
 
 // 菜单项点击处理
@@ -58,21 +61,16 @@ function handleCardClick() {
 
 <template>
   <div
-    class="note-card bg-base-200 border border-base-300 rounded-xl p-3.5 mb-2.5 cursor-pointer transition-all duration-200 relative overflow-hidden hover:border-base-content/20 hover:-translate-y-0.5 hover:shadow-lg"
+    class="note-card bg-base-100 border border-base-200 rounded-lg p-4 mb-3 cursor-pointer transition-all duration-200 hover:shadow-md"
     @click="handleCardClick"
   >
-    <!-- 顶部渐变条 -->
-    <div class="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-primary to-transparent opacity-0 transition-opacity duration-200 note-card:hover:opacity-100"></div>
-
-    <!-- 头部：标题 + 菜单 -->
-    <div class="flex items-center justify-between mb-2">
-      <div class="text-sm font-medium text-base-content leading-relaxed line-clamp-2 flex-1 mr-2">
-        {{ note.title }}
-      </div>
+    <!-- 顶部：日期 + 菜单 -->
+    <div class="flex items-center justify-between mb-3">
+      <span class="text-xs text-base-content/50">{{ relativeTimeText }}</span>
       <div class="relative">
         <button
           @click.stop="menuVisible = !menuVisible"
-          class="w-6 h-6 rounded flex items-center justify-center text-base-content/40 hover:text-base-content hover:bg-base-300 transition-colors"
+          class="w-6 h-6 rounded flex items-center justify-center text-base-content/40 hover:text-base-content hover:bg-base-200 transition-colors"
         >
           <MoreVertical :size="16" />
         </button>
@@ -80,26 +78,27 @@ function handleCardClick() {
         <!-- 下拉菜单 -->
         <div
           v-if="menuVisible"
-          class="absolute right-0 top-8 z-10 bg-base-200 border border-base-300 rounded-lg shadow-xl min-w-[140px] py-1"
+          class="absolute right-0 top-8 z-10 bg-base-100 border border-base-200 rounded-lg shadow-xl min-w-[120px] py-1"
           @click.stop
         >
           <button
+            v-if="note.sourceUrl"
             @click="handleMenuClick('open')"
-            class="w-full px-3 py-2 text-left text-sm text-base-content hover:bg-base-300 flex items-center gap-2 transition-colors"
+            class="w-full px-3 py-2 text-left text-xs text-base-content hover:bg-base-200 flex items-center gap-2 transition-colors"
           >
             <ExternalLink :size="14" />
-            新窗口打开
+            打开链接
           </button>
           <button
             @click="handleMenuClick('edit')"
-            class="w-full px-3 py-2 text-left text-sm text-base-content hover:bg-base-300 flex items-center gap-2 transition-colors"
+            class="w-full px-3 py-2 text-left text-xs text-base-content hover:bg-base-200 flex items-center gap-2 transition-colors"
           >
             <Edit :size="14" />
             编辑
           </button>
           <button
             @click="handleMenuClick('delete')"
-            class="w-full px-3 py-2 text-left text-sm text-error hover:bg-base-300 flex items-center gap-2 transition-colors"
+            class="w-full px-3 py-2 text-left text-xs text-error hover:bg-base-200 flex items-center gap-2 transition-colors"
           >
             <Trash2 :size="14" />
             删除
@@ -108,30 +107,20 @@ function handleCardClick() {
       </div>
     </div>
 
-    <!-- 内容预览 -->
-    <div v-if="note.content" class="text-xs text-base-content/60 leading-relaxed line-clamp-2 mb-2">
+    <!-- 内容 -->
+    <div v-if="note.content" class="text-sm text-base-content leading-relaxed mb-3 whitespace-pre-wrap">
       {{ note.content }}
     </div>
 
-    <!-- 图片缩略图 -->
-    <div v-if="note.images && note.images.length > 0" class="flex gap-2 mt-2.5 overflow-x-auto pb-1">
+    <!-- 图片列表 -->
+    <div v-if="note.images && note.images.length > 0" class="flex flex-wrap gap-2">
       <img
-        v-for="(img, index) in note.images.slice(0, 3)"
+        v-for="(img, index) in note.images"
         :key="index"
         :src="img"
-        class="w-[60px] h-[60px] rounded-lg object-cover flex-shrink-0 border border-base-300"
+        class="w-20 h-20 rounded-lg object-cover border border-base-200"
         alt="Note image"
       />
-    </div>
-
-    <!-- 底部：类型标签 + 日期 -->
-    <div class="flex items-center justify-between mt-3 pt-3 border-t border-base-300">
-      <span :class="['text-xs font-medium', typeInfo.color]">
-        #{{ typeInfo.label }}
-      </span>
-      <span class="text-[11px] text-base-content/40 font-mono">
-        {{ formattedDate }}
-      </span>
     </div>
   </div>
 </template>

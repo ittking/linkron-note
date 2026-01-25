@@ -1,6 +1,6 @@
 <script setup>
 import { ref, onMounted } from 'vue'
-import { Search, ExternalLink, Edit, Trash2, X } from 'lucide-vue-next'
+import { Search, ExternalLink, Edit, Trash2 } from 'lucide-vue-next'
 import NoteCard from '@/components/NoteCard.vue'
 import { useNoteStore } from '@/store/noteStore'
 
@@ -15,12 +15,6 @@ const toastType = ref('info')
 
 // 笔记详情抽屉
 const drawerVisible = ref(false)
-const drawerTitle = ref('')
-const drawerContent = ref('')
-const drawerImages = ref([])
-const drawerSourceUrl = ref('')
-const editingNoteId = ref(null)
-const isEditMode = ref(false)
 
 // 确认对话框
 const confirmVisible = ref(false)
@@ -131,8 +125,7 @@ function handleDroppedFile(file) {
 async function createLinkNote(url) {
     const note = await noteStore.addNote({
         type: 'link',
-        title: '加载中...',
-        content: '',
+        content: url,
         sourceUrl: url,
         images: []
     })
@@ -142,7 +135,6 @@ async function createLinkNote(url) {
     // 模拟链接解析
     setTimeout(async () => {
         await noteStore.updateNote(note.id, {
-            title: '网页标题 - ' + new Date().toLocaleDateString(),
             content: '这是从链接抓取的内容摘要。在实际应用中，这里会显示网页的正文内容...',
             images: [
                 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgZmlsbD0iIzJhMmEzMiIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBkb21pbmFudC1iYXNlbGluZT0ibWlkZGxlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LXNpemU9IjI0IiBmaWxsPSIjNmI2Yjc2Ij5JbWFnZSAxPC90ZXh0Pjwvc3ZnPg==',
@@ -158,8 +150,7 @@ async function createLinkNote(url) {
 async function createImageNote(imageData, fileName) {
     await noteStore.addNote({
         type: 'image',
-        title: fileName || '图片笔记',
-        content: '',
+        content: fileName || '图片笔记',
         images: [imageData]
     })
     await loadNotes()
@@ -170,7 +161,6 @@ async function createImageNote(imageData, fileName) {
 async function createTextNote(text) {
     await noteStore.addNote({
         type: 'text',
-        title: text.substring(0, 30) + (text.length > 30 ? '...' : ''),
         content: text,
         images: []
     })
@@ -180,7 +170,7 @@ async function createTextNote(text) {
 
 // 卡片点击事件
 function handleCardClick(note) {
-    openDrawer(note)
+    // 暂时不做任何操作
 }
 
 // 菜单事件
@@ -193,50 +183,18 @@ function handleMenuOpen(note) {
 }
 
 function handleMenuEdit(note) {
-    openDrawer(note, true)
+    showToast('编辑功能暂未实现', 'info')
 }
 
 function handleMenuDelete(note) {
     confirmTitle.value = '确认删除'
-    confirmContent.value = `确定要删除笔记"${note.title}"吗？`
+    confirmContent.value = '确定要删除这条笔记吗？'
     confirmOnOk.value = async () => {
         await noteStore.deleteNote(note.id)
         await loadNotes()
         showToast('笔记已删除', 'success')
     }
     confirmVisible.value = true
-}
-
-// 打开抽屉
-async function openDrawer(note, edit = false) {
-    editingNoteId.value = note.id
-    isEditMode.value = edit
-    drawerTitle.value = edit ? `编辑: ${note.title}` : note.title
-    drawerContent.value = note.content || ''
-    drawerImages.value = note.images || []
-    drawerSourceUrl.value = note.sourceUrl || ''
-    drawerVisible.value = true
-}
-
-// 保存编辑
-async function saveDrawer() {
-    if (editingNoteId.value) {
-        await noteStore.updateNote(editingNoteId.value, {
-            title: drawerTitle.value,
-            content: drawerContent.value,
-            images: drawerImages.value
-        })
-        await loadNotes()
-        showToast('笔记已更新', 'success')
-    }
-    drawerVisible.value = false
-}
-
-// 关闭抽屉
-function closeDrawer() {
-    drawerVisible.value = false
-    editingNoteId.value = null
-    isEditMode.value = false
 }
 
 // 确认对话框回调
@@ -285,53 +243,6 @@ function handleConfirmOk() {
             <div class="text-5xl text-primary mb-4 animate-bounce">📥</div>
             <div class="text-base font-medium text-primary mb-2">释放以创建笔记</div>
             <div class="text-sm text-base-content/60">支持链接、文字、图片</div>
-        </div>
-
-        <!-- 笔记详情抽屉 -->
-        <div :class="['fixed inset-x-0 bottom-0 z-[50] transition-transform duration-300', drawerVisible ? 'translate-y-0' : 'translate-y-full']">
-            <div class="bg-base-200 border-t border-base-300 rounded-t-2xl max-h-[90vh] overflow-y-auto">
-                <!-- 抽屉头部 -->
-                <div class="sticky top-0 bg-base-200 border-b border-base-300 px-4 py-3 flex items-center justify-between">
-                    <h3 class="text-lg font-medium text-base-content">{{ drawerTitle }}</h3>
-                    <div class="flex items-center gap-2">
-                        <button v-if="isEditMode" @click="saveDrawer" class="btn btn-sm btn-success text-success-content">
-                            保存
-                        </button>
-                        <button @click="closeDrawer" class="btn btn-sm btn-ghost text-base-content/60 hover:text-base-content">
-                            <X :size="18" />
-                        </button>
-                    </div>
-                </div>
-
-                <!-- 抽屉内容 -->
-                <div class="p-4">
-                    <!-- 图片展示 -->
-                    <div v-if="drawerImages.length > 0" class="flex gap-3 mb-4 flex-wrap">
-                        <img v-for="(img, index) in drawerImages" :key="index" :src="img"
-                            class="w-full max-w-[180px] rounded-lg object-cover border border-base-300" alt="Note image" />
-                    </div>
-
-                    <!-- 内容 -->
-                    <div v-if="drawerContent" class="text-sm leading-[1.7] text-base-content">
-                        <div v-if="!isEditMode">{{ drawerContent }}</div>
-                        <textarea
-                            v-else
-                            v-model="drawerContent"
-                            placeholder="输入笔记内容..."
-                            rows="8"
-                            class="w-full p-3 bg-base-300 border border-base-300 rounded-lg text-base-content placeholder-base-content/40 focus:outline-none focus:border-primary transition-colors resize-none"
-                        ></textarea>
-                    </div>
-
-                    <!-- 来源链接 -->
-                    <div v-if="drawerSourceUrl" class="mt-4 pt-4 border-t border-base-300 text-xs text-base-content/40">
-                        来源: <a :href="drawerSourceUrl" target="_blank" class="text-primary hover:underline flex items-center gap-1">
-                            {{ drawerSourceUrl }}
-                            <ExternalLink :size="12" />
-                        </a>
-                    </div>
-                </div>
-            </div>
         </div>
 
         <!-- Toast 提示 -->
