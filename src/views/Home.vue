@@ -41,10 +41,10 @@ function getCurrentTitle() {
       <!-- 右侧：功能按钮 -->
       <div class="flex items-center gap-1.5 text-[#a0a0a0]">
         <button v-for="tab in tabs" :key="tab.path" @click="navigateTo(tab.path)" :class="[
-          'w-6 h-6 rounded transition-all flex items-center justify-center relative',
+          'btn btn-ghost btn-sm w-6 h-6 min-h-0 p-0 rounded relative flex items-center justify-center',
           isActive(tab.path)
-            ? '!text-[#00ff88] bg-[rgba(0,255,136,0.1)]'
-            : 'hover:text-[#d0d0d0]'
+            ? 'text-[#00ff88] bg-[rgba(0,255,136,0.1)]'
+            : 'hover:text-[#d0d0d0] hover:bg-[#2a2a32]'
         ]" :title="tab.name">
           <component :is="tab.icon" :size="14" />
           <!-- 选中状态底部指示条 -->
@@ -52,7 +52,7 @@ function getCurrentTitle() {
             class="absolute bottom-[-1px] left-1/2 -translate-x-1/2 w-5 h-0.5 bg-[#00ff88] rounded-full"></span>
         </button>
         <button
-          class="w-6 h-6 rounded hover:bg-[#2a2a32] text-[#a0a0a0] hover:text-[#d0d0d0] transition-all flex items-center justify-center"
+          class="btn btn-ghost btn-sm w-6 h-6 min-h-0 p-0 rounded hover:bg-[#2a2a32] text-[#a0a0a0] hover:text-[#d0d0d0] flex items-center justify-center"
           title="收缩">
           <Minimize2 :size="14" />
         </button>

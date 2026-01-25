@@ -1,5 +1,6 @@
 <script setup>
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
+import { MoreVertical, ExternalLink, Edit, Trash2 } from 'lucide-vue-next'
 
 const props = defineProps({
   note: {
@@ -9,6 +10,8 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['click', 'open', 'edit', 'delete'])
+
+const menuVisible = ref(false)
 
 // 格式化日期
 const formattedDate = computed(() => {
@@ -36,12 +39,13 @@ const typeInfo = computed(() => {
 })
 
 // 菜单项点击处理
-function handleMenuClick({ key }) {
-  if (key === 'open') {
+function handleMenuClick(action) {
+  menuVisible.value = false
+  if (action === 'open') {
     emit('open', props.note)
-  } else if (key === 'edit') {
+  } else if (action === 'edit') {
     emit('edit', props.note)
-  } else if (key === 'delete') {
+  } else if (action === 'delete') {
     emit('delete', props.note)
   }
 }
@@ -53,176 +57,81 @@ function handleCardClick() {
 </script>
 
 <template>
-  <a-card
-    class="note-card"
-    :bordered="false"
-    :body-style="{ padding: '14px' }"
+  <div
+    class="note-card bg-[#141417] border border-[#2a2a32] rounded-xl p-3.5 mb-2.5 cursor-pointer transition-all duration-200 relative overflow-hidden hover:border-[#3a3a45] hover:-translate-y-0.5 hover:shadow-lg"
     @click="handleCardClick"
   >
+    <!-- 顶部渐变条 -->
+    <div class="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-[#00ff88] to-transparent opacity-0 transition-opacity duration-200 note-card:hover:opacity-100"></div>
+
     <!-- 头部：标题 + 菜单 -->
-    <div class="note-card-header">
-      <div class="note-card-title">{{ note.title }}</div>
-      <a-dropdown trigger="click" @click.stop>
-        <a-button type="text" size="small" class="note-card-menu">
-          <template #icon>
-            <span class="text-lg">⋮</span>
-          </template>
-        </a-button>
-        <template #overlay>
-          <a-menu @click="handleMenuClick">
-            <a-menu-item key="open">
-              <span>🔗</span>
-              <span class="ml-2">新窗口打开</span>
-            </a-menu-item>
-            <a-menu-item key="edit">
-              <span>✏️</span>
-              <span class="ml-2">编辑</span>
-            </a-menu-item>
-            <a-menu-item key="delete" danger>
-              <span>🗑️</span>
-              <span class="ml-2">删除</span>
-            </a-menu-item>
-          </a-menu>
-        </template>
-      </a-dropdown>
+    <div class="flex items-center justify-between mb-2">
+      <div class="text-sm font-medium text-[#e8e8ed] leading-relaxed line-clamp-2 flex-1 mr-2">
+        {{ note.title }}
+      </div>
+      <div class="relative">
+        <button
+          @click.stop="menuVisible = !menuVisible"
+          class="w-6 h-6 rounded flex items-center justify-center text-[#4a4a55] hover:text-[#e8e8ed] hover:bg-[#2a2a32] transition-colors"
+        >
+          <MoreVertical :size="16" />
+        </button>
+        
+        <!-- 下拉菜单 -->
+        <div
+          v-if="menuVisible"
+          class="absolute right-0 top-8 z-10 bg-[#1a1a1f] border border-[#2a2a32] rounded-lg shadow-xl min-w-[140px] py-1"
+          @click.stop
+        >
+          <button
+            @click="handleMenuClick('open')"
+            class="w-full px-3 py-2 text-left text-sm text-[#e8e8ed] hover:bg-[#2a2a32] flex items-center gap-2 transition-colors"
+          >
+            <ExternalLink :size="14" />
+            新窗口打开
+          </button>
+          <button
+            @click="handleMenuClick('edit')"
+            class="w-full px-3 py-2 text-left text-sm text-[#e8e8ed] hover:bg-[#2a2a32] flex items-center gap-2 transition-colors"
+          >
+            <Edit :size="14" />
+            编辑
+          </button>
+          <button
+            @click="handleMenuClick('delete')"
+            class="w-full px-3 py-2 text-left text-sm text-[#ef4444] hover:bg-[#2a2a32] flex items-center gap-2 transition-colors"
+          >
+            <Trash2 :size="14" />
+            删除
+          </button>
+        </div>
+      </div>
     </div>
 
     <!-- 内容预览 -->
-    <div v-if="note.content" class="note-card-preview">
+    <div v-if="note.content" class="text-xs text-[#6b6b76] leading-relaxed line-clamp-2 mb-2">
       {{ note.content }}
     </div>
 
     <!-- 图片缩略图 -->
-    <div v-if="note.images && note.images.length > 0" class="note-card-images">
+    <div v-if="note.images && note.images.length > 0" class="flex gap-2 mt-2.5 overflow-x-auto pb-1">
       <img
         v-for="(img, index) in note.images.slice(0, 3)"
         :key="index"
         :src="img"
-        class="note-card-image"
+        class="w-[60px] h-[60px] rounded-lg object-cover flex-shrink-0 border border-[#2a2a32]"
         alt="Note image"
       />
     </div>
 
     <!-- 底部：类型标签 + 日期 -->
-    <div class="note-card-footer">
-      <span :class="['note-card-type', typeInfo.color]">
+    <div class="flex items-center justify-between mt-3 pt-3 border-t border-[#2a2a32]">
+      <span :class="['text-xs font-medium', typeInfo.color]">
         #{{ typeInfo.label }}
       </span>
-      <span class="note-card-date">{{ formattedDate }}</span>
+      <span class="text-[11px] text-[#4a4a55] font-mono">
+        {{ formattedDate }}
+      </span>
     </div>
-  </a-card>
+  </div>
 </template>
-
-<style scoped>
-.note-card {
-  background: #141417;
-  border: 1px solid #2a2a32;
-  border-radius: 10px;
-  margin-bottom: 10px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  position: relative;
-  overflow: hidden;
-}
-
-.note-card:hover {
-  border-color: #3a3a45;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-}
-
-.note-card::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 2px;
-  background: linear-gradient(90deg, #00ff88, transparent);
-  opacity: 0;
-  transition: opacity 0.2s ease;
-}
-
-.note-card:hover::before {
-  opacity: 1;
-}
-
-.note-card-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 8px;
-}
-
-.note-card-title {
-  font-size: 14px;
-  font-weight: 500;
-  color: #e8e8ed;
-  line-height: 1.4;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  flex: 1;
-  margin-right: 8px;
-}
-
-.note-card-menu {
-  width: 24px;
-  height: 24px;
-  border-radius: 4px;
-  color: #4a4a55;
-  padding: 0;
-}
-
-.note-card-menu:hover {
-  color: #e8e8ed;
-}
-
-.note-card-preview {
-  font-size: 12px;
-  color: #6b6b76;
-  line-height: 1.5;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-.note-card-images {
-  display: flex;
-  gap: 8px;
-  margin-top: 10px;
-  overflow-x: auto;
-  padding-bottom: 4px;
-}
-
-.note-card-image {
-  width: 60px;
-  height: 60px;
-  border-radius: 6px;
-  object-fit: cover;
-  flex-shrink: 0;
-  border: 1px solid #2a2a32;
-}
-
-.note-card-footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-top: 12px;
-  padding-top: 12px;
-  border-top: 1px solid #2a2a32;
-}
-
-.note-card-type {
-  font-size: 12px;
-  font-weight: 500;
-}
-
-.note-card-date {
-  font-size: 11px;
-  color: #4a4a55;
-  font-family: 'JetBrains Mono', 'Courier New', monospace;
-}
-</style>
