@@ -15,6 +15,8 @@
         "title": "iterm",
         "width": 320,
         "height": 680,
+        "minHeight": 680,
+        "minWidth": 320,
         "center": true,
         "shadow": false,
         "skipTaskbar": true,
