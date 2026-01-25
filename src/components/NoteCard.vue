@@ -77,6 +77,26 @@ const formattedDate = computed(() => {
   return date.format('YYYY-MM-DD HH:mm:ss')
 })
 
+// 解码 HTML 实体
+function decodeHtmlEntities(str) {
+  const textarea = document.createElement('textarea')
+  textarea.innerHTML = str
+  return textarea.value
+}
+
+// 从内容中提取图片列表
+const extractedImages = computed(() => {
+  if (!props.note.content) return []
+  const imgRegex = /<img[^>]*src=["']([^"']+)["'][^>]*>/gi
+  const images = []
+  let match
+  while ((match = imgRegex.exec(props.note.content)) !== null) {
+    // 解码 HTML 实体（如 &amp; -> &）
+    images.push(decodeHtmlEntities(match[1]))
+  }
+  return images
+})
+
 // 检查内容是否溢出
 function checkOverflow() {
   if (contentRef.value) {
@@ -238,7 +258,7 @@ onBeforeUnmount(() => {
     </div>
 
     <!-- 内容 -->
-    <div v-if="note.content" class="mb-3">
+    <div v-if="note.content">
       <div
         ref="contentRef"
         class="text-base-content leading-relaxed break-words"
@@ -265,6 +285,18 @@ onBeforeUnmount(() => {
           <ChevronUp :size="14" />
         </template>
       </button>
+    </div>
+
+    <!-- 图片列表 -->
+    <div v-if="extractedImages.length > 0 && !isExpanded" class="flex flex-wrap gap-2 mt-3">
+      <img
+        v-for="(img, index) in extractedImages"
+        :key="index"
+        :src="img"
+        class="w-20 h-20 rounded-lg object-cover border border-base-200 cursor-pointer hover:opacity-80 transition-opacity"
+        alt="Note image"
+        @click.stop
+      />
     </div>
   </div>
 </template>
