@@ -3,7 +3,6 @@ import { ref, computed, watch } from 'vue'
 import { useEditor, EditorContent } from '@tiptap/vue-3'
 import StarterKit from '@tiptap/starter-kit'
 import Image from '@tiptap/extension-image'
-import Underline from '@tiptap/extension-underline'
 import Highlight from '@tiptap/extension-highlight'
 import Placeholder from '@tiptap/extension-placeholder'
 import { 
@@ -27,6 +26,10 @@ const props = defineProps({
   autofocus: {
     type: Boolean,
     default: false
+  },
+  isScrolledToTop: {
+    type: Boolean,
+    default: true
   }
 })
 
@@ -51,7 +54,6 @@ const editor = useEditor({
       inline: true,
       allowBase64: true,
     }),
-    Underline,
     Highlight.configure({
       multicolor: true,
     }),
@@ -73,10 +75,7 @@ const editor = useEditor({
     editor.on('focus', () => {
       isFocused.value = true
     })
-    // 监听编辑器失焦事件
-    editor.on('blur', () => {
-      isFocused.value = false
-    })
+    // 失焦时不改变 isFocused，保持当前高度
   },
 })
 
@@ -133,8 +132,8 @@ function handleSubmit() {
       :editor="editor" 
       class="mb-3 transition-all duration-200 overflow-y-auto max-h-[400px]"
       :class="{ 
-        'min-h-[80px]': isFocused, 
-        'min-h-[40px]': !isFocused
+        'min-h-[80px]': props.isScrolledToTop,
+        'min-h-[40px]': !props.isScrolledToTop
       }"
     />
 
@@ -257,10 +256,6 @@ function handleSubmit() {
 
 :deep(.ProseMirror strong) {
   font-weight: 600;
-}
-
-:deep(.ProseMirror u) {
-  text-decoration: underline;
 }
 
 :deep(.ProseMirror mark) {

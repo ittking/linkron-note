@@ -13,6 +13,8 @@ const isDragging = ref(false)
 const toastMessage = ref('')
 const toastVisible = ref(false)
 const toastType = ref('info')
+const noteListRef = ref(null)
+const isNoteListScrolledToTop = ref(true)
 
 // 笔记详情抽屉
 const drawerVisible = ref(false)
@@ -22,6 +24,13 @@ const confirmVisible = ref(false)
 const confirmTitle = ref('')
 const confirmContent = ref('')
 const confirmOnOk = ref(null)
+
+// 监听笔记列表滚动
+function handleNoteListScroll() {
+    if (noteListRef.value) {
+        isNoteListScrolledToTop.value = noteListRef.value.scrollTop === 0
+    }
+}
 
 // 初始化
 onMounted(async () => {
@@ -235,6 +244,7 @@ function handleConfirmOk() {
             <NoteEditor
                 v-model="editorContent"
                 placeholder="现在的想法是..."
+                :is-scrolled-to-top="isNoteListScrolledToTop"
                 @submit="handleEditorSubmit"
                 @image-upload="handleImageUpload"
             />
@@ -242,7 +252,11 @@ function handleConfirmOk() {
 
         <!-- 笔记列表 -->
         <div class="flex-1 overflow-hidden">
-            <div class="p-3 h-full overflow-y-auto no-scrollbar">
+            <div 
+                ref="noteListRef"
+                class="p-3 h-full overflow-y-auto no-scrollbar"
+                @scroll="handleNoteListScroll"
+            >
                 <div v-if="notes.length === 0" class="flex flex-col items-center justify-center h-full text-base-content/40 text-center p-5">
                     <div class="text-5xl mb-4 opacity-50">📝</div>
                     <div class="text-base font-medium mb-2 text-base-content/60">暂无笔记</div>
