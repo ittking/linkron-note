@@ -58,7 +58,7 @@ const editor = useEditor({
   autofocus: props.autofocus,
   editorProps: {
     attributes: {
-      class: 'prose prose-sm max-w-none focus:outline-none min-h-[80px] py-2',
+      class: 'prose prose-sm max-w-none focus:outline-none min-h-[80px] py-2 text-[14px]',
     },
   },
   onUpdate: ({ editor }) => {
@@ -198,7 +198,7 @@ function handleKeydown(event) {
       <!-- 右侧发送按钮 -->
       <button
         @click="handleSubmit"
-        class="w-7 h-5 rounded-md flex items-center justify-center transition-all duration-200"
+        class="w-7 h-7 rounded-md flex items-center justify-center transition-all duration-200"
         :class="[
           hasContent 
             ? 'bg-primary text-primary-content hover:bg-primary/90' 
