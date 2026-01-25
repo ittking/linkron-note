@@ -13,17 +13,20 @@ const routes = [
       {
         path: '/note',
         name: 'Note',
-        component: () => import('@/views/Note.vue')
+        component: () => import('@/views/Note.vue'),
+        meta: { title: '笔记' }
       },
       {
         path: '/term',
         name: 'Terminal',
-        component: () => import('@/views/Terminal.vue')
+        component: () => import('@/views/Terminal.vue'),
+        meta: { title: '终端' }
       },
       {
         path: '/setting',
         name: 'Setting',
-        component: () => import('@/views/Setting.vue')
+        component: () => import('@/views/Setting.vue'),
+        meta: { title: '设置' }
       }
     ]
   }
