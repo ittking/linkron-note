@@ -35,6 +35,7 @@
     "isReadonly": true,
     "isRef": true,
     "isShallow": true,
+    "listen": true,
     "markRaw": true,
     "nextTick": true,
     "onActivated": true,

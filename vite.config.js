@@ -18,6 +18,7 @@ export default defineConfig(async () => ({
     AutoImport({
       imports: ["vue", "vue-router", {
         "@tauri-apps/api/core": ["invoke"],
+        "@tauri-apps/api/event": ["listen"],
       }],
       dts: "src/auto-imports.d.ts",
       eslintrc: {
