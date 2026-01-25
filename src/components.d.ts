@@ -28,6 +28,7 @@ declare module 'vue' {
     ARow: typeof import('ant-design-vue/es')['Row']
     ATextarea: typeof import('ant-design-vue/es')['Textarea']
     NoteCard: typeof import('./components/NoteCard.vue')['default']
+    NoteEditor: typeof import('./components/NoteEditor.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
   }

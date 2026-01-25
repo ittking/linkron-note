@@ -1,13 +1,14 @@
 <script setup>
 import { ref, onMounted } from 'vue'
-import { Search, ExternalLink, Edit, Trash2 } from 'lucide-vue-next'
+import { ExternalLink, Edit, Trash2 } from 'lucide-vue-next'
 import NoteCard from '@/components/NoteCard.vue'
+import NoteEditor from '@/components/NoteEditor.vue'
 import { useNoteStore } from '@/store/noteStore'
 
 const noteStore = useNoteStore()
 
 const notes = ref([])
-const searchKeyword = ref('')
+const editorContent = ref('')
 const isDragging = ref(false)
 const toastMessage = ref('')
 const toastVisible = ref(false)
@@ -42,13 +43,33 @@ async function loadNotes() {
     notes.value = await noteStore.getNotes()
 }
 
-// 搜索笔记
-async function handleSearch() {
-    if (searchKeyword.value.trim()) {
-        notes.value = await noteStore.searchNotes(searchKeyword.value)
-    } else {
+// 编辑器提交
+async function handleEditorSubmit() {
+    if (editorContent.value.trim()) {
+        await noteStore.addNote({
+            type: 'text',
+            content: editorContent.value,
+            images: []
+        })
+        editorContent.value = ''
         await loadNotes()
+        showToast('笔记创建成功', 'success')
     }
+}
+
+// 图片上传处理
+async function handleImageUpload(file) {
+    const reader = new FileReader()
+    reader.onload = async (e) => {
+        await noteStore.addNote({
+            type: 'image',
+            content: file.name || '图片笔记',
+            images: [e.target.result]
+        })
+        await loadNotes()
+        showToast('图片笔记创建成功', 'success')
+    }
+    reader.readAsDataURL(file)
 }
 
 // 拖拽事件处理
@@ -209,18 +230,14 @@ function handleConfirmOk() {
 <template>
     <div class="h-full flex flex-col" @dragenter="handleDragEnter" @dragleave="handleDragLeave"
         @dragover="handleDragOver" @drop="handleDrop">
-        <!-- 搜索栏 -->
-        <div class="px-4 py-3 border-b border-base-300">
-            <div class="relative">
-                <Search :size="16" class="absolute left-3 top-1/2 -translate-y-1/2 text-base-content/40" />
-                <input
-                    v-model="searchKeyword"
-                    @input="handleSearch"
-                    type="text"
-                    placeholder="搜索笔记..."
-                    class="w-full pl-9 pr-3 py-2 bg-base-200 border border-base-300 rounded-lg text-base-content placeholder-base-content/40 focus:outline-none focus:border-primary transition-colors"
-                />
-            </div>
+        <!-- 编辑器区域 -->
+        <div class="px-4 py-3">
+            <NoteEditor
+                v-model="editorContent"
+                placeholder="现在的想法是..."
+                @submit="handleEditorSubmit"
+                @image-upload="handleImageUpload"
+            />
         </div>
 
         <!-- 笔记列表 -->
