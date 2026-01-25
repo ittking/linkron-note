@@ -32,6 +32,7 @@ const props = defineProps({
 const emit = defineEmits(['update:modelValue', 'submit', 'image-upload'])
 
 const menuVisible = ref(false)
+const isFocused = ref(false)
 
 const editor = useEditor({
   content: props.modelValue,
@@ -58,11 +59,21 @@ const editor = useEditor({
   autofocus: props.autofocus,
   editorProps: {
     attributes: {
-      class: 'prose prose-sm max-w-none focus:outline-none min-h-[80px] py-2 text-[14px]',
+      class: 'prose prose-sm max-w-none focus:outline-none py-2 text-[14px]',
     },
   },
   onUpdate: ({ editor }) => {
     emit('update:modelValue', editor.getHTML())
+  },
+  onCreate: ({ editor }) => {
+    // 监听编辑器聚焦事件
+    editor.on('focus', () => {
+      isFocused.value = true
+    })
+    // 监听编辑器失焦事件
+    editor.on('blur', () => {
+      isFocused.value = false
+    })
   },
 })
 
@@ -119,12 +130,14 @@ function handleSubmit() {
   }
 }
 
-// 键盘快捷键
-function handleKeydown(event) {
-  if (event.key === 'Enter' && !event.shiftKey) {
-    event.preventDefault()
-    handleSubmit()
-  }
+// 聚焦处理
+function handleFocus() {
+  isFocused.value = true
+}
+
+// 失焦处理
+function handleBlur() {
+  isFocused.value = false
 }
 </script>
 
@@ -133,8 +146,11 @@ function handleKeydown(event) {
     <!-- 编辑器内容区域 -->
     <EditorContent 
       :editor="editor" 
-      class="mb-3"
-      @keydown="handleKeydown"
+      class="mb-3 transition-all duration-200 overflow-y-auto max-h-[400px]"
+      :class="{ 
+        'min-h-[80px]': isFocused, 
+        'min-h-[40px]': !isFocused
+      }"
     />
 
     <!-- 底部工具栏 -->
@@ -217,6 +233,8 @@ function handleKeydown(event) {
 /* Tiptap 编辑器样式 */
 :deep(.ProseMirror) {
   outline: none;
+  overflow-y: auto;
+  max-height: 100%;
 }
 
 :deep(.ProseMirror p.is-editor-empty:first-child::before) {
