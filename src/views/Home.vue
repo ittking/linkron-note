@@ -61,7 +61,7 @@ function getCurrentTitle() {
 
     <!-- 子页面内容区域 -->
     <div class="flex-1 overflow-hidden">
-      <div class="h-full max-w-200 mx-auto">
+      <div class="h-full max-w-200 mx-auto py-2">
         <router-view />
       </div>
     </div>
