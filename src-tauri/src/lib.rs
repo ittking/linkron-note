@@ -1,7 +1,7 @@
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
 mod mouse;
 
-#[cfg(windows)]
+#[cfg(any(windows, target_os = "macos"))]
 mod window_manager;
 
 use tauri::Manager;
@@ -16,8 +16,7 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .setup(|app| {
-            // Windows 平台下设置窗口跨虚拟桌面置顶
-            #[cfg(windows)]
+            #[cfg(any(windows, target_os = "macos"))]
             {
                 if let Some(window) = app.get_webview_window("main") {
                     window_manager::set_window_on_all_desktops(&window);
