@@ -126,8 +126,16 @@ export function useWindowThrough() {
    * 处理鼠标移动事件
    * @param {Object} event - 鼠标事件对象
    */
-  function handleMouseMove(event) {
+  async function handleMouseMove(event) {
     const { x, y } = event.payload;
+
+    // 实时更新窗口位置（处理窗口拖拽后的位置变化）
+    await updateWindowInfo();
+
+    // 重新计算所有元素的屏幕边界
+    for (const [id, data] of registeredElements.value) {
+      data.bounds = getElementScreenBounds(data.element);
+    }
 
     // 检查鼠标是否在任何注册的元素范围内
     let inAnyElement = false;
