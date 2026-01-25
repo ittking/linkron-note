@@ -97,15 +97,20 @@ export function useWindowThrough() {
   }
 
   /**
-   * 扫描页面中所有带有 through-listener 属性的元素
+   * 扫描页面中所有带有 through-listener 属性且值为 true 的元素
    */
   function scanThroughElements() {
     const elements = document.querySelectorAll("[through-listener]");
     registeredElements.value.clear();
 
     elements.forEach((element) => {
+      // 只处理 through-listener 属性值为 true 的元素
+      const listenerValue = element.getAttribute("through-listener");
+      if (listenerValue !== "true" && listenerValue !== true) {
+        return;
+      }
+
       const id =
-        element.getAttribute("through-listener") ||
         element.id ||
         `through-${Date.now()}-${Math.random()}`;
       const bounds = getElementScreenBounds(element);
