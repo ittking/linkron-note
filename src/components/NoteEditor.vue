@@ -31,7 +31,6 @@ const props = defineProps({
 
 const emit = defineEmits(['update:modelValue', 'submit', 'image-upload'])
 
-const menuVisible = ref(false)
 const isFocused = ref(false)
 
 const editor = useEditor({
@@ -94,14 +93,6 @@ function toggleBold() {
   editor.value?.chain().focus().toggleBold().run()
 }
 
-function toggleItalic() {
-  editor.value?.chain().focus().toggleItalic().run()
-}
-
-function toggleUnderline() {
-  editor.value?.chain().focus().toggleUnderline().run()
-}
-
 function toggleBulletList() {
   editor.value?.chain().focus().toggleBulletList().run()
 }
@@ -128,16 +119,6 @@ function handleSubmit() {
     emit('submit')
     editor.value?.commands.clearContent()
   }
-}
-
-// 聚焦处理
-function handleFocus() {
-  isFocused.value = true
-}
-
-// 失焦处理
-function handleBlur() {
-  isFocused.value = false
 }
 </script>
 
