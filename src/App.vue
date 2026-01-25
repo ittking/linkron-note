@@ -3,7 +3,7 @@ import { theme } from "ant-design-vue"
 
 const themeConfig = {
   token: {
-    colorPrimary: '#022398',
+    colorPrimary: '#020617',
   },
   algorithm: theme.compactAlgorithm,
 }
