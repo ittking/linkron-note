@@ -324,7 +324,6 @@ async function saveWorkDirectory() {
 async function loadTheme() {
   try {
     currentTheme.value = await settingStore.get('theme', 'light')
-    applyTheme(currentTheme.value)
   } catch (error) {
     console.error('Failed to load theme:', error)
   }
