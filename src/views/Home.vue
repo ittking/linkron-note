@@ -8,20 +8,6 @@ async function greet() {
 </script>
 
 <template>
-  <main class="bg-black/90">
-    <div class="max-w-md mx-auto bg-white dark:bg-gray-800 rounded-lg shadow-xl p-4">
-      <a-form @submit.prevent="greet" layout="vertical">
-        <a-form-item label="Enter your name">
-          <a-input id="greet-input" v-model:value="name" placeholder="Enter a name..." />
-        </a-form-item>
-        <a-form-item>
-          <a-button type="primary" html-type="submit" block>
-            Greet
-          </a-button>
-        </a-form-item>
-      </a-form>
-
-      <a-alert v-if="greetMsg" :message="greetMsg" type="success" show-icon class="mt-3" />
-    </div>
+  <main class="bg-black/90 min-h-screen flex items-center justify-center">
   </main>
 </template>
