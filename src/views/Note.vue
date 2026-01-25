@@ -267,7 +267,7 @@ function handleConfirmOk() {
 
         <!-- 笔记列表 -->
         <div class="flex-1 overflow-hidden">
-            <div class="p-3 h-full overflow-y-auto" style="scrollbar-width: thin; scrollbar-color: base-content/20 transparent;">
+            <div class="p-3 h-full overflow-y-auto no-scrollbar">
                 <div v-if="notes.length === 0" class="flex flex-col items-center justify-center h-full text-base-content/40 text-center p-5">
                     <div class="text-5xl mb-4 opacity-50">📝</div>
                     <div class="text-base font-medium mb-2 text-base-content/60">暂无笔记</div>
