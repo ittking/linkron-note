@@ -10,6 +10,7 @@ const noteStore = useNoteStore()
 const notes = ref([])
 const editorContent = ref('')
 const isDragging = ref(false)
+const dragCounter = ref(0) // 拖拽计数器
 const toastMessage = ref('')
 const toastVisible = ref(false)
 const toastType = ref('info')
@@ -84,12 +85,17 @@ async function handleImageUpload(file) {
 // 拖拽事件处理
 function handleDragEnter(e) {
     e.preventDefault()
+    dragCounter.value++
     isDragging.value = true
 }
 
 function handleDragLeave(e) {
     e.preventDefault()
-    isDragging.value = false
+    dragCounter.value--
+    if (dragCounter.value <= 0) {
+        isDragging.value = false
+        dragCounter.value = 0
+    }
 }
 
 function handleDragOver(e) {
@@ -99,36 +105,29 @@ function handleDragOver(e) {
 function handleDrop(e) {
     e.preventDefault()
     isDragging.value = false
+    dragCounter.value = 0
 
-    const items = e.dataTransfer.items
-    let hasProcessedUrl = false
+    // 优先处理 URL/文本数据
+    const textData = e.dataTransfer.getData('text/uri-list') || e.dataTransfer.getData('text/plain')
 
-    if (items) {
-        for (let i = 0; i < items.length; i++) {
-            const item = items[i]
+    if (textData) {
+        handleDroppedData(textData)
+        return
+    }
 
-            // 优先处理 string 类型的数据（URL、文本）
-            if (item.kind === 'string' && !hasProcessedUrl) {
-                item.getAsString((data) => {
-                    const urlRegex = /^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$/
-                    if (urlRegex.test(data)) {
-                        hasProcessedUrl = true
-                    }
-                    handleDroppedData(data)
-                })
-            }
-            // 如果已经处理了 URL，就跳过文件类型的处理
-            else if (item.kind === 'file' && !hasProcessedUrl) {
-                const file = item.getAsFile()
-                handleDroppedFile(file)
-            }
+    // 处理文件
+    const files = e.dataTransfer.files
+    if (files && files.length > 0) {
+        for (let i = 0; i < files.length; i++) {
+            handleDroppedFile(files[i])
         }
     }
 }
 
 // 处理拖拽数据
 function handleDroppedData(data) {
-    const urlRegex = /^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$/
+    // 更宽松的 URL 正则表达式，支持查询参数
+    const urlRegex = /^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.\-?=&%]*)*\/?$/
     const isUrl = urlRegex.test(data)
 
     if (isUrl) {
@@ -153,27 +152,31 @@ function handleDroppedFile(file) {
 
 // 创建链接笔记
 async function createLinkNote(url) {
-    const note = await noteStore.addNote({
-        type: 'link',
-        content: url,
-        sourceUrl: url,
-        images: []
-    })
-
-    showToast('正在解析链接...', 'info')
-
-    // 模拟链接解析
-    setTimeout(async () => {
-        await noteStore.updateNote(note.id, {
-            content: '这是从链接抓取的内容摘要。在实际应用中，这里会显示网页的正文内容...',
-            images: [
-                'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgZmlsbD0iIzJhMmEzMiIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBkb21pbmFudC1iYXNlbGluZT0ibWlkZGxlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LXNpemU9IjI0IiBmaWxsPSIjNmI2Yjc2Ij5JbWFnZSAxPC90ZXh0Pjwvc3ZnPg==',
-                'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgZmlsbD0iIzJhMmEzMiIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBkb21pbmFudC1iYXNlbGluZT0ibWlkZGxlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LXNpemU9IjI0IiBmaWxsPSIjNmI2Yjc2Ij5JbWFnZSAyPC90ZXh0Pjwvc3ZnPg=='
-            ]
+    try {
+        const note = await noteStore.addNote({
+            type: 'link',
+            content: url,
+            sourceUrl: url,
+            images: []
         })
-        await loadNotes()
-        showToast('笔记创建成功', 'success')
-    }, 1000)
+
+        showToast('正在解析链接...', 'info')
+
+        // 模拟链接解析
+        setTimeout(async () => {
+            await noteStore.updateNote(note.id, {
+                content: '这是从链接抓取的内容摘要。在实际应用中，这里会显示网页的正文内容...',
+                images: [
+                    'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgZmlsbD0iIzJhMmEzMiIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBkb21pbmFudC1iYXNlbGluZT0ibWlkZGxlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LXNpemU9IjI0IiBmaWxsPSIjNmI2Yjc2Ij5JbWFnZSAxPC90ZXh0Pjwvc3ZnPg==',
+                    'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgZmlsbD0iIzJhMmEzMiIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBkb21pbmFudC1iYXNlbGluZT0ibWlkZGxlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LXNpemU9IjI0IiBmaWxsPSIjNmI2Yjc2Ij5JbWFnZSAyPC90ZXh0Pjwvc3ZnPg=='
+                ]
+            })
+            await loadNotes()
+            showToast('笔记创建成功', 'success')
+        }, 1000)
+    } catch (error) {
+        showToast('创建笔记失败', 'error')
+    }
 }
 
 // 创建图片笔记
@@ -189,13 +192,17 @@ async function createImageNote(imageData, fileName) {
 
 // 创建文字笔记
 async function createTextNote(text) {
-    await noteStore.addNote({
-        type: 'text',
-        content: text,
-        images: []
-    })
-    await loadNotes()
-    showToast('文字笔记创建成功', 'success')
+    try {
+        await noteStore.addNote({
+            type: 'text',
+            content: text,
+            images: []
+        })
+        await loadNotes()
+        showToast('文字笔记创建成功', 'success')
+    } catch (error) {
+        showToast('创建笔记失败', 'error')
+    }
 }
 
 // 卡片点击事件
@@ -270,7 +277,13 @@ function handleConfirmOk() {
 
         <!-- 拖拽遮罩 -->
         <div
-            :class="['fixed inset-0 bg-primary/5 border-2 border-dashed border-primary flex flex-col items-center justify-center z-[100] opacity-0 pointer-events-none transition-opacity duration-200', { 'opacity-100 pointer-events-auto': isDragging }]">
+            v-if="isDragging"
+            class="fixed inset-0 bg-primary/5 border-2 border-dashed border-primary flex flex-col items-center justify-center z-[9999] transition-opacity duration-200"
+            @dragenter="handleDragEnter"
+            @dragleave="handleDragLeave"
+            @dragover="handleDragOver"
+            @drop="handleDrop"
+        >
             <div class="text-5xl text-primary mb-4 animate-bounce">📥</div>
             <div class="text-base font-medium text-primary mb-2">释放以创建笔记</div>
             <div class="text-sm text-base-content/60">支持链接、文字、图片</div>
