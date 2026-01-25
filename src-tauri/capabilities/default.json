@@ -18,6 +18,10 @@
     "store:allow-entries",
     "store:allow-length",
     "store:allow-load",
-    "store:allow-save"
+    "store:allow-save",
+    "dialog:allow-open",
+    "dialog:allow-save",
+    "dialog:default",
+    "dialog:allow-message"
   ]
 }

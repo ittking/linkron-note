@@ -12,6 +12,19 @@ fn greet(name: &str) -> String {
 }
 
 #[tauri::command]
+async fn check_directory_exists(path: String) -> Result<bool, String> {
+    std::fs::metadata(&path)
+        .map(|m| m.is_dir())
+        .map_err(|e| format!("Failed to check directory: {}", e))
+}
+
+#[tauri::command]
+async fn create_directory(path: String) -> Result<(), String> {
+    std::fs::create_dir_all(&path)
+        .map_err(|e| format!("Failed to create directory: {}", e))
+}
+
+#[tauri::command]
 async fn set_autostart(enable: bool) -> Result<(), String> {
     #[cfg(target_os = "windows")]
     {
@@ -185,6 +198,7 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_store::Builder::new().build())
+        .plugin(tauri_plugin_dialog::init())
         .setup(|app| {
             #[cfg(any(windows, target_os = "macos"))]
             {
@@ -200,7 +214,9 @@ pub fn run() {
             mouse::stop_mouse_listener,
             mouse::is_mouse_listener_running,
             set_autostart,
-            is_autostart_enabled
+            is_autostart_enabled,
+            check_directory_exists,
+            create_directory
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

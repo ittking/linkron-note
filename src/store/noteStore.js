@@ -1,5 +1,6 @@
 import { Store } from '@tauri-apps/plugin-store'
 import { ulid } from 'ulid'
+import { useSettingStore } from './settingStore'
 
 /**
  * 笔记数据持久化存储
@@ -7,13 +8,20 @@ import { ulid } from 'ulid'
  */
 export function useNoteStore() {
   let store = null
+  const settingStore = useSettingStore()
 
   /**
    * 初始化存储
    */
   async function initStore() {
     if (!store) {
-      store = await Store.load('notes.json')
+      // 获取工作目录配置
+      const workDirectory = await settingStore.get('workDirectory', '')
+      
+      // 如果有工作目录，则使用完整路径；否则使用默认路径
+      const storePath = workDirectory ? `${workDirectory}/notes.json` : 'notes.json'
+      
+      store = await Store.load(storePath)
     }
     return store
   }

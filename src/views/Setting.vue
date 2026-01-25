@@ -50,6 +50,35 @@
         </div>
       </div>
 
+      <!-- 工作目录设置 -->
+      <div class="card bg-base-200 shadow-sm">
+        <div class="card-body p-4">
+          <h2 class="card-title text-sm font-medium">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-folder"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"></path></svg>
+            工作目录
+          </h2>
+          <div class="space-y-3">
+            <div class="form-control">
+              <label class="label">
+                <span class="label-text text-xs">工作目录路径</span>
+              </label>
+              <input type="text" v-model="workDirectory" placeholder="留空使用默认路径" class="input input-bordered input-sm w-full" />
+            </div>
+            <div class="flex gap-2">
+              <button class="btn btn-sm btn-primary flex-1" :class="{ 'loading': loading.workDir }" @click="saveWorkDirectory">
+                保存工作目录
+              </button>
+              <button class="btn btn-sm btn-ghost" @click="selectWorkDirectory">
+                选择目录
+              </button>
+            </div>
+            <div v-if="workDirectoryStatus" :class="['text-xs', workDirectoryStatus.type === 'success' ? 'text-success' : 'text-error']">
+              {{ workDirectoryStatus.message }}
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- 主题设置 -->
       <div class="card bg-base-200 shadow-sm">
         <div class="card-body p-4">
@@ -99,6 +128,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
+import { open } from '@tauri-apps/plugin-dialog'
 import { useSettingStore } from '../store/settingStore'
 
 const settingStore = useSettingStore()
@@ -107,7 +137,8 @@ const settingStore = useSettingStore()
 const autoStartEnabled = ref(false)
 const loading = ref({
   autoStart: false,
-  model: false
+  model: false,
+  workDir: false
 })
 
 // 模型设置
@@ -116,6 +147,10 @@ const modelSettings = ref({
   apiUrl: '',
   model: ''
 })
+
+// 工作目录
+const workDirectory = ref('')
+const workDirectoryStatus = ref(null)
 
 // 主题
 const currentTheme = ref('light')
@@ -161,6 +196,7 @@ const themes = [
 onMounted(async () => {
   await loadAutoStartStatus()
   await loadModelSettings()
+  await loadWorkDirectory()
   await loadTheme()
 })
 
@@ -211,6 +247,76 @@ async function saveModelSettings() {
     console.error('Failed to save model settings:', error)
   } finally {
     loading.value.model = false
+  }
+}
+
+// 加载工作目录
+async function loadWorkDirectory() {
+  try {
+    workDirectory.value = await settingStore.get('workDirectory', '')
+  } catch (error) {
+    console.error('Failed to load work directory:', error)
+  }
+}
+
+// 选择工作目录
+async function selectWorkDirectory() {
+  try {
+    const selected = await open({
+      directory: true,
+      multiple: false,
+      title: '选择工作目录'
+    })
+    
+    if (selected) {
+      workDirectory.value = selected
+    }
+  } catch (error) {
+    console.error('Failed to select directory:', error)
+  }
+}
+
+// 保存工作目录
+async function saveWorkDirectory() {
+  loading.value.workDir = true
+  workDirectoryStatus.value = null
+  
+  try {
+    if (workDirectory.value.trim()) {
+      // 检查目录是否存在
+      const exists = await invoke('check_directory_exists', { path: workDirectory.value.trim() })
+      
+      if (!exists) {
+        // 创建目录
+        await invoke('create_directory', { path: workDirectory.value.trim() })
+        workDirectoryStatus.value = {
+          type: 'success',
+          message: '工作目录已创建并保存'
+        }
+      } else {
+        workDirectoryStatus.value = {
+          type: 'success',
+          message: '工作目录已保存'
+        }
+      }
+      
+      await settingStore.set('workDirectory', workDirectory.value.trim())
+    } else {
+      // 清空工作目录
+      await settingStore.set('workDirectory', '')
+      workDirectoryStatus.value = {
+        type: 'success',
+        message: '已恢复默认工作目录'
+      }
+    }
+  } catch (error) {
+    console.error('Failed to save work directory:', error)
+    workDirectoryStatus.value = {
+      type: 'error',
+      message: '保存失败: ' + error.message
+    }
+  } finally {
+    loading.value.workDir = false
   }
 }
 
