@@ -15,12 +15,13 @@
         "title": "iterm",
         "width": 320,
         "height": 680,
-        "transparent": true,
-        "decorations": false,
         "center": true,
-        "alwaysOnTop": true,
+        "shadow": false,
         "skipTaskbar": true,
-        "acceptFirstMouse": true,
+        "transparent": true,
+        "hiddenTitle": true,
+        "alwaysOnTop": true,
+        "decorations": false,
         "dragDropEnabled": false
       }
     ],
