@@ -1,11 +1,9 @@
 <script setup>
 import { computed, ref, onMounted, onBeforeUnmount } from 'vue'
-import { MoreHorizontal, ExternalLink, Edit, Trash2 } from 'lucide-vue-next'
+import { MoreHorizontal, ExternalLink, Edit, Trash2, ChevronDown, ChevronUp } from 'lucide-vue-next'
 import dayjs from 'dayjs'
-import weekday from 'dayjs/plugin/weekday'
 import 'dayjs/locale/zh-cn'
 
-dayjs.extend(weekday)
 dayjs.locale('zh-cn')
 
 const props = defineProps({
@@ -18,14 +16,34 @@ const props = defineProps({
 const emit = defineEmits(['click', 'open', 'edit', 'delete'])
 
 const menuVisible = ref(false)
+const isExpanded = ref(false)
+const contentRef = ref(null)
+const isOverflowing = ref(false)
+const MAX_HEIGHT = 120 // 最大高度，超过这个高度显示展开按钮
 
-// 格式化日期 - 精确到秒，包含星期
+// 格式化日期 - 精确到秒，不包含星期
 const formattedDate = computed(() => {
   const date = dayjs(props.note.createdAt)
-  const weekdayMap = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六']
-  const weekday = weekdayMap[date.day()]
-  return date.format('YYYY-MM-DD HH:mm:ss') + ' ' + weekday
+  return date.format('YYYY-MM-DD HH:mm:ss')
 })
+
+// 检查内容是否溢出
+function checkOverflow() {
+  if (contentRef.value) {
+    const contentText = props.note.content || ''
+    // 预估行高，判断是否需要展开
+    const lineHeight = 22 // 假设每行约22px
+    const estimatedLines = Math.ceil(contentText.length / 40) // 假设每行约40个字符
+    const estimatedHeight = estimatedLines * lineHeight
+    isOverflowing.value = estimatedHeight > MAX_HEIGHT && contentText.length > 80
+  }
+}
+
+// 切换展开/收起
+function toggleExpand(event) {
+  event.stopPropagation()
+  isExpanded.value = !isExpanded.value
+}
 
 // 菜单项点击处理
 function handleMenuClick(action) {
@@ -54,6 +72,7 @@ function handleClickOutside(event) {
 // 生命周期钩子
 onMounted(() => {
   document.addEventListener('click', handleClickOutside)
+  checkOverflow()
 })
 
 onBeforeUnmount(() => {
@@ -110,8 +129,33 @@ onBeforeUnmount(() => {
     </div>
 
     <!-- 内容 -->
-    <div v-if="note.content" class="text-sm text-base-content leading-relaxed mb-3 whitespace-pre-wrap">
-      {{ note.content }}
+    <div v-if="note.content" class="mb-3">
+      <div
+        ref="contentRef"
+        class="text-sm text-base-content leading-relaxed whitespace-pre-wrap break-words"
+        :class="{
+          'line-clamp-5': !isExpanded && isOverflowing,
+          'max-h-[120px] overflow-hidden': !isExpanded && isOverflowing
+        }"
+      >
+        {{ note.content }}
+      </div>
+      
+      <!-- 展开/收起按钮 -->
+      <button
+        v-if="isOverflowing"
+        @click="toggleExpand"
+        class="mt-2 text-xs text-primary hover:text-primary/80 flex items-center gap-1 transition-colors"
+      >
+        <template v-if="!isExpanded">
+          展开全文
+          <ChevronDown :size="14" />
+        </template>
+        <template v-else>
+          收起
+          <ChevronUp :size="14" />
+        </template>
+      </button>
     </div>
 
     <!-- 图片列表 -->
