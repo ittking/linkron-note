@@ -11,7 +11,6 @@ import {
   Type, 
   ListOrdered, 
   List, 
-  AtSign, 
   Send 
 } from 'lucide-vue-next'
 
@@ -104,10 +103,6 @@ function insertTag() {
   editor.value?.chain().focus().insertContent('# ').run()
 }
 
-function insertMention() {
-  editor.value?.chain().focus().insertContent('@ ').run()
-}
-
 function handleImageUpload(event) {
   const file = event.target.files[0]
   if (file) {
@@ -149,18 +144,18 @@ function handleKeydown(event) {
         <!-- 标签 # -->
         <button
           @click="insertTag"
-          class="w-8 h-8 rounded-lg flex items-center justify-center text-base-content/50 hover:text-base-content hover:bg-base-200 transition-all duration-200"
+          class="w-6 h-6 rounded-md flex items-center justify-center text-base-content/50 hover:text-base-content hover:bg-base-200 transition-all duration-200"
           title="插入标签"
         >
-          <Hash :size="18" />
+          <Hash :size="14" />
         </button>
 
         <!-- 图片 -->
         <button
-          class="w-8 h-8 rounded-lg flex items-center justify-center text-base-content/50 hover:text-base-content hover:bg-base-200 transition-all duration-200"
+          class="w-6 h-6 rounded-md flex items-center justify-center text-base-content/50 hover:text-base-content hover:bg-base-200 transition-all duration-200"
           title="插入图片"
         >
-          <ImageIcon :size="18" />
+          <ImageIcon :size="14" />
           <input
             type="file"
             accept="image/*"
@@ -172,47 +167,38 @@ function handleKeydown(event) {
         <!-- 字体样式 Aa -->
         <button
           @click="toggleBold"
-          class="w-8 h-8 rounded-lg flex items-center justify-center text-base-content/50 hover:text-base-content hover:bg-base-200 transition-all duration-200"
+          class="w-6 h-6 rounded-md flex items-center justify-center text-base-content/50 hover:text-base-content hover:bg-base-200 transition-all duration-200"
           :class="{ 'text-primary bg-primary/10': editor?.isActive('bold') }"
           title="加粗"
         >
-          <Type :size="18" />
+          <Type :size="14" />
         </button>
 
         <!-- 有序列表 -->
         <button
           @click="toggleOrderedList"
-          class="w-8 h-8 rounded-lg flex items-center justify-center text-base-content/50 hover:text-base-content hover:bg-base-200 transition-all duration-200"
+          class="w-6 h-6 rounded-md flex items-center justify-center text-base-content/50 hover:text-base-content hover:bg-base-200 transition-all duration-200"
           :class="{ 'text-primary bg-primary/10': editor?.isActive('orderedList') }"
           title="有序列表"
         >
-          <ListOrdered :size="18" />
+          <ListOrdered :size="14" />
         </button>
 
         <!-- 无序列表 -->
         <button
           @click="toggleBulletList"
-          class="w-8 h-8 rounded-lg flex items-center justify-center text-base-content/50 hover:text-base-content hover:bg-base-200 transition-all duration-200"
+          class="w-6 h-6 rounded-md flex items-center justify-center text-base-content/50 hover:text-base-content hover:bg-base-200 transition-all duration-200"
           :class="{ 'text-primary bg-primary/10': editor?.isActive('bulletList') }"
           title="无序列表"
         >
-          <List :size="18" />
-        </button>
-
-        <!-- 提及 @ -->
-        <button
-          @click="insertMention"
-          class="w-8 h-8 rounded-lg flex items-center justify-center text-base-content/50 hover:text-base-content hover:bg-base-200 transition-all duration-200"
-          title="提及用户"
-        >
-          <AtSign :size="18" />
+          <List :size="14" />
         </button>
       </div>
 
       <!-- 右侧发送按钮 -->
       <button
         @click="handleSubmit"
-        class="w-9 h-9 rounded-lg flex items-center justify-center transition-all duration-200"
+        class="w-7 h-5 rounded-md flex items-center justify-center transition-all duration-200"
         :class="[
           hasContent 
             ? 'bg-primary text-primary-content hover:bg-primary/90' 
@@ -221,7 +207,7 @@ function handleKeydown(event) {
         :disabled="!hasContent"
         title="发送"
       >
-        <Send :size="16" />
+        <Send :size="13" />
       </button>
     </div>
   </div>
