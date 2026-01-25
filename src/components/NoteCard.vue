@@ -1,6 +1,10 @@
 <script setup>
-import { computed, ref, onMounted, onBeforeUnmount } from 'vue'
+import { computed, ref, onMounted, onBeforeUnmount, watch } from 'vue'
 import { MoreHorizontal, ExternalLink, Edit, Trash2, ChevronDown, ChevronUp } from 'lucide-vue-next'
+import { useEditor, EditorContent } from '@tiptap/vue-3'
+import StarterKit from '@tiptap/starter-kit'
+import Image from '@tiptap/extension-image'
+import Highlight from '@tiptap/extension-highlight'
 import dayjs from 'dayjs'
 import 'dayjs/locale/zh-cn'
 
@@ -21,6 +25,52 @@ const contentRef = ref(null)
 const isOverflowing = ref(false)
 const MAX_HEIGHT = 120 // 最大高度，超过这个高度显示展开按钮
 
+// 创建只读编辑器实例来渲染内容
+const editor = useEditor({
+  content: props.note.content || '',
+  extensions: [
+    StarterKit.configure({
+      bulletList: {
+        keepMarks: true,
+        keepAttributes: false,
+      },
+      orderedList: {
+        keepMarks: true,
+        keepAttributes: false,
+      },
+    }),
+    Image.configure({
+      inline: true,
+      allowBase64: true,
+    }),
+    Highlight.configure({
+      multicolor: true,
+    }),
+  ],
+  editable: false, // 只读模式
+  editorProps: {
+    attributes: {
+      class: 'prose prose-sm max-w-none text-[14px]',
+    },
+  },
+})
+
+// 监听 content 变化，更新编辑器内容
+watch(() => props.note.content, (newValue) => {
+  if (editor.value && newValue !== editor.value.getHTML()) {
+    editor.value.commands.setContent(newValue, false)
+    // 内容更新后重新检查溢出
+    checkOverflow()
+  }
+})
+
+// 监听编辑器创建，创建后检查溢出
+watch(editor, (newEditor) => {
+  if (newEditor) {
+    checkOverflow()
+  }
+})
+
 // 格式化日期 - 精确到秒，不包含星期
 const formattedDate = computed(() => {
   const date = dayjs(props.note.createdAt)
@@ -30,12 +80,24 @@ const formattedDate = computed(() => {
 // 检查内容是否溢出
 function checkOverflow() {
   if (contentRef.value) {
-    const contentText = props.note.content || ''
-    // 预估行高，判断是否需要展开
-    const lineHeight = 22 // 假设每行约22px
-    const estimatedLines = Math.ceil(contentText.length / 40) // 假设每行约40个字符
-    const estimatedHeight = estimatedLines * lineHeight
-    isOverflowing.value = estimatedHeight > MAX_HEIGHT && contentText.length > 80
+    // 使用 requestAnimationFrame 确保 DOM 已渲染
+    requestAnimationFrame(() => {
+      if (contentRef.value) {
+        // 临时移除高度限制来测量实际内容高度
+        const originalClasses = contentRef.value.className
+        contentRef.value.style.maxHeight = 'none'
+        contentRef.value.style.overflow = 'visible'
+        
+        const scrollHeight = contentRef.value.scrollHeight
+        
+        // 恢复原始样式
+        contentRef.value.style.maxHeight = ''
+        contentRef.value.style.overflow = ''
+        
+        // 只有当实际内容高度超过最大高度时才显示展开按钮
+        isOverflowing.value = scrollHeight > MAX_HEIGHT
+      }
+    })
   }
 }
 
@@ -43,6 +105,8 @@ function checkOverflow() {
 function toggleExpand(event) {
   event.stopPropagation()
   isExpanded.value = !isExpanded.value
+  // 展开状态改变后重新检查溢出
+  checkOverflow()
 }
 
 // 菜单项点击处理
@@ -79,6 +143,51 @@ onBeforeUnmount(() => {
   document.removeEventListener('click', handleClickOutside)
 })
 </script>
+
+<style scoped>
+/* Tiptap 编辑器样式 */
+:deep(.ProseMirror) {
+  outline: none;
+  overflow-y: auto;
+  max-height: 100%;
+}
+
+:deep(.ProseMirror ul),
+:deep(.ProseMirror ol) {
+  padding: 0 1rem;
+  margin: 0.5rem 0;
+}
+
+:deep(.ProseMirror ul) {
+  list-style-type: disc;
+}
+
+:deep(.ProseMirror ol) {
+  list-style-type: decimal;
+}
+
+:deep(.ProseMirror li) {
+  margin: 0.25rem 0;
+}
+
+:deep(.ProseMirror img) {
+  max-width: 100%;
+  height: auto;
+  border-radius: 8px;
+  margin: 0.5rem 0;
+}
+
+:deep(.ProseMirror strong) {
+  font-weight: 600;
+}
+
+:deep(.ProseMirror mark) {
+  background-color: #fef08a;
+  color: inherit;
+  padding: 0.1em 0.2em;
+  border-radius: 0.2em;
+}
+</style>
 
 <template>
   <div
@@ -132,13 +241,13 @@ onBeforeUnmount(() => {
     <div v-if="note.content" class="mb-3">
       <div
         ref="contentRef"
-        class="text-sm text-base-content leading-relaxed whitespace-pre-wrap break-words"
+        class="text-base-content leading-relaxed break-words"
         :class="{
           'line-clamp-5': !isExpanded && isOverflowing,
           'max-h-[120px] overflow-hidden': !isExpanded && isOverflowing
         }"
       >
-        {{ note.content }}
+        <EditorContent :editor="editor" />
       </div>
       
       <!-- 展开/收起按钮 -->
@@ -156,17 +265,6 @@ onBeforeUnmount(() => {
           <ChevronUp :size="14" />
         </template>
       </button>
-    </div>
-
-    <!-- 图片列表 -->
-    <div v-if="note.images && note.images.length > 0" class="flex flex-wrap gap-2">
-      <img
-        v-for="(img, index) in note.images"
-        :key="index"
-        :src="img"
-        class="w-20 h-20 rounded-lg object-cover border border-base-200"
-        alt="Note image"
-      />
     </div>
   </div>
 </template>
