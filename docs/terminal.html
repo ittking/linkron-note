@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>终端页面</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap');
+
+        :root {
+            --bg-primary: #0a0a0b;
+            --bg-secondary: #141417;
+            --bg-tertiary: #1c1c21;
+            --border-subtle: #2a2a32;
+            --border-medium: #3a3a45;
+            --text-primary: #e8e8ed;
+            --text-secondary: #6b6b76;
+            --text-muted: #4a4a55;
+            --accent-primary: #00ff88;
+            --accent-secondary: #00cc6a;
+            --accent-glow: rgba(0, 255, 136, 0.15);
+            --terminal-green: #4ade80;
+            --terminal-blue: #60a5fa;
+            --terminal-yellow: #fbbf24;
+            --terminal-purple: #a78bfa;
+            --terminal-red: #f87171;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'IBM Plex Sans', -apple-system, sans-serif;
+            background: var(--bg-primary);
+            min-height: 100vh;
+            overflow: hidden;
+        }
+
+        /* ========== TERMINAL CONTENT ========== */
+        .terminal-content {
+            width: 100%;
+            background: var(--bg-primary);
+            padding: 16px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12px;
+            line-height: 1.6;
+        }
+            cursor: text;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Scrollbar styling */
+        .terminal-content::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .terminal-content::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .terminal-content::-webkit-scrollbar-thumb {
+            background: var(--border-medium);
+            border-radius: 3px;
+        }
+
+        .terminal-content::-webkit-scrollbar-thumb:hover {
+            background: var(--text-muted);
+        }
+
+        /* Terminal lines */
+        .terminal-line {
+            margin-bottom: 2px;
+            word-wrap: break-word;
+        }
+
+        .terminal-prompt {
+            color: var(--accent-primary);
+        }
+
+        .terminal-path {
+            color: var(--terminal-blue);
+        }
+
+        .terminal-git {
+            color: var(--terminal-purple);
+        }
+
+        .terminal-command {
+            color: var(--text-primary);
+        }
+
+        .terminal-output {
+            color: var(--text-secondary);
+        }
+
+        .terminal-success {
+            color: var(--terminal-green);
+        }
+
+        .terminal-error {
+            color: var(--terminal-red);
+        }
+
+        .terminal-warning {
+            color: var(--terminal-yellow);
+        }
+
+        /* Input line */
+        .input-line {
+            display: flex;
+            align-items: flex-start;
+            margin-top: 2px;
+            flex-wrap: wrap;
+        }
+
+        .input-line-prompt {
+            color: var(--accent-primary);
+            margin-right: 8px;
+            flex-shrink: 0;
+        }
+
+        .input-line-content {
+            flex: 1;
+            min-width: 0;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+        }
+
+        .input-text {
+            color: var(--text-primary);
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        .input-cursor {
+            display: inline-block;
+            width: 8px;
+            height: 14px;
+            background: var(--accent-primary);
+            margin-left: 2px;
+            animation: blink 1s step-end infinite;
+            flex-shrink: 0;
+            vertical-align: middle;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
+        }
+
+        /* Hidden input for mobile keyboard */
+        .hidden-input {
+            position: absolute;
+            opacity: 0;
+            pointer-events: none;
+            top: 0;
+            left: 0;
+            height: 0;
+            width: 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="terminal-content" id="terminalContent">
+        <div class="terminal-line">
+            <span class="terminal-prompt">➜</span>
+            <span class="terminal-path"> ~/projects/floating-terminal</span>
+            <span class="terminal-git"> (main)</span>
+        </div>
+        <div class="terminal-line">
+            <span class="terminal-prompt">$</span>
+            <span class="terminal-command"> npm run dev</span>
+        </div>
+        <div class="terminal-line terminal-output">
+            <span class="terminal-success">✓</span> Server running on http://localhost:3000
+        </div>
+        <div class="terminal-line terminal-output">
+            <span class="terminal-success">✓</span> Hot reload enabled
+        </div>
+        <div class="terminal-line"></div>
+        <div class="terminal-line">
+            <span class="terminal-prompt">➜</span>
+            <span class="terminal-path"> ~/projects/floating-terminal</span>
+            <span class="terminal-git"> (main)</span>
+        </div>
+        <div class="terminal-line">
+            <span class="terminal-prompt">$</span>
+            <span class="terminal-command"> git status</span>
+        </div>
+        <div class="terminal-line terminal-output">
+            On branch main
+        </div>
+        <div class="terminal-line terminal-output">
+            Your branch is up to date with 'origin/main'.
+        </div>
+        <div class="terminal-line terminal-output">
+            Changes not staged for commit:
+        </div>
+        <div class="terminal-line terminal-output">
+            <span style="color: var(--terminal-yellow)">modified:</span> src/styles.css
+        </div>
+        <div class="terminal-line terminal-output">
+            <span style="color: var(--terminal-green)">new file:</span> src/components/Terminal.tsx
+        </div>
+        <div class="terminal-line"></div>
+        <div class="terminal-line">
+            <span class="terminal-prompt">➜</span>
+            <span class="terminal-path"> ~/projects/floating-terminal</span>
+            <span class="terminal-git"> (main)</span>
+        </div>
+        <div class="terminal-line">
+            <span class="terminal-prompt">$</span>
+            <span class="terminal-command"> echo "Hello, Terminal!"</span>
+        </div>
+        <div class="terminal-line terminal-output">
+            Hello, Terminal!
+        </div>
+        <div class="terminal-line"></div>
+
+        <!-- Input Line -->
+        <div class="input-line" id="inputLine">
+            <span class="input-line-prompt">➜ ~/projects/floating-terminal (main) $</span>
+            <span class="input-line-content">
+                <span class="input-text" id="inputText"></span>
+                <span class="input-cursor" id="inputCursor"></span>
+            </span>
+        </div>
+    </div>
+
+    <input type="text" class="hidden-input" id="hiddenInput" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+
+    <script>
+        // Terminal state
+        let currentInput = '';
+        let commandHistory = [];
+        let historyIndex = -1;
+
+        const terminalContent = document.getElementById('terminalContent');
+        const inputText = document.getElementById('inputText');
+        const inputCursor = document.getElementById('inputCursor');
+        const hiddenInput = document.getElementById('hiddenInput');
+
+        // Focus hidden input when clicking on terminal
+        terminalContent.addEventListener('click', () => {
+            hiddenInput.focus();
+        });
+
+        // Keep focus on hidden input
+        hiddenInput.addEventListener('blur', () => {
+            setTimeout(() => hiddenInput.focus(), 0);
+        });
+
+        // Handle input
+        hiddenInput.addEventListener('input', (e) => {
+            currentInput = e.target.value;
+            inputText.textContent = currentInput;
+        });
+
+        // Handle keyboard events
+        hiddenInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                executeCommand(currentInput);
+            } else if (e.key === 'Backspace') {
+                e.preventDefault();
+                if (currentInput.length > 0) {
+                    currentInput = currentInput.slice(0, -1);
+                    inputText.textContent = currentInput;
+                    hiddenInput.value = currentInput;
+                }
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                if (historyIndex < commandHistory.length - 1) {
+                    historyIndex++;
+                    currentInput = commandHistory[commandHistory.length - 1 - historyIndex];
+                    inputText.textContent = currentInput;
+                    hiddenInput.value = currentInput;
+                }
+            } else if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                if (historyIndex > 0) {
+                    historyIndex--;
+                    currentInput = commandHistory[commandHistory.length - 1 - historyIndex];
+                    inputText.textContent = currentInput;
+                    hiddenInput.value = currentInput;
+                } else if (historyIndex === 0) {
+                    historyIndex = -1;
+                    currentInput = '';
+                    inputText.textContent = '';
+                    hiddenInput.value = '';
+                }
+            } else if (e.key === 'c' && e.ctrlKey) {
+                e.preventDefault();
+                clearTerminal();
+            }
+        });
+
+        // Execute command
+        function executeCommand(cmd) {
+            if (!cmd.trim()) {
+                addEmptyLine();
+                return;
+            }
+
+            // Save to history
+            commandHistory.push(cmd);
+            historyIndex = -1;
+
+            // Add command to terminal
+            const commandLine = document.createElement('div');
+            commandLine.className = 'terminal-line';
+            commandLine.innerHTML = `<span class="terminal-prompt">➜</span><span class="terminal-path"> ~/projects/floating-terminal</span><span class="terminal-git"> (main)</span>`;
+            const commandSpan = document.createElement('div');
+            commandSpan.className = 'terminal-line';
+            commandSpan.innerHTML = `<span class="terminal-prompt">$</span> <span class="terminal-command">${escapeHtml(cmd)}</span>`;
+
+            // Insert before input line
+            const inputLine = document.getElementById('inputLine');
+            terminalContent.insertBefore(commandLine, inputLine);
+            terminalContent.insertBefore(commandSpan, inputLine);
+
+            // Process command
+            const output = processCommand(cmd);
+            if (output) {
+                output.forEach(line => {
+                    const outputLine = document.createElement('div');
+                    outputLine.className = 'terminal-line terminal-output';
+                    outputLine.innerHTML = line;
+                    terminalContent.insertBefore(outputLine, inputLine);
+                });
+            }
+
+            // Add empty line
+            addEmptyLine();
+
+            // Clear input
+            currentInput = '';
+            inputText.textContent = '';
+            hiddenInput.value = '';
+
+            // Scroll to bottom
+            scrollToBottom();
+        }
+
+        // Process command (simulated)
+        function processCommand(cmd) {
+            const parts = cmd.trim().split(' ');
+            const command = parts[0];
+            const args = parts.slice(1);
+
+            switch (command) {
+                case 'ls':
+                    return [
+                        '<span style="color: var(--terminal-blue)">drwxr-xr-x</span>  5 user  staff   160 Jan 24 10:30 .',
+                        '<span style="color: var(--terminal-blue)">drwxr-xr-x</span>  3 user  staff    96 Jan 24 10:00 ..',
+                        '<span style="color: var(--terminal-green)">-rw-r--r--</span>  1 user  staff  2048 Jan 24 10:30 package.json',
+                        '<span style="color: var(--terminal-green)">-rw-r--r--</span>  1 user  staff  1024 Jan 24 10:30 README.md',
+                        '<span style="color: var(--terminal-green)">-rw-r--r--</span>  1 user  staff  4096 Jan 24 10:30 src/'
+                    ];
+                case 'pwd':
+                    return ['/Users/user/projects/floating-terminal'];
+                case 'clear':
+                    clearTerminal();
+                    return null;
+                case 'help':
+                    return [
+                        'Available commands:',
+                        '  ls      - List directory contents',
+                        '  pwd     - Print working directory',
+                        '  clear   - Clear terminal',
+                        '  help    - Show this help message',
+                        '  date    - Show current date and time',
+                        '  echo    - Echo arguments'
+                    ];
+                case 'date':
+                    return [new Date().toString()];
+                case 'echo':
+                    return [args.join(' ')];
+                case 'whoami':
+                    return ['user'];
+                default:
+                    return [`<span class="terminal-error">zsh: command not found: ${escapeHtml(command)}</span>`];
+            }
+        }
+
+        // Add empty line
+        function addEmptyLine() {
+            const inputLine = document.getElementById('inputLine');
+            const emptyLine = document.createElement('div');
+            emptyLine.className = 'terminal-line';
+            terminalContent.insertBefore(emptyLine, inputLine);
+        }
+
+        // Clear terminal
+        function clearTerminal() {
+            const inputLine = document.getElementById('inputLine');
+            while (terminalContent.firstChild && terminalContent.firstChild !== inputLine) {
+                terminalContent.removeChild(terminalContent.firstChild);
+            }
+            scrollToBottom();
+        }
+
+        // Scroll to bottom
+        function scrollToBottom() {
+            terminalContent.scrollTop = terminalContent.scrollHeight;
+        }
+
+        // Escape HTML
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Initial focus
+        hiddenInput.focus();
+    </script>
+</body>
+</html>

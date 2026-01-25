@@ -256,7 +256,7 @@
 
         /* Top bar */
         .top-bar {
-            height: 36px;
+            height: 40px;
             background: var(--bg-tertiary);
             display: flex;
             align-items: center;
@@ -266,53 +266,56 @@
             flex-shrink: 0;
             cursor: move;
             z-index: 1;
+            min-width: 0;
         }
 
         .top-bar-left {
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 6px;
+            flex-shrink: 0;
         }
 
-        .top-bar-icon {
-            width: 14px;
-            height: 14px;
-            border-radius: 50%;
+        .app-logo {
             display: flex;
             align-items: center;
-            justify-content: center;
-            font-size: 8px;
-            cursor: pointer;
-            transition: all 0.2s ease;
+            gap: 4px;
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 700;
+            font-size: 14px;
+            color: var(--text-primary);
+            white-space: nowrap;
         }
 
-        .top-bar-icon.close {
-            background: #ff5f57;
+        .app-logo .logo-symbol {
+            color: var(--accent-primary);
+            font-size: 16px;
         }
 
-        .top-bar-icon.minimize {
-            background: #ffbd2e;
-        }
-
-        .top-bar-icon.maximize {
-            background: #28c840;
-        }
-
-        .top-bar-icon:hover {
-            filter: brightness(1.1);
-            transform: scale(1.1);
+        .page-title {
+            flex: 1;
+            text-align: center;
+            font-family: 'IBM Plex Sans', sans-serif;
+            font-size: 13px;
+            font-weight: 400;
+            color: var(--text-secondary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            padding: 0 12px;
         }
 
         .top-bar-right {
             display: flex;
             align-items: center;
             gap: 6px;
+            flex-shrink: 0;
         }
 
         .top-bar-btn {
-            width: 26px;
-            height: 26px;
-            border-radius: 6px;
+            width: 24px;
+            height: 24px;
+            border-radius: 4px;
             border: none;
             background: transparent;
             color: var(--text-secondary);
@@ -321,7 +324,14 @@
             align-items: center;
             justify-content: center;
             transition: all 0.2s ease;
-            font-size: 13px;
+            font-size: 12px;
+            position: relative;
+            flex-shrink: 0;
+        }
+
+        .top-bar-btn svg {
+            width: 14px;
+            height: 14px;
         }
 
         .top-bar-btn:hover {
@@ -329,117 +339,40 @@
             color: var(--text-primary);
         }
 
-        /* Tab bar */
-        .tab-bar {
-            height: 32px;
-            background: var(--bg-secondary);
-            display: flex;
-            align-items: flex-end;
-            padding: 0 8px;
-            gap: 2px;
-            border-bottom: 1px solid var(--border-subtle);
-            flex-shrink: 0;
-            z-index: 1;
-        }
-
-        .tab {
-            padding: 6px 12px;
-            background: transparent;
-            border: none;
-            border-radius: 6px 6px 0 0;
-            color: var(--text-secondary);
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 11px;
-            font-weight: 500;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            transition: all 0.2s ease;
-            position: relative;
-        }
-
-        .tab:hover {
-            color: var(--text-primary);
-            background: var(--bg-tertiary);
-        }
-
-        .tab.active {
+        .top-bar-btn.active {
             color: var(--accent-primary);
-            background: var(--bg-primary);
+            background: rgba(0, 255, 136, 0.1);
         }
 
-        .tab.active::after {
+        .top-bar-btn.active::after {
             content: '';
             position: absolute;
             bottom: -1px;
-            left: 0;
-            right: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 20px;
             height: 2px;
             background: var(--accent-primary);
+            border-radius: 1px;
         }
 
-        .tab-close {
-            width: 16px;
-            height: 16px;
-            border-radius: 3px;
-            border: none;
-            background: transparent;
-            color: var(--text-muted);
-            cursor: pointer;
-            font-size: 14px;
-            font-family: 'IBM Plex Sans', sans-serif;
-            line-height: 1;
-            padding: 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            opacity: 0;
-            transition: all 0.15s ease;
-            flex-shrink: 0;
+        /* Tab bar - Hidden */
+        .tab-bar {
+            display: none;
         }
 
-        .tab:hover .tab-close,
-        .tab.active .tab-close {
-            opacity: 1;
-        }
-
-        .tab-close:hover {
-            background: var(--border-subtle);
-            color: var(--text-primary);
-        }
-
-        .tab-add {
-            width: 24px;
-            height: 24px;
-            border-radius: 6px;
-            border: none;
-            background: transparent;
-            color: var(--text-muted);
-            cursor: pointer;
-            font-size: 16px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: all 0.2s ease;
-            margin-left: 4px;
-        }
-
-        .tab-add:hover {
-            color: var(--text-primary);
-            background: var(--bg-tertiary);
-        }
-
-        /* Terminal content */
-        .terminal-content {
+        /* Page iframe */
+        .page-iframe {
             flex: 1;
+            border: none;
             background: var(--bg-primary);
-            padding: 16px;
-            overflow-y: auto;
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 12px;
-            line-height: 1.6;
-            cursor: text;
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        .page-iframe.hidden {
+            display: none;
         }
 
         /* Scrollbar styling */
@@ -613,98 +546,55 @@
         <!-- Top Bar -->
         <div class="top-bar">
             <div class="top-bar-left">
-                <span class="top-bar-icon close"></span>
-                <span class="top-bar-icon minimize"></span>
-                <span class="top-bar-icon maximize"></span>
+                <div class="app-logo">
+                    <span class="logo-symbol">&gt;</span>
+                    <span>ITERM</span>
+                </div>
             </div>
+            <div class="page-title" id="pageTitle"></div>
             <div class="top-bar-right">
-                <button class="top-bar-btn" title="设置">⚙</button>
-                <button class="top-bar-btn" title="收缩为悬浮球">●</button>
+                <button class="top-bar-btn active" id="notesBtn" title="笔记">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+                        <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+                    </svg>
+                </button>
+                <button class="top-bar-btn" id="terminalBtn" title="终端">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="4 17 10 11 4 5"></polyline>
+                        <line x1="12" y1="19" x2="20" y2="19"></line>
+                    </svg>
+                </button>
+                <button class="top-bar-btn" id="settingsBtn" title="设置">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="3"></circle>
+                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                    </svg>
+                </button>
+                <button class="top-bar-btn" id="expandBtn" title="展开">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="15 3 21 3 21 9"></polyline>
+                        <polyline points="9 21 3 21 3 15"></polyline>
+                        <line x1="21" y1="3" x2="14" y2="10"></line>
+                        <line x1="3" y1="21" x2="10" y2="14"></line>
+                    </svg>
+                </button>
             </div>
         </div>
 
-        <!-- Tab Bar -->
-        <div class="tab-bar">
-            <button class="tab active">
-                <span>zsh</span>
-                <button class="tab-close">×</button>
-            </button>
-            <button class="tab">
-                <span>bash</span>
-                <button class="tab-close">×</button>
-            </button>
-            <button class="tab-add">+</button>
-        </div>
+        
 
         <!-- Terminal Content -->
-        <div class="terminal-content" id="terminalContent">
-            <div class="terminal-line">
-                <span class="terminal-prompt">➜</span>
-                <span class="terminal-path"> ~/projects/floating-terminal</span>
-                <span class="terminal-git"> (main)</span>
-            </div>
-            <div class="terminal-line">
-                <span class="terminal-prompt">$</span>
-                <span class="terminal-command"> npm run dev</span>
-            </div>
-            <div class="terminal-line terminal-output">
-                <span class="terminal-success">✓</span> Server running on http://localhost:3000
-            </div>
-            <div class="terminal-line terminal-output">
-                <span class="terminal-success">✓</span> Hot reload enabled
-            </div>
-            <div class="terminal-line"></div>
-            <div class="terminal-line">
-                <span class="terminal-prompt">➜</span>
-                <span class="terminal-path"> ~/projects/floating-terminal</span>
-                <span class="terminal-git"> (main)</span>
-            </div>
-            <div class="terminal-line">
-                <span class="terminal-prompt">$</span>
-                <span class="terminal-command"> git status</span>
-            </div>
-            <div class="terminal-line terminal-output">
-                On branch main
-            </div>
-            <div class="terminal-line terminal-output">
-                Your branch is up to date with 'origin/main'.
-            </div>
-            <div class="terminal-line terminal-output">
-                Changes not staged for commit:
-            </div>
-            <div class="terminal-line terminal-output">
-                <span style="color: var(--terminal-warning)">modified:</span> src/styles.css
-            </div>
-            <div class="terminal-line terminal-output">
-                <span style="color: var(--terminal-green)">new file:</span> src/components/Terminal.tsx
-            </div>
-            <div class="terminal-line"></div>
-            <div class="terminal-line">
-                <span class="terminal-prompt">➜</span>
-                <span class="terminal-path"> ~/projects/floating-terminal</span>
-                <span class="terminal-git"> (main)</span>
-            </div>
-            <div class="terminal-line">
-                <span class="terminal-prompt">$</span>
-                <span class="terminal-command"> echo "Hello, Terminal!"</span>
-            </div>
-            <div class="terminal-line terminal-output">
-                Hello, Terminal!
-            </div>
-            <div class="terminal-line"></div>
+        <iframe class="page-iframe hidden" id="terminalIframe" src="terminal.html"></iframe>
 
-            <!-- Input Line -->
-            <div class="input-line" id="inputLine">
-                <span class="input-line-prompt">➜ ~/projects/floating-terminal (main) $</span>
-                <span class="input-line-content">
-                    <span class="input-text" id="inputText"></span>
-                    <span class="input-cursor" id="inputCursor"></span>
-                </span>
-            </div>
-        </div>
+        <!-- Notes Page -->
+        <iframe class="page-iframe active" id="notesIframe" src="notes.html"></iframe>
 
-        <input type="text" class="hidden-input" id="hiddenInput" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+        <!-- Settings Page -->
+        <iframe class="page-iframe hidden" id="settingsIframe" src="settings.html"></iframe>
     </div>
+
+    
 
     <div class="demo-info">
         <span><kbd>单击</kbd> 展开/收起</span>
@@ -714,188 +604,6 @@
     </div>
 
     <script>
-        // Terminal state
-        let currentInput = '';
-        let commandHistory = [];
-        let historyIndex = -1;
-
-        const terminalContent = document.getElementById('terminalContent');
-        const inputText = document.getElementById('inputText');
-        const inputCursor = document.getElementById('inputCursor');
-        const hiddenInput = document.getElementById('hiddenInput');
-
-        // Focus hidden input when clicking on terminal
-        terminalContent.addEventListener('click', () => {
-            hiddenInput.focus();
-        });
-
-        // Keep focus on hidden input
-        hiddenInput.addEventListener('blur', () => {
-            setTimeout(() => hiddenInput.focus(), 0);
-        });
-
-        // Handle input
-        hiddenInput.addEventListener('input', (e) => {
-            currentInput = e.target.value;
-            inputText.textContent = currentInput;
-        });
-
-        // Handle keyboard events
-        hiddenInput.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                executeCommand(currentInput);
-            } else if (e.key === 'Backspace') {
-                e.preventDefault();
-                if (currentInput.length > 0) {
-                    currentInput = currentInput.slice(0, -1);
-                    inputText.textContent = currentInput;
-                    hiddenInput.value = currentInput;
-                }
-            } else if (e.key === 'ArrowUp') {
-                e.preventDefault();
-                if (historyIndex < commandHistory.length - 1) {
-                    historyIndex++;
-                    currentInput = commandHistory[commandHistory.length - 1 - historyIndex];
-                    inputText.textContent = currentInput;
-                    hiddenInput.value = currentInput;
-                }
-            } else if (e.key === 'ArrowDown') {
-                e.preventDefault();
-                if (historyIndex > 0) {
-                    historyIndex--;
-                    currentInput = commandHistory[commandHistory.length - 1 - historyIndex];
-                    inputText.textContent = currentInput;
-                    hiddenInput.value = currentInput;
-                } else if (historyIndex === 0) {
-                    historyIndex = -1;
-                    currentInput = '';
-                    inputText.textContent = '';
-                    hiddenInput.value = '';
-                }
-            } else if (e.key === 'c' && e.ctrlKey) {
-                e.preventDefault();
-                clearTerminal();
-            }
-        });
-
-        // Execute command
-        function executeCommand(cmd) {
-            if (!cmd.trim()) {
-                addEmptyLine();
-                return;
-            }
-
-            // Save to history
-            commandHistory.push(cmd);
-            historyIndex = -1;
-
-            // Add command to terminal
-            const commandLine = document.createElement('div');
-            commandLine.className = 'terminal-line';
-            commandLine.innerHTML = `<span class="terminal-prompt">➜</span><span class="terminal-path"> ~/projects/floating-terminal</span><span class="terminal-git"> (main)</span>`;
-            const commandSpan = document.createElement('div');
-            commandSpan.className = 'terminal-line';
-            commandSpan.innerHTML = `<span class="terminal-prompt">$</span> <span class="terminal-command">${escapeHtml(cmd)}</span>`;
-
-            // Insert before input line
-            const inputLine = document.getElementById('inputLine');
-            terminalContent.insertBefore(commandLine, inputLine);
-            terminalContent.insertBefore(commandSpan, inputLine);
-
-            // Process command
-            const output = processCommand(cmd);
-            if (output) {
-                output.forEach(line => {
-                    const outputLine = document.createElement('div');
-                    outputLine.className = 'terminal-line terminal-output';
-                    outputLine.innerHTML = line;
-                    terminalContent.insertBefore(outputLine, inputLine);
-                });
-            }
-
-            // Add empty line
-            addEmptyLine();
-
-            // Clear input
-            currentInput = '';
-            inputText.textContent = '';
-            hiddenInput.value = '';
-
-            // Scroll to bottom
-            scrollToBottom();
-        }
-
-        // Process command (simulated)
-        function processCommand(cmd) {
-            const parts = cmd.trim().split(' ');
-            const command = parts[0];
-            const args = parts.slice(1);
-
-            switch (command) {
-                case 'ls':
-                    return [
-                        '<span style="color: var(--terminal-blue)">drwxr-xr-x</span>  5 user  staff   160 Jan 24 10:30 .',
-                        '<span style="color: var(--terminal-blue)">drwxr-xr-x</span>  3 user  staff    96 Jan 24 10:00 ..',
-                        '<span style="color: var(--terminal-green)">-rw-r--r--</span>  1 user  staff  2048 Jan 24 10:30 package.json',
-                        '<span style="color: var(--terminal-green)">-rw-r--r--</span>  1 user  staff  1024 Jan 24 10:30 README.md',
-                        '<span style="color: var(--terminal-green)">-rw-r--r--</span>  1 user  staff  4096 Jan 24 10:30 src/'
-                    ];
-                case 'pwd':
-                    return ['/Users/user/projects/floating-terminal'];
-                case 'clear':
-                    clearTerminal();
-                    return null;
-                case 'help':
-                    return [
-                        'Available commands:',
-                        '  ls      - List directory contents',
-                        '  pwd     - Print working directory',
-                        '  clear   - Clear terminal',
-                        '  help    - Show this help message',
-                        '  date    - Show current date and time',
-                        '  echo    - Echo arguments'
-                    ];
-                case 'date':
-                    return [new Date().toString()];
-                case 'echo':
-                    return [args.join(' ')];
-                case 'whoami':
-                    return ['user'];
-                default:
-                    return [`<span class="terminal-error">zsh: command not found: ${escapeHtml(command)}</span>`];
-            }
-        }
-
-        // Add empty line
-        function addEmptyLine() {
-            const inputLine = document.getElementById('inputLine');
-            const emptyLine = document.createElement('div');
-            emptyLine.className = 'terminal-line';
-            terminalContent.insertBefore(emptyLine, inputLine);
-        }
-
-        // Clear terminal
-        function clearTerminal() {
-            const inputLine = document.getElementById('inputLine');
-            while (terminalContent.firstChild && terminalContent.firstChild !== inputLine) {
-                terminalContent.removeChild(terminalContent.firstChild);
-            }
-            scrollToBottom();
-        }
-
-        // Scroll to bottom
-        function scrollToBottom() {
-            terminalContent.scrollTop = terminalContent.scrollHeight;
-        }
-
-        // Escape HTML
-        function escapeHtml(text) {
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
-        }
-
         // Floating ball drag functionality
         const ball = document.getElementById('floatingBall');
         let isBallDragging = false;
@@ -923,7 +631,7 @@
 
         topBar.addEventListener('mousedown', (e) => {
             // Don't drag if clicking on buttons
-            if (e.target.closest('.top-bar-icon') || e.target.closest('.top-bar-btn')) {
+            if (e.target.closest('.top-bar-btn')) {
                 return;
             }
             isPanelDragging = true;
@@ -972,26 +680,46 @@
             isPanelDragging = false;
         });
 
-        // Tab switching
-        const tabs = document.querySelectorAll('.tab');
-        tabs.forEach(tab => {
-            tab.addEventListener('click', (e) => {
-                if (e.target.classList.contains('tab-close')) return;
-                tabs.forEach(t => t.classList.remove('active'));
-                tab.classList.add('active');
+        // ========== PAGE SWITCHING ==========
+        const notesBtn = document.getElementById('notesBtn');
+        const terminalBtn = document.getElementById('terminalBtn');
+        const settingsBtn = document.getElementById('settingsBtn');
+        const pageTitle = document.getElementById('pageTitle');
+        const terminalIframe = document.getElementById('terminalIframe');
+        const notesIframe = document.getElementById('notesIframe');
+        const settingsIframe = document.getElementById('settingsIframe');
+
+        // Set initial page title
+        pageTitle.textContent = '笔记页面';
+
+        function switchPage(activeBtn, inactiveBtns, title, activeIframe) {
+            // Update button states
+            activeBtn.classList.add('active');
+            inactiveBtns.forEach(btn => btn.classList.remove('active'));
+
+            // Update page title
+            pageTitle.textContent = title;
+
+            // Update iframe visibility
+            [terminalIframe, notesIframe, settingsIframe].forEach(iframe => {
+                iframe.classList.add('hidden');
+                iframe.classList.remove('active');
             });
+            activeIframe.classList.remove('hidden');
+            activeIframe.classList.add('active');
+        }
+
+        notesBtn.addEventListener('click', () => {
+            switchPage(notesBtn, [terminalBtn, settingsBtn], '笔记页面', notesIframe);
         });
 
-        // Tab close
-        document.querySelectorAll('.tab-close').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                btn.closest('.tab').remove();
-            });
+        terminalBtn.addEventListener('click', () => {
+            switchPage(terminalBtn, [notesBtn, settingsBtn], '终端', terminalIframe);
         });
 
-        // Initial focus
-        hiddenInput.focus();
+        settingsBtn.addEventListener('click', () => {
+            switchPage(settingsBtn, [notesBtn, terminalBtn], '设置', settingsIframe);
+        });
     </script>
 </body>
 </html>
