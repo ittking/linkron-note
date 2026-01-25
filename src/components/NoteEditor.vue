@@ -35,8 +35,6 @@ const props = defineProps({
 
 const emit = defineEmits(['update:modelValue', 'submit', 'image-upload'])
 
-const isFocused = ref(false)
-
 const editor = useEditor({
   content: props.modelValue,
   extensions: [
@@ -69,13 +67,6 @@ const editor = useEditor({
   },
   onUpdate: ({ editor }) => {
     emit('update:modelValue', editor.getHTML())
-  },
-  onCreate: ({ editor }) => {
-    // 监听编辑器聚焦事件
-    editor.on('focus', () => {
-      isFocused.value = true
-    })
-    // 失焦时不改变 isFocused，保持当前高度
   },
 })
 
