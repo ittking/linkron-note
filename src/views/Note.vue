@@ -40,6 +40,10 @@ const isLoading = ref(false)
 const editingNote = ref(null)
 const isEditing = ref(false)
 
+// 标签筛选相关状态
+const currentFilterTag = ref(null)
+const isFiltering = ref(false)
+
 // 笔记详情抽屉
 const drawerVisible = ref(false)
 
@@ -147,21 +151,26 @@ async function handleEditorSubmit() {
     if (editorContent.value.trim()) {
         if (isEditing.value && editingNote.value) {
             // 编辑模式：更新笔记
-            await noteStore.updateNote(editingNote.value.id, {
-                content: editorContent.value
-            })
-            // 直接在数组中更新笔记
-            const index = notes.value.findIndex(n => n.id === editingNote.value.id)
-            if (index !== -1) {
-                notes.value[index] = {
-                    ...notes.value[index],
+            try {
+                await noteStore.updateNote(editingNote.value.id, {
                     content: editorContent.value
+                })
+                // 直接在数组中更新笔记
+                const index = notes.value.findIndex(n => n.id === editingNote.value.id)
+                if (index !== -1) {
+                    notes.value[index] = {
+                        ...notes.value[index],
+                        content: editorContent.value
+                    }
                 }
+                editingNote.value = null
+                isEditing.value = false
+                editorContent.value = ''
+                showToast('笔记更新成功', 'success')
+            } catch (error) {
+                console.error('Failed to update note:', error)
+                showToast('笔记更新失败：' + error.message, 'error')
             }
-            editingNote.value = null
-            isEditing.value = false
-            editorContent.value = ''
-            showToast('笔记更新成功', 'success')
         } else {
             // 创建模式：创建新笔记
             const newNote = await noteStore.addNote({
@@ -365,6 +374,32 @@ function handleMenuDelete(note) {
     confirmVisible.value = true
 }
 
+// 标签点击事件
+function handleTagClick(tag) {
+    loadNotesByTag(tag.id)
+}
+
+// 按标签加载笔记
+async function loadNotesByTag(tagId) {
+    isFiltering.value = true
+    currentFilterTag.value = tagId
+    
+    try {
+        const newNotes = await noteStore.getNotesByTag(tagId, 1, 20)
+        notes.value = newNotes
+    } catch (error) {
+        console.error('Failed to load notes by tag:', error)
+        showToast('加载笔记失败', 'error')
+    }
+}
+
+// 清除筛选
+function clearFilter() {
+    isFiltering.value = false
+    currentFilterTag.value = null
+    loadNotes(true)
+}
+
 // 确认对话框回调
 function handleConfirmOk() {
     if (confirmOnOk.value) {
@@ -402,6 +437,18 @@ function handleCancelEdit() {
 
         <!-- 笔记列表 -->
         <div class="flex-1 overflow-hidden">
+            <!-- 筛选状态显示 -->
+            <div v-if="isFiltering" class="px-4 py-2 bg-base-200 border-b border-base-300">
+                <div class="flex items-center gap-2 text-sm">
+                    <span class="text-base-content/60">筛选标签：</span>
+                    <span class="text-primary font-medium">#{{ currentFilterTag }}</span>
+                    <button @click="clearFilter"
+                        class="text-xs text-base-content/60 hover:text-base-content underline ml-2">
+                        清除筛选
+                    </button>
+                </div>
+            </div>
+
             <div ref="noteListRef" class="p-3 h-full overflow-y-auto no-scrollbar" @scroll="handleNoteListScroll">
                 <div v-if="notes.length === 0"
                     class="flex flex-col items-center justify-center h-full text-base-content/40 text-center p-5">
@@ -411,7 +458,8 @@ function handleCancelEdit() {
                 </div>
 
                 <NoteCard v-for="note in notes" :key="note.id" :note="note" @click="handleCardClick"
-                    @open="handleMenuOpen" @edit="handleMenuEdit" @delete="handleMenuDelete" />
+                    @open="handleMenuOpen" @edit="handleMenuEdit" @delete="handleMenuDelete"
+                    @tag-click="handleTagClick" />
 
                 <!-- Loading 组件 -->
                 <div v-if="isLoading" class="flex justify-center py-4">

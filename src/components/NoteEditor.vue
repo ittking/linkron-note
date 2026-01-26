@@ -1,10 +1,14 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
 import { useEditor, EditorContent } from '@tiptap/vue-3'
+import { invoke } from '@tauri-apps/api/core'
 import StarterKit from '@tiptap/starter-kit'
 import Image from '@tiptap/extension-image'
 import Highlight from '@tiptap/extension-highlight'
 import Placeholder from '@tiptap/extension-placeholder'
+import { TagExtension } from '@/extensions/tag-extension'
+import tippy from 'tippy.js'
+import { useSettingStore } from '@/store/settingStore'
 import {
   Hash,
   Image as ImageIcon,
@@ -40,6 +44,13 @@ const props = defineProps({
 
 const emit = defineEmits(['update:modelValue', 'submit', 'image-upload'])
 
+const settingStore = useSettingStore()
+
+// 获取工作目录
+async function getWorkDirectory() {
+  return await settingStore.get('workDirectory', '')
+}
+
 const editor = useEditor({
   content: props.modelValue,
   extensions: [
@@ -62,6 +73,162 @@ const editor = useEditor({
     }),
     Placeholder.configure({
       placeholder: props.placeholder,
+    }),
+    TagExtension.configure({
+      suggestion: {
+        items: async ({ query }) => {
+          // 从后端获取标签建议
+          try {
+            const workDirectory = await getWorkDirectory()
+            const tags = await invoke('search_tags', { keyword: query, workDirectory })
+            return tags.map(tag => ({
+              id: tag.id,
+              name: tag.name,
+              displayName: tag.displayName,
+              path: tag.path,
+              level: tag.level,
+            }))
+          } catch (error) {
+            console.error('Failed to search tags:', error)
+            return []
+          }
+        },
+        render: () => {
+          let component
+          let popup
+          let selectedIndex = 0
+          let isDestroyed = false
+          let items = []
+          let currentProps = null
+          let currentQuery = ''
+
+          function renderItems() {
+            component.innerHTML = ''
+            if (items && items.length > 0) {
+              items.forEach((item, index) => {
+                const itemEl = document.createElement('div')
+                const isSelected = index === selectedIndex
+                itemEl.className = `tag-suggestion-item flex items-center gap-2 px-3 py-2 rounded-md cursor-pointer ${isSelected ? 'bg-primary/20 text-primary' : 'hover:bg-primary/10'}`
+                itemEl.textContent = '#' + (item.displayName || item.name)
+                itemEl.dataset.index = index
+                itemEl.addEventListener('click', () => {
+                  currentProps.command(item)
+                })
+                component.appendChild(itemEl)
+              })
+            } else {
+              // 没有匹配标签时，隐藏下拉列表
+              if (popup) {
+                popup.hide()
+              }
+            }
+          }
+
+          return {
+            onStart: async (props) => {
+              currentProps = props
+              currentQuery = props.query || ''
+              isDestroyed = false
+              component = document.createElement('div')
+              component.className = 'bg-base-100 border border-base-200 rounded-lg shadow-xl max-h-60 overflow-y-auto p-2'
+
+              // 使用正确的虚拟定位方式
+              popup = tippy(document.body, {
+                getReferenceClientRect: props.clientRect,
+                appendTo: document.body,
+                content: component,
+                showOnCreate: true,
+                interactive: true,
+                trigger: 'manual',
+                placement: 'bottom-start',
+              })
+
+              // 渲染标签列表
+              items = await props.items
+              renderItems()
+            },
+            onUpdate: async (props) => {
+              currentProps = props
+              currentQuery = props.query || ''
+              if (popup && popup.setProps) {
+                popup.setProps({
+                  getReferenceClientRect: props.clientRect,
+                })
+              }
+              selectedIndex = 0
+              
+              // 重新渲染标签列表
+              items = await props.items
+              renderItems()
+            },
+            onKeyDown: (props) => {
+              if (props.event.key === 'Escape') {
+                if (popup && !isDestroyed) popup.hide()
+                return true
+              }
+              if (props.event.key === 'ArrowDown') {
+                if (items && items.length > 0) {
+                  selectedIndex = (selectedIndex + 1) % items.length
+                  renderItems()
+                }
+                return true
+              }
+              if (props.event.key === 'ArrowUp') {
+                if (items && items.length > 0) {
+                  selectedIndex = (selectedIndex - 1 + items.length) % items.length
+                  renderItems()
+                }
+                return true
+              }
+              if (props.event.key === 'Enter') {
+                if (items && items[selectedIndex]) {
+                  currentProps.command(items[selectedIndex])
+                }
+                return true
+              }
+              if (props.event.key === ' ') {
+                // 空格键：如果有建议项，选择第一个；否则创建新标签
+                if (items && items.length > 0) {
+                  currentProps.command(items[0])
+                  return true
+                }
+                // 没有建议项时，如果有输入内容则创建新标签
+                if (currentQuery.length > 0) {
+                  currentProps.command({
+                    id: Date.now().toString(),
+                    name: currentQuery,
+                    displayName: currentQuery,
+                    path: '',
+                    level: 1,
+                  })
+                  return true
+                }
+                // 没有查询内容时，让默认行为继续（插入空格）
+                return false
+              }
+              return false
+            },
+            onExit: () => {
+              if (isDestroyed) return
+              isDestroyed = true
+              if (popup) {
+                try {
+                  popup.destroy()
+                } catch (e) {
+                  // 忽略已销毁的错误
+                }
+              }
+              if (component) {
+                try {
+                  component.remove()
+                } catch (e) {
+                  // 忽略移除错误
+                }
+              }
+            },
+          }
+        },
+      },
     }),
   ],
   autofocus: props.autofocus,
@@ -102,10 +269,6 @@ function toggleBulletList() {
 
 function toggleOrderedList() {
   editor.value?.chain().focus().toggleOrderedList().run()
-}
-
-function insertTag() {
-  editor.value?.chain().focus().insertContent('# ').run()
 }
 
 function handleImageUpload(event) {

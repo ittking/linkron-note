@@ -40,3 +40,113 @@ body,
   font-weight: normal;
   font-style: normal;
 }
+
+/* ========== 标签样式 ========== */
+
+/* 编辑器中的标签样式 */
+.ProseMirror .mention {
+  color: hsl(var(--p));
+  background-color: hsl(var(--p) / 0.1);
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-size: 0.9em;
+  cursor: pointer;
+  transition: all 0.2s;
+  user-select: none;
+}
+
+.ProseMirror .mention:hover {
+  background-color: hsl(var(--p) / 0.2);
+}
+
+/* 标签建议框样式 */
+.tippy-box[data-theme~='tag-suggestions'] {
+  background-color: hsl(var(--b1));
+  border: 1px solid hsl(var(--bc) / 0.1);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  padding: 4px;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.tippy-box[data-theme~='tag-suggestions'] .tippy-content {
+  padding: 0;
+}
+
+/* 标签建议项样式 */
+.tag-suggestion-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 14px;
+}
+
+.tag-suggestion-item:hover,
+.tag-suggestion-item.is-selected {
+  background-color: hsl(var(--p) / 0.1);
+}
+
+.tag-suggestion-item .tag-icon {
+  color: hsl(var(--p));
+  flex-shrink: 0;
+}
+
+.tag-suggestion-item .tag-name {
+  color: hsl(var(--bc));
+  flex: 1;
+}
+
+.tag-suggestion-item .tag-count {
+  color: hsl(var(--bc) / 0.6);
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
+/* 笔记卡片中的标签样式 */
+.note-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  background-color: hsl(var(--p) / 0.1);
+  color: hsl(var(--p));
+  border-radius: 4px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+  user-select: none;
+}
+
+.note-tag:hover {
+  background-color: hsl(var(--p) / 0.2);
+}
+
+.note-tag .tag-hash {
+  opacity: 0.7;
+}
+
+/* 标签层级样式 */
+.tag-level-1 {
+  font-weight: 500;
+}
+
+.tag-level-2 {
+  font-size: 0.95em;
+}
+
+.tag-level-3 {
+  font-size: 0.9em;
+  opacity: 0.9;
+}
+
+/* 标签路径显示 */
+.tag-path {
+  color: hsl(var(--bc) / 0.5);
+  font-size: 0.85em;
+  margin-right: 4px;
+}

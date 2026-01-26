@@ -2,6 +2,7 @@ use rusqlite::{Connection, Result as SqliteResult, params};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use ulid::Ulid;
+use regex::Regex;
 
 // 笔记数据结构
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -37,6 +38,43 @@ pub struct NoteUpdate {
     pub images: Option<Vec<String>>,
 }
 
+// 标签数据结构
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct Tag {
+    pub id: String,
+    pub name: String,
+    pub display_name: String,
+    pub path: String,
+    pub level: i32,
+    pub color: Option<String>,
+    #[serde(rename = "createdAt")]
+    pub created_at: String,
+    #[serde(rename = "updatedAt")]
+    pub updated_at: String,
+}
+
+// 标签统计信息
+#[derive(Debug, Serialize, Deserialize)]
+pub struct TagStats {
+    #[serde(flatten)]
+    pub tag: Tag,
+    pub count: i64,
+}
+
+// 创建标签的数据结构
+#[derive(Debug, Deserialize)]
+pub struct TagData {
+    pub name: String,
+    pub color: Option<String>,
+}
+
+// 笔记标签关联数据
+#[derive(Debug, Deserialize)]
+pub struct NoteTagData {
+    pub note_id: String,
+    pub tag_id: String,
+}
+
 // 数据库管理器
 pub struct Database {
     conn: Connection,
@@ -53,6 +91,7 @@ impl Database {
 
     /// 初始化数据库表
     fn init_tables(&self) -> SqliteResult<()> {
+        // 创建 notes 表
         self.conn.execute(
             "CREATE TABLE IF NOT EXISTS notes (
                 id TEXT PRIMARY KEY,
@@ -66,6 +105,35 @@ impl Database {
             [],
         )?;
 
+        // 创建 tags 表
+        self.conn.execute(
+            "CREATE TABLE IF NOT EXISTS tags (
+                id TEXT PRIMARY KEY,
+                name TEXT NOT NULL UNIQUE,
+                display_name TEXT NOT NULL,
+                path TEXT NOT NULL,
+                level INTEGER NOT NULL DEFAULT 1,
+                color TEXT,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            )",
+            [],
+        )?;
+
+        // 创建 note_tags 关联表
+        self.conn.execute(
+            "CREATE TABLE IF NOT EXISTS note_tags (
+                id TEXT PRIMARY KEY,
+                note_id TEXT NOT NULL,
+                tag_id TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                FOREIGN KEY (note_id) REFERENCES notes(id) ON DELETE CASCADE,
+                FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE,
+                UNIQUE(note_id, tag_id)
+            )",
+            [],
+        )?;
+
         // 创建索引
         self.conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_notes_updated_at ON notes(updated_at DESC)",
@@ -74,6 +142,31 @@ impl Database {
 
         self.conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_notes_type ON notes(type)",
+            [],
+        )?;
+
+        self.conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_tags_name ON tags(name)",
+            [],
+        )?;
+
+        self.conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_tags_path ON tags(path)",
+            [],
+        )?;
+
+        self.conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_tags_level ON tags(level)",
+            [],
+        )?;
+
+        self.conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_note_tags_note_id ON note_tags(note_id)",
+            [],
+        )?;
+
+        self.conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_note_tags_tag_id ON note_tags(tag_id)",
             [],
         )?;
 
@@ -156,6 +249,9 @@ impl Database {
             ],
         )?;
 
+        // 解析并创建标签关联
+        self.parse_and_create_tags(&id, &note_data.content)?;
+
         Ok(Note {
             id,
             note_type,
@@ -169,6 +265,10 @@ impl Database {
 
     /// 更新笔记
     pub fn update_note(&self, id: &str, updates: NoteUpdate) -> SqliteResult<Note> {
+        // 先检查笔记是否存在
+        let _existing_note = self.get_note(id)?
+            .ok_or_else(|| rusqlite::Error::QueryReturnedNoRows)?;
+
         let now = chrono::Utc::now().to_rfc3339();
 
         if let Some(content) = &updates.content {
@@ -176,6 +276,15 @@ impl Database {
                 "UPDATE notes SET content = ?1, updated_at = ?2 WHERE id = ?3",
                 params![content, &now, id],
             )?;
+            
+            // 删除旧的标签关联
+            self.conn.execute(
+                "DELETE FROM note_tags WHERE note_id = ?1",
+                params![id],
+            )?;
+            
+            // 解析并创建新的标签关联
+            self.parse_and_create_tags(id, content)?;
         }
 
         if let Some(images) = &updates.images {
@@ -390,4 +499,339 @@ pub async fn migrate_from_json(work_directory: Option<String>) -> Result<usize, 
         .map_err(|e| format!("Failed to backup JSON file: {}", e))?;
 
     Ok(migrated_count)
+}
+
+// ========== 标签相关函数 ==========
+
+impl Database {
+    /// 解析多级标签名称
+    /// 返回 (全名, 显示名称, 路径, 层级)
+    fn parse_tag_name(name: &str) -> (String, String, String, i32) {
+        let parts: Vec<&str> = name.split('/').collect();
+        let level = parts.len() as i32;
+        let display_name = parts.last().map_or(name, |v| v).to_string();
+        let path = if parts.len() > 1 {
+            parts[..parts.len()-1].join("/")
+        } else {
+            String::new()
+        };
+        (name.to_string(), display_name, path, level)
+    }
+
+    /// 解析内容中的标签并创建关联
+    fn parse_and_create_tags(&self, note_id: &str, content: &str) -> SqliteResult<()> {
+        // 使用正则表达式匹配标签：#标签名 或 #标签名/子标签
+        let re = Regex::new(r"#([a-zA-Z0-9_\u4e00-\u9fa5/]+)").unwrap();
+        
+        for cap in re.captures_iter(content) {
+            if let Some(tag_name) = cap.get(1) {
+                let tag_name_str = tag_name.as_str();
+                // 创建或获取标签
+                if let Ok(tag) = self.create_or_get_tag(tag_name_str, None) {
+                    // 创建标签关联
+                    self.conn.execute(
+                        "INSERT OR IGNORE INTO note_tags (note_id, tag_id) VALUES (?1, ?2)",
+                        params![note_id, &tag.id],
+                    )?;
+                }
+            }
+        }
+        Ok(())
+    }
+
+    /// 创建或获取标签
+    pub fn create_or_get_tag(&self, name: &str, color: Option<&str>) -> SqliteResult<Tag> {
+        let (full_name, display_name, path, level) = Self::parse_tag_name(name);
+        let now = chrono::Utc::now().to_rfc3339();
+
+        // 尝试获取已存在的标签
+        if let Some(tag) = self.get_tag_by_name(&full_name)? {
+            return Ok(tag);
+        }
+
+        // 创建新标签
+        let id = Ulid::new().to_string();
+        self.conn.execute(
+            "INSERT INTO tags (id, name, display_name, path, level, color, created_at, updated_at)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+            params![&id, &full_name, &display_name, &path, level, color, &now, &now],
+        )?;
+
+        Ok(Tag {
+            id,
+            name: full_name,
+            display_name,
+            path,
+            level,
+            color: color.map(|c| c.to_string()),
+            created_at: now.clone(),
+            updated_at: now,
+        })
+    }
+
+    /// 根据名称获取标签
+    pub fn get_tag_by_name(&self, name: &str) -> SqliteResult<Option<Tag>> {
+        let mut stmt = self.conn.prepare(
+            "SELECT id, name, display_name, path, level, color, created_at, updated_at
+             FROM tags WHERE name = ?"
+        )?;
+
+        let mut tags = stmt.query_map(params![name], |row| {
+            Ok(Tag {
+                id: row.get(0)?,
+                name: row.get(1)?,
+                display_name: row.get(2)?,
+                path: row.get(3)?,
+                level: row.get(4)?,
+                color: row.get(5)?,
+                created_at: row.get(6)?,
+                updated_at: row.get(7)?,
+            })
+        })?;
+
+        match tags.next() {
+            Some(Ok(tag)) => Ok(Some(tag)),
+            _ => Ok(None),
+        }
+    }
+
+    /// 获取所有标签
+    pub fn get_all_tags(&self) -> SqliteResult<Vec<Tag>> {
+        let mut stmt = self.conn.prepare(
+            "SELECT id, name, display_name, path, level, color, created_at, updated_at
+             FROM tags ORDER BY name ASC"
+        )?;
+
+        let tags = stmt.query_map([], |row| {
+            Ok(Tag {
+                id: row.get(0)?,
+                name: row.get(1)?,
+                display_name: row.get(2)?,
+                path: row.get(3)?,
+                level: row.get(4)?,
+                color: row.get(5)?,
+                created_at: row.get(6)?,
+                updated_at: row.get(7)?,
+            })
+        })?;
+
+        tags.collect()
+    }
+
+    /// 获取标签统计（带使用次数）
+    pub fn get_tags_with_stats(&self) -> SqliteResult<Vec<TagStats>> {
+        let mut stmt = self.conn.prepare(
+            "SELECT t.id, t.name, t.display_name, t.path, t.level, t.color,
+                t.created_at, t.updated_at, COUNT(nt.note_id) as count
+         FROM tags t
+         LEFT JOIN note_tags nt ON t.id = nt.tag_id
+         GROUP BY t.id
+         ORDER BY t.name ASC"
+        )?;
+
+        let tags = stmt.query_map([], |row| {
+            Ok(TagStats {
+                tag: Tag {
+                    id: row.get(0)?,
+                    name: row.get(1)?,
+                    display_name: row.get(2)?,
+                    path: row.get(3)?,
+                    level: row.get(4)?,
+                    color: row.get(5)?,
+                    created_at: row.get(6)?,
+                    updated_at: row.get(7)?,
+                },
+                count: row.get(8)?,
+            })
+        })?;
+
+        tags.collect()
+    }
+
+    /// 获取笔记的所有标签
+    pub fn get_note_tags(&self, note_id: &str) -> SqliteResult<Vec<Tag>> {
+        let mut stmt = self.conn.prepare(
+            "SELECT t.id, t.name, t.display_name, t.path, t.level, t.color,
+                t.created_at, t.updated_at
+         FROM tags t
+         INNER JOIN note_tags nt ON t.id = nt.tag_id
+         WHERE nt.note_id = ?
+         ORDER BY t.name ASC"
+        )?;
+
+        let tags = stmt.query_map(params![note_id], |row| {
+            Ok(Tag {
+                id: row.get(0)?,
+                name: row.get(1)?,
+                display_name: row.get(2)?,
+                path: row.get(3)?,
+                level: row.get(4)?,
+                color: row.get(5)?,
+                created_at: row.get(6)?,
+                updated_at: row.get(7)?,
+            })
+        })?;
+
+        tags.collect()
+    }
+
+    /// 为笔记添加标签
+    pub fn add_tag_to_note(&self, note_id: &str, tag_name: &str) -> SqliteResult<Tag> {
+        // 创建或获取标签
+        let tag = self.create_or_get_tag(tag_name, None)?;
+
+        // 检查是否已关联
+        let exists: i64 = self.conn.query_row(
+            "SELECT COUNT(*) FROM note_tags WHERE note_id = ?1 AND tag_id = ?2",
+            params![note_id, &tag.id],
+            |row| row.get(0)
+        )?;
+
+        if exists == 0 {
+            let id = Ulid::new().to_string();
+            let now = chrono::Utc::now().to_rfc3339();
+
+            self.conn.execute(
+                "INSERT INTO note_tags (id, note_id, tag_id, created_at)
+                 VALUES (?1, ?2, ?3, ?4)",
+                params![&id, note_id, &tag.id, &now],
+            )?;
+        }
+
+        Ok(tag)
+    }
+
+    /// 从笔记移除标签
+    pub fn remove_tag_from_note(&self, note_id: &str, tag_id: &str) -> SqliteResult<()> {
+        self.conn.execute(
+            "DELETE FROM note_tags WHERE note_id = ? AND tag_id = ?",
+            params![note_id, tag_id]
+        )?;
+        Ok(())
+    }
+
+    /// 删除标签
+    pub fn delete_tag(&self, tag_id: &str) -> SqliteResult<()> {
+        self.conn.execute("DELETE FROM tags WHERE id = ?", params![tag_id])?;
+        Ok(())
+    }
+
+    /// 按标签查询笔记
+    pub fn get_notes_by_tag(&self, tag_id: &str, page: u32, page_size: u32) -> SqliteResult<Vec<Note>> {
+        let offset = (page - 1) * page_size;
+        let mut stmt = self.conn.prepare(
+            "SELECT DISTINCT n.id, n.type, n.content, n.source_url, n.images, n.created_at, n.updated_at
+         FROM notes n
+         INNER JOIN note_tags nt ON n.id = nt.note_id
+         WHERE nt.tag_id = ?
+         ORDER BY n.updated_at DESC
+         LIMIT ? OFFSET ?"
+        )?;
+
+        let notes = stmt.query_map(params![tag_id, page_size, offset], |row| {
+            Ok(Note {
+                id: row.get(0)?,
+                note_type: row.get(1)?,
+                content: row.get(2)?,
+                source_url: row.get(3)?,
+                images: serde_json::from_str(row.get::<_, String>(4)?.as_str()).unwrap_or_default(),
+                created_at: row.get(5)?,
+                updated_at: row.get(6)?,
+            })
+        })?;
+
+        notes.collect()
+    }
+
+    /// 搜索标签（用于自动完成）
+    pub fn search_tags(&self, keyword: &str) -> SqliteResult<Vec<Tag>> {
+        let search_pattern = format!("{}%", keyword);
+
+        let mut stmt = self.conn.prepare(
+            "SELECT id, name, display_name, path, level, color, created_at, updated_at
+         FROM tags
+         WHERE name LIKE ?1 OR display_name LIKE ?1
+         ORDER BY name ASC
+         LIMIT 20"
+        )?;
+
+        let tags = stmt.query_map(params![search_pattern], |row| {
+            Ok(Tag {
+                id: row.get(0)?,
+                name: row.get(1)?,
+                display_name: row.get(2)?,
+                path: row.get(3)?,
+                level: row.get(4)?,
+                color: row.get(5)?,
+                created_at: row.get(6)?,
+                updated_at: row.get(7)?,
+            })
+        })?;
+
+        tags.collect()
+    }
+}
+
+/// Tauri 命令：获取所有标签
+#[tauri::command]
+pub async fn get_all_tags(work_directory: Option<String>) -> Result<Vec<Tag>, String> {
+    let db_path = get_database_path(work_directory)?;
+    let db = Database::new(&db_path).map_err(|e| format!("Failed to open database: {}", e))?;
+    db.get_all_tags().map_err(|e| format!("Failed to get tags: {}", e))
+}
+
+/// Tauri 命令：获取标签统计
+#[tauri::command]
+pub async fn get_tags_with_stats(work_directory: Option<String>) -> Result<Vec<TagStats>, String> {
+    let db_path = get_database_path(work_directory)?;
+    let db = Database::new(&db_path).map_err(|e| format!("Failed to open database: {}", e))?;
+    db.get_tags_with_stats().map_err(|e| format!("Failed to get tags: {}", e))
+}
+
+/// Tauri 命令：获取笔记的标签
+#[tauri::command]
+pub async fn get_note_tags(note_id: String, work_directory: Option<String>) -> Result<Vec<Tag>, String> {
+    let db_path = get_database_path(work_directory)?;
+    let db = Database::new(&db_path).map_err(|e| format!("Failed to open database: {}", e))?;
+    db.get_note_tags(&note_id).map_err(|e| format!("Failed to get note tags: {}", e))
+}
+
+/// Tauri 命令：为笔记添加标签
+#[tauri::command]
+pub async fn add_tag_to_note(note_id: String, tag_name: String, work_directory: Option<String>) -> Result<Tag, String> {
+    let db_path = get_database_path(work_directory)?;
+    let db = Database::new(&db_path).map_err(|e| format!("Failed to open database: {}", e))?;
+    db.add_tag_to_note(&note_id, &tag_name).map_err(|e| format!("Failed to add tag: {}", e))
+}
+
+/// Tauri 命令：从笔记移除标签
+#[tauri::command]
+pub async fn remove_tag_from_note(note_id: String, tag_id: String, work_directory: Option<String>) -> Result<(), String> {
+    let db_path = get_database_path(work_directory)?;
+    let db = Database::new(&db_path).map_err(|e| format!("Failed to open database: {}", e))?;
+    db.remove_tag_from_note(&note_id, &tag_id).map_err(|e| format!("Failed to remove tag: {}", e))
+}
+
+/// Tauri 命令：删除标签
+#[tauri::command]
+pub async fn delete_tag(tag_id: String, work_directory: Option<String>) -> Result<(), String> {
+    let db_path = get_database_path(work_directory)?;
+    let db = Database::new(&db_path).map_err(|e| format!("Failed to open database: {}", e))?;
+    db.delete_tag(&tag_id).map_err(|e| format!("Failed to delete tag: {}", e))
+}
+
+/// Tauri 命令：按标签获取笔记
+#[tauri::command]
+pub async fn get_notes_by_tag(tag_id: String, page: u32, page_size: u32, work_directory: Option<String>) -> Result<Vec<Note>, String> {
+    let db_path = get_database_path(work_directory)?;
+    let db = Database::new(&db_path).map_err(|e| format!("Failed to open database: {}", e))?;
+    db.get_notes_by_tag(&tag_id, page, page_size).map_err(|e| format!("Failed to get notes: {}", e))
+}
+
+/// Tauri 命令：搜索标签
+#[tauri::command]
+pub async fn search_tags(keyword: String, work_directory: Option<String>) -> Result<Vec<Tag>, String> {
+    let db_path = get_database_path(work_directory)?;
+    let db = Database::new(&db_path).map_err(|e| format!("Failed to open database: {}", e))?;
+    db.search_tags(&keyword).map_err(|e| format!("Failed to search tags: {}", e))
 }

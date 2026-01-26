@@ -51,7 +51,15 @@ pub fn run() {
             database::update_note,
             database::delete_note,
             database::search_notes,
-            database::migrate_from_json
+            database::migrate_from_json,
+            database::get_all_tags,
+            database::get_tags_with_stats,
+            database::get_note_tags,
+            database::add_tag_to_note,
+            database::remove_tag_from_note,
+            database::delete_tag,
+            database::get_notes_by_tag,
+            database::search_tags
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

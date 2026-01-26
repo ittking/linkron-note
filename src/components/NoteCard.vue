@@ -17,7 +17,7 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['click', 'open', 'edit', 'delete'])
+const emit = defineEmits(['click', 'open', 'edit', 'delete', 'tag-click'])
 
 const menuVisible = ref(false)
 const isExpanded = ref(false)
@@ -96,6 +96,27 @@ const extractedImages = computed(() => {
   }
   return images
 })
+
+// 从内容中提取标签列表
+const extractedTags = computed(() => {
+  if (!props.note.content) return []
+  const tagRegex = /<span data-type="tag"[^>]*data-name="([^"]+)"[^>]*data-id="([^"]+)"[^>]*>(?:<[^>]*>)*([^<]+)(?:<[^>]*>)*<\/span>/g
+  const tags = []
+  let match
+  while ((match = tagRegex.exec(props.note.content)) !== null) {
+    tags.push({
+      name: match[1],
+      id: match[2],
+      displayName: match[3],
+    })
+  }
+  return tags
+})
+
+// 处理标签点击
+function handleTagClick(tag) {
+  emit('tag-click', tag)
+}
 
 // 检查内容是否溢出
 function checkOverflow() {
@@ -252,6 +273,21 @@ onBeforeUnmount(() => {
         alt="Note image"
         @click.stop
       />
+    </div>
+
+    <!-- 标签列表 -->
+    <div v-if="extractedTags.length > 0" class="flex flex-wrap gap-2 mt-3">
+      <span
+        v-for="tag in extractedTags"
+        :key="tag.id"
+        @click.stop="handleTagClick(tag)"
+        class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-primary/10 text-primary text-xs font-medium cursor-pointer hover:bg-primary/20 transition-colors"
+      >
+        <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+          <path fill-rule="evenodd" d="M17.707 9.293a1 1 0 010 1.414l-7 7a1 1 0 01-1.414 0l-7-7A.997.997 0 012 10V5a3 3 0 013-3h5c.256 0 .512.098.707.293l7 7zM5 6a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd"/>
+        </svg>
+        {{ tag.displayName }}
+      </span>
     </div>
   </div>
 </template>

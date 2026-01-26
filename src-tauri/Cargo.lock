@@ -1929,6 +1929,7 @@ dependencies = [
  "objc",
  "portable-pty",
  "rdev",
+ "regex",
  "rusqlite",
  "serde",
  "serde_json",
