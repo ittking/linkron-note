@@ -30,6 +30,10 @@ const props = defineProps({
   isScrolledToTop: {
     type: Boolean,
     default: true
+  },
+  isEditing: {
+    type: Boolean,
+    default: false
   }
 })
 
@@ -111,7 +115,9 @@ function handleImageUpload(event) {
 function handleSubmit() {
   if (hasContent.value) {
     emit('submit')
-    editor.value?.commands.clearContent()
+    if (!props.isEditing) {
+      editor.value?.commands.clearContent()
+    }
   }
 }
 </script>
@@ -186,20 +192,26 @@ function handleSubmit() {
         </button>
       </div>
 
-      <!-- 右侧发送按钮 -->
-      <button
-        @click="handleSubmit"
-        class="w-7 h-7 rounded-md flex items-center justify-center transition-all duration-200"
-        :class="[
-          hasContent 
-            ? 'bg-primary text-primary-content hover:bg-primary/90' 
-            : 'bg-base-300 text-base-content/40 cursor-not-allowed'
-        ]"
-        :disabled="!hasContent"
-        title="发送"
-      >
-        <Send :size="13" />
-      </button>
+      <!-- 右侧按钮区域 -->
+      <div class="flex items-center gap-2">
+        <!-- 插槽：用于放置取消按钮等自定义按钮 -->
+        <slot name="actions"></slot>
+        
+        <!-- 发送按钮 -->
+        <button
+          @click="handleSubmit"
+          class="w-7 h-7 rounded-md flex items-center justify-center transition-all duration-200"
+          :class="[
+            hasContent
+              ? 'bg-primary text-primary-content hover:bg-primary/90'
+              : 'bg-base-300 text-base-content/40 cursor-not-allowed'
+          ]"
+          :disabled="!hasContent"
+          :title="props.isEditing ? '保存' : '发送'"
+        >
+          <Send :size="13" />
+        </button>
+      </div>
     </div>
   </div>
 </template>

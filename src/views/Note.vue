@@ -21,6 +21,10 @@ const toastMessage = ref('')
 const toastVisible = ref(false)
 const toastType = ref('info')
 
+// 编辑相关状态
+const editingNote = ref(null)
+const isEditing = ref(false)
+
 // 笔记详情抽屉
 const drawerVisible = ref(false)
 
@@ -80,14 +84,27 @@ async function loadNotes() {
 // 编辑器提交
 async function handleEditorSubmit() {
     if (editorContent.value.trim()) {
-        await noteStore.addNote({
-            type: 'text',
-            content: editorContent.value,
-            images: []
-        })
-        editorContent.value = ''
-        await loadNotes()
-        showToast('笔记创建成功', 'success')
+        if (isEditing.value && editingNote.value) {
+            // 编辑模式：更新笔记
+            await noteStore.updateNote(editingNote.value.id, {
+                content: editorContent.value
+            })
+            editingNote.value = null
+            isEditing.value = false
+            editorContent.value = ''
+            await loadNotes()
+            showToast('笔记更新成功', 'success')
+        } else {
+            // 创建模式：创建新笔记
+            await noteStore.addNote({
+                type: 'text',
+                content: editorContent.value,
+                images: []
+            })
+            editorContent.value = ''
+            await loadNotes()
+            showToast('笔记创建成功', 'success')
+        }
     }
 }
 
@@ -244,7 +261,10 @@ function handleMenuOpen(note) {
 }
 
 function handleMenuEdit(note) {
-    showToast('编辑功能暂未实现', 'info')
+    editingNote.value = note
+    editorContent.value = note.content
+    isEditing.value = true
+    showToast('进入编辑模式', 'info')
 }
 
 function handleMenuDelete(note) {
@@ -265,6 +285,14 @@ function handleConfirmOk() {
     }
     confirmVisible.value = false
 }
+
+// 取消编辑
+function handleCancelEdit() {
+    editingNote.value = null
+    isEditing.value = false
+    editorContent.value = ''
+    showToast('已取消编辑', 'info')
+}
 </script>
 
 <template>
@@ -274,11 +302,23 @@ function handleConfirmOk() {
         <div class="px-4 py-3">
             <NoteEditor
                 v-model="editorContent"
-                placeholder="现在的想法是..."
+                :placeholder="isEditing ? '编辑笔记...' : '现在的想法是...'"
                 :is-scrolled-to-top="isNoteListScrolledToTop"
+                :is-editing="isEditing"
                 @submit="handleEditorSubmit"
                 @image-upload="handleImageUpload"
-            />
+            >
+                <template #actions>
+                    <button
+                        v-if="isEditing"
+                        @click="handleCancelEdit"
+                        class="px-3 h-7 rounded-md flex items-center justify-center transition-all duration-200 bg-base-300 text-base-content/60 hover:bg-base-200 hover:text-base-content text-xs"
+                        title="取消编辑"
+                    >
+                        取消
+                    </button>
+                </template>
+            </NoteEditor>
         </div>
 
         <!-- 笔记列表 -->
