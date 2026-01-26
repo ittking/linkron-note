@@ -1,7 +1,7 @@
 <script setup>
 import { ref, onMounted, onActivated, nextTick } from 'vue'
 import { onBeforeRouteLeave } from 'vue-router'
-import { ExternalLink, Edit, Trash2, Download } from 'lucide-vue-next'
+import { Download } from 'lucide-vue-next'
 import NoteCard from '@/components/NoteCard.vue'
 import NoteEditor from '@/components/NoteEditor.vue'
 import { useNoteStore } from '@/store/noteStore'
@@ -12,6 +12,15 @@ const noteStore = useNoteStore()
 const noteListRef = ref(null)
 let savedScrollTop = 0
 const isNoteListScrolledToTop = ref(true)
+
+// 防抖函数
+let updateEditorHeightTimer = null
+function updateEditorHeightDebounced(scrollTop) {
+    clearTimeout(updateEditorHeightTimer)
+    updateEditorHeightTimer = setTimeout(() => {
+        isNoteListScrolledToTop.value = scrollTop <= 40
+    }, 200)
+}
 
 const notes = ref([])
 const editorContent = ref('')
@@ -42,37 +51,40 @@ const confirmOnOk = ref(null)
 
 // 路由离开前保存滚动位置
 onBeforeRouteLeave((to, from, next) => {
-  if (noteListRef.value) {
-    savedScrollTop = noteListRef.value.scrollTop
-  }
-  next()
+    if (noteListRef.value) {
+        savedScrollTop = noteListRef.value.scrollTop
+    }
+    next()
 })
 
 // 组件激活时恢复滚动位置
 onActivated(async () => {
-  await nextTick()
-  
-  // 使用 setTimeout 确保 DOM 完全更新
-  setTimeout(() => {
-    if (noteListRef.value && savedScrollTop > 0) {
-      noteListRef.value.scrollTop = savedScrollTop
-    }
-  }, 50)
+    await nextTick()
+
+    // 使用 setTimeout 确保 DOM 完全更新
+    setTimeout(() => {
+        if (noteListRef.value && savedScrollTop > 0) {
+            noteListRef.value.scrollTop = savedScrollTop
+        }
+    }, 50)
 })
 
 // 监听笔记列表滚动
 function handleNoteListScroll() {
     if (noteListRef.value) {
-        isNoteListScrolledToTop.value = noteListRef.value.scrollTop === 0
-        
-        // 滚动到底部时加载更多
-        const { scrollTop, scrollHeight, clientHeight } = noteListRef.value
+        const scrollTop = noteListRef.value.scrollTop
+
+        // 滚动到底部时加载更多（实时检测，不防抖）
+        const { scrollHeight, clientHeight } = noteListRef.value
         const distanceToBottom = scrollHeight - scrollTop - clientHeight
-        
+
         // 距离底部小于 100px 时加载更多
         if (distanceToBottom < 100 && hasMore.value && !isLoading.value) {
             loadNotes()
         }
+
+        // 对编辑器高度更新使用防抖，避免频繁切换
+        updateEditorHeightDebounced(scrollTop)
     }
 }
 
@@ -94,33 +106,33 @@ function showToast(message, type = 'info') {
 // 加载笔记
 async function loadNotes(reset = false) {
     if (isLoading.value) return
-    
+
     if (reset) {
         currentPage.value = 1
         notes.value = []
         hasMore.value = true
     }
-    
+
     if (!hasMore.value) return
-    
+
     isLoading.value = true
-    
+
     // 延时1000ms，模拟加载延迟
     await new Promise(resolve => setTimeout(resolve, 1000))
-    
+
     try {
         const newNotes = await noteStore.getNotes(currentPage.value, pageSize.value)
-        
+
         if (newNotes.length < pageSize.value) {
             hasMore.value = false
         }
-        
+
         if (reset) {
             notes.value = newNotes
         } else {
             notes.value = [...notes.value, ...newNotes]
         }
-        
+
         currentPage.value++
     } catch (error) {
         console.error('Failed to load notes:', error)
@@ -375,21 +387,13 @@ function handleCancelEdit() {
         @dragover="handleDragOver" @drop="handleDrop">
         <!-- 编辑器区域 -->
         <div class="px-4 py-3">
-            <NoteEditor
-                v-model="editorContent"
-                :placeholder="isEditing ? '编辑笔记...' : '现在的想法是...'"
-                :is-scrolled-to-top="isNoteListScrolledToTop"
-                :is-editing="isEditing"
-                @submit="handleEditorSubmit"
-                @image-upload="handleImageUpload"
-            >
+            <NoteEditor v-model="editorContent" :placeholder="isEditing ? '编辑笔记...' : '现在的想法是...'"
+                :is-scrolled-to-top="isNoteListScrolledToTop" :is-editing="isEditing" @submit="handleEditorSubmit"
+                @image-upload="handleImageUpload">
                 <template #actions>
-                    <button
-                        v-if="isEditing"
-                        @click="handleCancelEdit"
+                    <button v-if="isEditing" @click="handleCancelEdit"
                         class="px-3 h-7 rounded-md flex items-center justify-center transition-all duration-200 bg-base-300 text-base-content/60 hover:bg-base-200 hover:text-base-content text-xs"
-                        title="取消编辑"
-                    >
+                        title="取消编辑">
                         取消
                     </button>
                 </template>
@@ -398,12 +402,9 @@ function handleCancelEdit() {
 
         <!-- 笔记列表 -->
         <div class="flex-1 overflow-hidden">
-            <div 
-                ref="noteListRef"
-                class="p-3 h-full overflow-y-auto no-scrollbar"
-                @scroll="handleNoteListScroll"
-            >
-                <div v-if="notes.length === 0" class="flex flex-col items-center justify-center h-full text-base-content/40 text-center p-5">
+            <div ref="noteListRef" class="p-3 h-full overflow-y-auto no-scrollbar" @scroll="handleNoteListScroll">
+                <div v-if="notes.length === 0"
+                    class="flex flex-col items-center justify-center h-full text-base-content/40 text-center p-5">
                     <div class="text-5xl mb-4 opacity-50">📝</div>
                     <div class="text-base font-medium mb-2 text-base-content/60">暂无笔记</div>
                     <div class="text-sm leading-relaxed max-w-[240px]">拖拽链接、文字或图片到这里创建笔记</div>
@@ -420,21 +421,17 @@ function handleCancelEdit() {
         </div>
 
         <!-- 拖拽遮罩 -->
-        <div
-            v-if="isDragging"
+        <div v-if="isDragging"
             class="fixed inset-0 bg-primary/5 border-2 border-dashed border-primary flex flex-col items-center justify-center z-[9999] transition-opacity duration-200"
-            @dragenter="handleDragEnter"
-            @dragleave="handleDragLeave"
-            @dragover="handleDragOver"
-            @drop="handleDrop"
-        >
+            @dragenter="handleDragEnter" @dragleave="handleDragLeave" @dragover="handleDragOver" @drop="handleDrop">
             <Download :size="48" class="text-primary mb-4 animate-bounce" />
             <div class="text-base font-medium text-primary mb-2">释放以创建笔记</div>
             <div class="text-sm text-base-content/60">支持链接、文字、图片</div>
         </div>
 
         <!-- Toast 提示 -->
-        <div :class="['fixed top-4 right-4 z-[200] px-4 py-3 rounded-lg shadow-lg transition-all duration-300', toastVisible ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0', toastType === 'success' ? 'bg-success text-success-content' : toastType === 'error' ? 'bg-error text-error-content' : 'bg-info text-info-content']">
+        <div
+            :class="['fixed top-4 right-4 z-[200] px-4 py-3 rounded-lg shadow-lg transition-all duration-300', toastVisible ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0', toastType === 'success' ? 'bg-success text-success-content' : toastType === 'error' ? 'bg-error text-error-content' : 'bg-info text-info-content']">
             {{ toastMessage }}
         </div>
 
@@ -444,7 +441,8 @@ function handleCancelEdit() {
                 <h3 class="font-bold text-lg text-base-content">{{ confirmTitle }}</h3>
                 <p class="py-4 text-base-content/60">{{ confirmContent }}</p>
                 <div class="modal-action">
-                    <button @click="confirmVisible = false" class="btn btn-ghost text-base-content/60 hover:text-base-content">取消</button>
+                    <button @click="confirmVisible = false"
+                        class="btn btn-ghost text-base-content/60 hover:text-base-content">取消</button>
                     <button @click="handleConfirmOk" class="btn btn-error text-error-content">删除</button>
                 </div>
             </div>
