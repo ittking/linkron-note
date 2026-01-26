@@ -132,6 +132,9 @@ const editor = useEditor({
                   // 更新 range，让建议继续工作
                   currentProps.range = { from, to: newTo }
                   
+                  // 重置选中索引
+                  selectedIndex = 0
+                  
                   // 重新渲染
                   renderItems()
                 })
@@ -221,6 +224,9 @@ const editor = useEditor({
                   
                   // 更新 range，让建议继续工作
                   currentProps.range = { from, to: newTo }
+                  
+                  // 重置选中索引
+                  selectedIndex = 0
                   
                   // 重新渲染
                   renderItems()
