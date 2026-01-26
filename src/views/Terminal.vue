@@ -36,7 +36,6 @@ const currentWorkingDir = ref(null)
 
 // 计算当前应该显示的 Tab
 const visibleTabId = computed(() => {
-  console.log('visibleTabId computed:', terminalStore.activeTabId.value)
   return terminalStore.activeTabId.value
 })
 
@@ -45,9 +44,7 @@ const getCurrentDirectory = async () => {
   try {
     const dir = await invoke('get_current_directory')
     currentWorkingDir.value = dir
-    console.log('Current directory:', dir)
   } catch (error) {
-    console.error('Failed to get current directory:', error)
     // 设置默认工作目录
     currentWorkingDir.value = null
   }
@@ -58,12 +55,10 @@ const addTerminal = () => {
 }
 
 const closeTerminal = (id) => {
-  console.log('Closing terminal:', id)
   terminalStore.closeTab(id)
 }
 
 const handleTabSelect = (id) => {
-  console.log('Tab selected:', id)
   terminalStore.selectTab(id)
 }
 
@@ -76,45 +71,14 @@ const handleTerminalInput = async (data) => {
   }
 }
 
-// 监听 activeTabId 的变化
-watch(() => terminalStore.activeTabId.value, (newVal, oldVal) => {
-  console.log('activeTabId changed from', oldVal, 'to', newVal)
-})
-
 onMounted(async () => {
   // 获取当前工作目录
   await getCurrentDirectory()
   
   // 如果没有 Tab，则创建一个
   if (terminalStore.tabs.value.length === 0) {
-    console.log('Creating first terminal...')
     addTerminal()
-    console.log('After addTerminal, tabs:', terminalStore.tabs.value.length, 'activeTabId:', terminalStore.activeTabId.value)
   }
-  
-  console.log('Terminal store state:', {
-    tabs: terminalStore.tabs.value,
-    activeTabId: terminalStore.activeTabId.value,
-    activeTab: terminalStore.activeTab
-  })
-  
-  // 添加定时器检查状态
-  setTimeout(() => {
-    console.log('Terminal store state after 500ms:', {
-      tabs: terminalStore.tabs.value,
-      activeTabId: terminalStore.activeTabId.value,
-      activeTab: terminalStore.activeTab
-    })
-  }, 500)
-  
-  // 再添加一个定时器
-  setTimeout(() => {
-    console.log('Terminal store state after 1000ms:', {
-      tabs: terminalStore.tabs.value,
-      activeTabId: terminalStore.activeTabId.value,
-      activeTab: terminalStore.activeTab
-    })
-  }, 1000)
 })
 </script>
 

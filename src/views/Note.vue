@@ -34,26 +34,18 @@ const confirmOnOk = ref(null)
 onBeforeRouteLeave((to, from, next) => {
   if (noteListRef.value) {
     savedScrollTop = noteListRef.value.scrollTop
-    console.log('Note onBeforeRouteLeave, scrollHeight:', noteListRef.value.scrollHeight, 'clientHeight:', noteListRef.value.clientHeight, 'saved scrollTop:', savedScrollTop)
   }
   next()
 })
 
 // 组件激活时恢复滚动位置
 onActivated(async () => {
-  console.log('Note onActivated start, savedScrollTop:', savedScrollTop)
   await nextTick()
   
   // 使用 setTimeout 确保 DOM 完全更新
   setTimeout(() => {
-    if (noteListRef.value) {
-      console.log('noteListRef exists, scrollHeight:', noteListRef.value.scrollHeight, 'clientHeight:', noteListRef.value.clientHeight, 'current scrollTop:', noteListRef.value.scrollTop)
-      if (savedScrollTop > 0) {
-        noteListRef.value.scrollTop = savedScrollTop
-        console.log('Restored scrollTop to:', savedScrollTop, 'actual scrollTop after set:', noteListRef.value.scrollTop)
-      }
-    } else {
-      console.log('noteListRef is null')
+    if (noteListRef.value && savedScrollTop > 0) {
+      noteListRef.value.scrollTop = savedScrollTop
     }
   }, 50)
 })
