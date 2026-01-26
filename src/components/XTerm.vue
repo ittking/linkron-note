@@ -28,10 +28,11 @@ onMounted(async () => {
   terminal = new Terminal({
     cursorBlink: true,
     fontSize: 14,
-    fontFamily: 'Consolas, "Courier New", monospace',
+    fontFamily: 'JetBrains Mono, "Fira Code", "Cascadia Code", Consolas, "Courier New", monospace, "Nerd Font Symbols", "Nerd Font", "Font Awesome 6 Free", "Font Awesome 6 Brands", "Font Awesome 6 Solid", "Apple Symbols", "Segoe UI Symbol", "Segoe UI Emoji"',
     letterSpacing: 0,
     lineHeight: 1.2,
     scrollback: 1000,
+    allowTransparency: true,
     theme: {
       background: '#1e1e1e',
       foreground: '#d4d4d4',
@@ -233,10 +234,12 @@ const focusTerminal = () => {
   box-sizing: border-box;
 }
 
+/* 确保字体正确加载 */
 .xterm-container :deep(.xterm-viewport) {
   overflow-y: auto !important;
   overflow-x: hidden !important;
   width: 100% !important;
+  font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', Consolas, 'Courier New', monospace, 'Nerd Font Symbols', 'Nerd Font', 'Font Awesome 6 Free', 'Font Awesome 6 Brands', 'Font Awesome 6 Solid', 'Apple Symbols', 'Segoe UI Symbol', 'Segoe UI Emoji', sans-serif !important;
 }
 
 /* 隐藏滚动条但保留功能 */
@@ -250,21 +253,25 @@ const focusTerminal = () => {
   height: 100%;
   width: 100%;
   overflow: visible;
+  font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', Consolas, 'Courier New', monospace, 'Nerd Font Symbols', 'Nerd Font', 'Font Awesome 6 Free', 'Font Awesome 6 Brands', 'Font Awesome 6 Solid', 'Apple Symbols', 'Segoe UI Symbol', 'Segoe UI Emoji', sans-serif !important;
 }
 
 .xterm-container :deep(.xterm-rows) {
   padding: 0;
   width: 100%;
   overflow: visible;
+  font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', Consolas, 'Courier New', monospace, 'Nerd Font Symbols', 'Nerd Font', 'Font Awesome 6 Free', 'Font Awesome 6 Brands', 'Font Awesome 6 Solid', 'Apple Symbols', 'Segoe UI Symbol', 'Segoe UI Emoji', sans-serif !important;
 }
 
 .xterm-container :deep(.xterm-scroll-layer) {
   height: 100% !important;
   width: 100% !important;
   overflow: visible;
+  font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', Consolas, 'Courier New', monospace, 'Nerd Font Symbols', 'Nerd Font', 'Font Awesome 6 Free', 'Font Awesome 6 Brands', 'Font Awesome 6 Solid', 'Apple Symbols', 'Segoe UI Symbol', 'Segoe UI Emoji', sans-serif !important;
 }
 
 .xterm-container :deep(.xterm-char-measure) {
   display: inline-block;
+  font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', Consolas, 'Courier New', monospace, 'Nerd Font Symbols', 'Nerd Font', 'Font Awesome 6 Free', 'Font Awesome 6 Brands', 'Font Awesome 6 Solid', 'Apple Symbols', 'Segoe UI Symbol', 'Segoe UI Emoji', sans-serif !important;
 }
 </style>

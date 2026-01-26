@@ -18,3 +18,25 @@ body,
 .no-scrollbar::-webkit-scrollbar {
   display: none;  /* Chrome, Safari and Opera */
 }
+
+/* 终端字体支持 */
+@font-face {
+  font-family: 'JetBrains Mono';
+  src: local('JetBrains Mono'), local('JetBrainsMono-Regular');
+  font-weight: normal;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Fira Code';
+  src: local('Fira Code'), local('FiraCode-Regular');
+  font-weight: normal;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Cascadia Code';
+  src: local('Cascadia Code'), local('CascadiaCode-Regular');
+  font-weight: normal;
+  font-style: normal;
+}
