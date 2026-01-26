@@ -74,14 +74,12 @@ onMounted(async () => {
 
     <!-- 子页面内容区域 -->
     <div class="flex-1 overflow-hidden">
-      <div class="h-full max-w-200 mx-auto">
-        <router-view v-slot="{ Component, route }">
-          <keep-alive v-if="route.meta?.keepAlive">
-            <component :is="Component" />
-          </keep-alive>
-          <component v-else :is="Component" />
-        </router-view>
-      </div>
+      <router-view v-slot="{ Component, route }">
+        <keep-alive v-if="route.meta?.keepAlive">
+          <component :is="Component" />
+        </keep-alive>
+        <component v-else :is="Component" />
+      </router-view>
     </div>
   </main>
 </template>

@@ -1,5 +1,5 @@
 <template>
-  <div class="h-full p-4 overflow-y-auto no-scrollbar">
+  <div class="h-full p-4 overflow-y-auto no-scrollbar max-w-200 mx-auto">
     <div class="space-y-4">
       <!-- 开机启动 -->
       <div class="card bg-base-200 shadow-sm">

@@ -268,7 +268,7 @@ function handleConfirmOk() {
 </script>
 
 <template>
-    <div class="h-full flex flex-col" @dragenter="handleDragEnter" @dragleave="handleDragLeave"
+    <div class="h-full flex flex-col max-w-200 mx-auto" @dragenter="handleDragEnter" @dragleave="handleDragLeave"
         @dragover="handleDragOver" @drop="handleDrop">
         <!-- 编辑器区域 -->
         <div class="px-4 py-3">
