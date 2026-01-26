@@ -37,6 +37,24 @@ onMounted(async () => {
 })
 </script>
 
+<style scoped>
+/* 页面过渡动画 */
+.page-fade-enter-active,
+.page-fade-leave-active {
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.page-fade-enter-from {
+  opacity: 0;
+  transform: translateY(10px);
+}
+
+.page-fade-leave-to {
+  opacity: 0;
+  transform: translateY(-10px);
+}
+</style>
+
 <template>
   <main class="h-full bg-base-100 flex flex-col overflow-hidden border border-base-300">
     <!-- 顶部控制栏 -->
@@ -75,10 +93,12 @@ onMounted(async () => {
     <!-- 子页面内容区域 -->
     <div class="flex-1 overflow-hidden">
       <router-view v-slot="{ Component, route }">
-        <keep-alive v-if="route.meta?.keepAlive">
-          <component :is="Component" />
-        </keep-alive>
-        <component v-else :is="Component" />
+        <transition name="page-fade" mode="out-in">
+          <keep-alive v-if="route.meta?.keepAlive">
+            <component :is="Component" :key="route.path" />
+          </keep-alive>
+          <component v-else :is="Component" :key="route.path" />
+        </transition>
       </router-view>
     </div>
   </main>
