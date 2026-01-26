@@ -138,20 +138,28 @@ async function handleEditorSubmit() {
             await noteStore.updateNote(editingNote.value.id, {
                 content: editorContent.value
             })
+            // 直接在数组中更新笔记
+            const index = notes.value.findIndex(n => n.id === editingNote.value.id)
+            if (index !== -1) {
+                notes.value[index] = {
+                    ...notes.value[index],
+                    content: editorContent.value
+                }
+            }
             editingNote.value = null
             isEditing.value = false
             editorContent.value = ''
-            await loadNotes(true)
             showToast('笔记更新成功', 'success')
         } else {
             // 创建模式：创建新笔记
-            await noteStore.addNote({
+            const newNote = await noteStore.addNote({
                 type: 'text',
                 content: editorContent.value,
                 images: []
             })
+            // 直接在数组开头添加新笔记
+            notes.value.unshift(newNote)
             editorContent.value = ''
-            await loadNotes(true)
             showToast('笔记创建成功', 'success')
         }
     }
@@ -161,12 +169,13 @@ async function handleEditorSubmit() {
 async function handleImageUpload(file) {
     const reader = new FileReader()
     reader.onload = async (e) => {
-        await noteStore.addNote({
+        const newNote = await noteStore.addNote({
             type: 'image',
             content: file.name || '图片笔记',
             images: [e.target.result]
         })
-        await loadNotes(true)
+        // 直接在数组开头添加新笔记
+        notes.value.unshift(newNote)
         showToast('图片笔记创建成功', 'success')
     }
     reader.readAsDataURL(file)
@@ -250,6 +259,9 @@ async function createLinkNote(url) {
             images: []
         })
 
+        // 直接在数组开头添加新笔记
+        notes.value.unshift(note)
+
         showToast('正在解析链接...', 'info')
 
         // 模拟链接解析
@@ -261,7 +273,18 @@ async function createLinkNote(url) {
                     'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgZmlsbD0iIzJhMmEzMiIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBkb21pbmFudC1iYXNlbGluZT0ibWlkZGxlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LXNpemU9IjI0IiBmaWxsPSIjNmI2Yjc2Ij5JbWFnZSAyPC90ZXh0Pjwvc3ZnPg=='
                 ]
             })
-            await loadNotes(true)
+            // 直接在数组中更新笔记
+            const index = notes.value.findIndex(n => n.id === note.id)
+            if (index !== -1) {
+                notes.value[index] = {
+                    ...notes.value[index],
+                    content: '这是从链接抓取的内容摘要。在实际应用中，这里会显示网页的正文内容...',
+                    images: [
+                        'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgZmlsbD0iIzJhMmEzMiIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBkb21pbmFudC1iYXNlbGluZT0ibWlkZGxlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LXNpemU9IjI0IiBmaWxsPSIjNmI2Yjc2Ij5JbWFnZSAxPC90ZXh0Pjwvc3ZnPg==',
+                        'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgZmlsbD0iIzJhMmEzMiIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBkb21pbmFudC1iYXNlbGluZT0ibWlkZGxlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LXNpemU9IjI0IiBmaWxsPSIjNmI2Yjc2Ij5JbWFnZSAyPC90ZXh0Pjwvc3ZnPg=='
+                    ]
+                }
+            }
             showToast('笔记创建成功', 'success')
         }, 1000)
     } catch (error) {
@@ -271,24 +294,26 @@ async function createLinkNote(url) {
 
 // 创建图片笔记
 async function createImageNote(imageData, fileName) {
-    await noteStore.addNote({
+    const newNote = await noteStore.addNote({
         type: 'image',
         content: fileName || '图片笔记',
         images: [imageData]
     })
-    await loadNotes(true)
+    // 直接在数组开头添加新笔记
+    notes.value.unshift(newNote)
     showToast('图片笔记创建成功', 'success')
 }
 
 // 创建文字笔记
 async function createTextNote(text) {
     try {
-        await noteStore.addNote({
+        const newNote = await noteStore.addNote({
             type: 'text',
             content: text,
             images: []
         })
-        await loadNotes(true)
+        // 直接在数组开头添加新笔记
+        notes.value.unshift(newNote)
         showToast('文字笔记创建成功', 'success')
     } catch (error) {
         showToast('创建笔记失败', 'error')
@@ -321,7 +346,8 @@ function handleMenuDelete(note) {
     confirmContent.value = '确定要删除这条笔记吗？'
     confirmOnOk.value = async () => {
         await noteStore.deleteNote(note.id)
-        await loadNotes(true)
+        // 直接从当前数组中移除笔记，避免重新加载导致的空白
+        notes.value = notes.value.filter(n => n.id !== note.id)
         showToast('笔记已删除', 'success')
     }
     confirmVisible.value = true
