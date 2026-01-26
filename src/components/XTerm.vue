@@ -65,6 +65,12 @@ onMounted(async () => {
   setTimeout(() => {
     if (fitAddon) {
       fitAddon.fit()
+      console.log('Terminal fitted:', { 
+        cols: terminal.cols, 
+        rows: terminal.rows,
+        containerWidth: terminalContainer.value?.offsetWidth,
+        containerHeight: terminalContainer.value?.offsetHeight
+      })
     }
   }, 100)
 
@@ -149,6 +155,10 @@ onMounted(() => {
     resizeTimeout = setTimeout(() => {
       if (fitAddon && terminal) {
         fitAddon.fit()
+        console.log('Terminal resized:', { 
+          cols: terminal.cols, 
+          rows: terminal.rows 
+        })
         // 同步到后端 PTY
         invoke('resize_pty', {
           sessionId: props.sessionId,
@@ -172,6 +182,10 @@ onMounted(() => {
     resizeTimeout = setTimeout(() => {
       if (fitAddon && terminal) {
         fitAddon.fit()
+        console.log('Terminal resized by window:', { 
+          cols: terminal.cols, 
+          rows: terminal.rows 
+        })
         invoke('resize_pty', {
           sessionId: props.sessionId,
           cols: terminal.cols,
@@ -221,18 +235,36 @@ const focusTerminal = () => {
 
 .xterm-container :deep(.xterm-viewport) {
   overflow-y: auto !important;
+  overflow-x: hidden !important;
+  width: 100% !important;
+}
+
+/* 隐藏滚动条但保留功能 */
+.xterm-container :deep(.xterm-viewport::-webkit-scrollbar) {
+  width: 0px;
+  background: transparent;
 }
 
 .xterm-container :deep(.xterm-screen) {
   padding: 0;
   height: 100%;
+  width: 100%;
+  overflow: visible;
 }
 
 .xterm-container :deep(.xterm-rows) {
   padding: 0;
+  width: 100%;
+  overflow: visible;
 }
 
 .xterm-container :deep(.xterm-scroll-layer) {
   height: 100% !important;
+  width: 100% !important;
+  overflow: visible;
+}
+
+.xterm-container :deep(.xterm-char-measure) {
+  display: inline-block;
 }
 </style>
