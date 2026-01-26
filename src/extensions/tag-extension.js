@@ -9,6 +9,7 @@ export const TagExtension = Node.create({
   inline: true,
   selectable: true,
   draggable: true,
+  atom: false, // 允许编辑
 
   addAttributes() {
     return {
@@ -62,6 +63,7 @@ export const TagExtension = Node.create({
       span.dataset.type = 'tag'
       span.dataset.id = node.attrs.id || ''
       span.dataset.name = node.attrs.name || ''
+      span.contentEditable = 'false' // 设置为 false，防止用户直接编辑标签内容
       span.textContent = '#' + (node.attrs.displayName || node.attrs.name)
       return {
         dom: span,

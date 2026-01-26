@@ -109,10 +109,31 @@ const editor = useEditor({
                 const itemEl = document.createElement('div')
                 const isSelected = index === selectedIndex
                 itemEl.className = `tag-suggestion-item flex items-center gap-2 px-3 py-2 rounded-md cursor-pointer ${isSelected ? 'bg-primary/20 text-primary' : 'hover:bg-primary/10'}`
-                itemEl.textContent = '#' + (item.displayName || item.name)
+                itemEl.textContent = '#' + item.name
                 itemEl.dataset.index = index
                 itemEl.addEventListener('click', () => {
-                  currentProps.command(item)
+                  // 替换当前正在输入的标签名称
+                  const editor = currentProps.editor
+                  const { from } = currentProps.range
+                  
+                  // 删除当前标签输入（从 # 开始）
+                  editor.view.dispatch(
+                    editor.view.state.tr.delete(from, currentProps.range.to)
+                  )
+                  
+                  // 插入选中的标签名称
+                  editor.view.dispatch(
+                    editor.view.state.tr.insertText('#' + item.name, from)
+                  )
+                  
+                  // 重新获取光标位置
+                  const newTo = from + item.name.length + 1
+                  
+                  // 更新 range，让建议继续工作
+                  currentProps.range = { from, to: newTo }
+                  
+                  // 重新渲染
+                  renderItems()
                 })
                 component.appendChild(itemEl)
               })
@@ -178,29 +199,47 @@ const editor = useEditor({
                 return true
               }
               if (props.event.key === 'Enter') {
+                // 回车键：选中当前标签并替换当前输入
                 if (items && items[selectedIndex]) {
-                  currentProps.command(items[selectedIndex])
-                }
-                return true
-              }
-              if (props.event.key === ' ') {
-                // 空格键：如果有建议项，选择第一个；否则创建新标签
-                if (items && items.length > 0) {
-                  currentProps.command(items[0])
+                  // 替换当前正在输入的标签名称
+                  const selectedTag = items[selectedIndex]
+                  const editor = currentProps.editor
+                  const { from } = currentProps.range
+                  
+                  // 删除当前标签输入（从 # 开始）
+                  editor.view.dispatch(
+                    editor.view.state.tr.delete(from, currentProps.range.to)
+                  )
+                  
+                  // 插入选中的标签名称
+                  editor.view.dispatch(
+                    editor.view.state.tr.insertText('#' + selectedTag.name, from)
+                  )
+                  
+                  // 重新获取光标位置
+                  const newTo = from + selectedTag.name.length + 1
+                  
+                  // 更新 range，让建议继续工作
+                  currentProps.range = { from, to: newTo }
+                  
+                  // 重新渲染
+                  renderItems()
                   return true
                 }
-                // 没有建议项时，如果有输入内容则创建新标签
+                return false
+              }
+              if (props.event.key === ' ') {
+                // 空格键：创建当前输入的标签
                 if (currentQuery.length > 0) {
                   currentProps.command({
                     id: Date.now().toString(),
                     name: currentQuery,
                     displayName: currentQuery,
                     path: '',
-                    level: 1,
+                    level: currentQuery.split('/').length,
                   })
                   return true
                 }
-                // 没有查询内容时，让默认行为继续（插入空格）
                 return false
               }
               return false
