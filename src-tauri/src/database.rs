@@ -750,8 +750,8 @@ impl Database {
             "SELECT id, name, display_name, path, level, color, created_at, updated_at
          FROM tags
          WHERE name LIKE ?1 OR display_name LIKE ?1
-         ORDER BY name ASC
-         LIMIT 20"
+         ORDER BY created_at DESC
+         LIMIT 5"
         )?;
 
         let tags = stmt.query_map(params![search_pattern], |row| {
