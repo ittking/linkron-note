@@ -180,6 +180,12 @@ const editor = useEditor({
               
               // 重新渲染标签列表
               items = await props.items
+              
+              // 如果有匹配的标签，确保显示虚拟列表
+              if (items && items.length > 0 && popup) {
+                popup.show()
+              }
+              
               renderItems()
             },
             onKeyDown: (props) => {
