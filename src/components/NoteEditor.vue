@@ -7,6 +7,7 @@ import Image from '@tiptap/extension-image'
 import Highlight from '@tiptap/extension-highlight'
 import Placeholder from '@tiptap/extension-placeholder'
 import { TagExtension } from '@/extensions/tag-extension'
+import { ResizableImage } from '@/extensions/resizable-image'
 import tippy from 'tippy.js'
 import { useSettingStore } from '@/store/settingStore'
 import {
@@ -69,6 +70,7 @@ const editor = useEditor({
       inline: true,
       allowBase64: true,
     }),
+    ResizableImage,
     Highlight.configure({
       multicolor: true,
     }),
@@ -356,7 +358,13 @@ async function handleImageUpload(event) {
       const resourceUrl = await invoke('get_resource_url', { relativePath: imagePath })
       
       // 插入图片到编辑器
-      editor.value?.chain().focus().setImage({ src: resourceUrl }).run()
+      editor.value?.chain().focus().insertContent({
+        type: 'resizableImage',
+        attrs: {
+          src: resourceUrl,
+          width: '300px',
+        },
+      }).run()
     } catch (error) {
       console.error('Failed to save image:', error)
     }
