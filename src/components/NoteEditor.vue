@@ -106,7 +106,7 @@ const editor = useEditor({
               items.forEach((item, index) => {
                 const itemEl = document.createElement('div')
                 const isSelected = index === selectedIndex
-                itemEl.className = `tag-suggestion-item flex items-center gap-2 px-3 py-2 rounded-md cursor-pointer ${isSelected ? 'bg-primary/20 text-primary' : 'hover:bg-primary/10'}`
+                itemEl.className = `tag-suggestion-item flex items-center gap-2 px-3 py-2 rounded-md cursor-pointer ${isSelected ? 'bg-primary/20 text-primary' : ''}`
                 itemEl.textContent = '#' + item.name
                 itemEl.dataset.index = index
                 itemEl.addEventListener('click', () => {
