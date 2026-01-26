@@ -62,6 +62,7 @@ export const ResizableImage = Node.create({
       img.style.maxWidth = '100%'
       img.style.height = 'auto'
       img.style.display = 'block'
+      img.style.borderRadius = '0'
 
       if (node.attrs.width) {
         img.style.width = node.attrs.width
@@ -71,15 +72,14 @@ export const ResizableImage = Node.create({
       const handle = document.createElement('div')
       handle.className = 'resize-handle'
       handle.style.position = 'absolute'
-      handle.style.width = '12px'
-      handle.style.height = '12px'
+      handle.style.width = '10px'
+      handle.style.height = '10px'
       handle.style.background = 'var(--primary, #3b82f6)'
-      handle.style.borderRadius = '50%'
+      handle.style.borderRadius = '0'
       handle.style.cursor = 'nwse-resize'
-      handle.style.bottom = '-6px'
-      handle.style.right = '-6px'
-      handle.style.border = '2px solid white'
-      handle.style.boxShadow = '0 0 4px rgba(0,0,0,0.3)'
+      handle.style.bottom = '0'
+      handle.style.right = '0'
+      handle.style.border = 'none'
       handle.style.zIndex = '10'
       handle.style.display = 'none'
 
