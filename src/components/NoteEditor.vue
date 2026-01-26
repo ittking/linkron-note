@@ -200,7 +200,7 @@ function handleSubmit() {
         <!-- 发送按钮 -->
         <button
           @click="handleSubmit"
-          class="w-7 h-7 rounded-md flex items-center justify-center transition-all duration-200"
+          class="w-6 h-6 rounded-md flex items-center justify-center transition-all duration-200"
           :class="[
             hasContent
               ? 'bg-primary text-primary-content hover:bg-primary/90'
