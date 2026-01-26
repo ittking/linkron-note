@@ -5,13 +5,14 @@ import StarterKit from '@tiptap/starter-kit'
 import Image from '@tiptap/extension-image'
 import Highlight from '@tiptap/extension-highlight'
 import Placeholder from '@tiptap/extension-placeholder'
-import { 
-  Hash, 
-  Image as ImageIcon, 
-  Highlighter, 
-  ListOrdered, 
-  List, 
-  Send 
+import {
+  Hash,
+  Image as ImageIcon,
+  Highlighter,
+  ListOrdered,
+  List,
+  Underline,
+  Send
 } from 'lucide-vue-next'
 
 const props = defineProps({
@@ -89,6 +90,10 @@ const hasContent = computed(() => {
 // 工具栏操作
 function toggleHighlight() {
   editor.value?.chain().focus().toggleHighlight().run()
+}
+
+function toggleUnderline() {
+  editor.value?.chain().focus().toggleUnderline().run()
 }
 
 function toggleBulletList() {
@@ -169,6 +174,16 @@ function handleSubmit() {
           title="背景高亮"
         >
           <Highlighter :size="14" />
+        </button>
+
+        <!-- 下划线 -->
+        <button
+          @click="toggleUnderline"
+          class="w-6 h-6 rounded-md flex items-center justify-center text-base-content/50 hover:text-base-content hover:bg-base-200 transition-all duration-200"
+          :class="{ 'text-primary bg-primary/10': editor?.isActive('underline') }"
+          title="下划线"
+        >
+          <Underline :size="14" />
         </button>
 
         <!-- 有序列表 -->
