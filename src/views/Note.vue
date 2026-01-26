@@ -13,13 +13,29 @@ const noteListRef = ref(null)
 let savedScrollTop = 0
 const isNoteListScrolledToTop = ref(true)
 
-// 防抖函数
-let updateEditorHeightTimer = null
-function updateEditorHeightDebounced(scrollTop) {
-    clearTimeout(updateEditorHeightTimer)
-    updateEditorHeightTimer = setTimeout(() => {
-        isNoteListScrolledToTop.value = scrollTop <= 100
-    }, 200)
+// 编辑器高度控制状态
+const EDITOR_THRESHOLD = 150 // 切换编辑器高度的滚动阈值
+let lastScrollTop = 0
+let isScrollingDown = false // 滚动方向标志
+
+// 优化的编辑器高度更新逻辑
+function updateEditorHeight(scrollTop) {
+    // 判断滚动方向
+    isScrollingDown = scrollTop > lastScrollTop
+    lastScrollTop = scrollTop
+
+    // 使用方向性阈值，避免在临界点附近反复切换
+    if (isScrollingDown) {
+        // 向下滚动：超过阈值才缩小编辑器
+        if (scrollTop > EDITOR_THRESHOLD && isNoteListScrolledToTop.value) {
+            isNoteListScrolledToTop.value = false
+        }
+    } else {
+        // 向上滚动：回到阈值以下才恢复编辑器
+        if (scrollTop < EDITOR_THRESHOLD / 2 && !isNoteListScrolledToTop.value) {
+            isNoteListScrolledToTop.value = true
+        }
+    }
 }
 
 const notes = ref([])
@@ -87,8 +103,8 @@ function handleNoteListScroll() {
             loadNotes()
         }
 
-        // 对编辑器高度更新使用防抖，避免频繁切换
-        updateEditorHeightDebounced(scrollTop)
+        // 使用优化的编辑器高度更新逻辑
+        updateEditorHeight(scrollTop)
     }
 }
 
