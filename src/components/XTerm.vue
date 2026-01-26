@@ -38,6 +38,56 @@ onMounted(async () => {
     return computed || ''
   }
 
+  // 更新终端主题
+  const updateTerminalTheme = () => {
+    const palette = [
+      getComputedColor('--b1') || '#1e1e1e',      // black
+      getComputedColor('--er') || '#cd3131',      // red
+      getComputedColor('--su') || '#0dbc79',      // green
+      getComputedColor('--wa') || '#e5e510',      // yellow
+      getComputedColor('--in') || '#2472c8',      // blue
+      getComputedColor('--ac') || '#bc3fbc',      // magenta
+      getComputedColor('--in') || '#11a8cd',      // cyan
+      getComputedColor('--bc') || '#e5e5e5',      // white
+      '#666666',                                 // brightBlack
+      getComputedColor('--er') || '#f14c4c',      // brightRed
+      getComputedColor('--su') || '#23d18b',      // brightGreen
+      getComputedColor('--wa') || '#f5f543',      // brightYellow
+      getComputedColor('--in') || '#3b8eea',      // brightBlue
+      getComputedColor('--ac') || '#d670d6',      // brightMagenta
+      getComputedColor('--in') || '#29b8db',      // brightCyan
+      '#ffffff'                                  // brightWhite
+    ]
+
+    // 更新调色板
+    if (terminal) {
+      // 使用 options 方式更新（如果支持）
+      try {
+        terminal.options.colors = palette
+        terminal.options.theme = {
+          background: 'transparent',
+          foreground: getComputedColor('--bc') || '#d4d4d4',
+          cursor: getComputedColor('--bc') || '#ffffff',
+          cursorAccent: getComputedColor('--b1') || '#000000'
+        }
+        // 刷新终端显示
+        terminal.refresh(0, terminal.rows - 1)
+      } catch (e) {
+        // 如果不支持 options 方式，忽略错误
+      }
+    }
+  }
+
+  // 监听主题变化
+  const observer = new MutationObserver(() => {
+    updateTerminalTheme()
+  })
+  
+  observer.observe(document.documentElement, {
+    attributes: true,
+    attributeFilter: ['data-theme']
+  })
+
   // 调色板（16色）
   const palette = [
     getComputedColor('--b1') || '#1e1e1e',      // black
@@ -122,14 +172,6 @@ onMounted(async () => {
   }, 200)
 })
 
-onBeforeUnmount(async () => {
-  if (unlisten) unlisten()
-  if (terminal) terminal.dispose()
-  if (props.sessionId) {
-    await invoke('close_pty_session', { sessionId: props.sessionId })
-  }
-})
-
 // 组件被 keep-alive 激活时
 onActivated(() => {
   // 聚焦终端
@@ -141,6 +183,25 @@ onActivated(() => {
 // 组件被 keep-alive 停用时
 onDeactivated(() => {
   // 可以在这里做一些清理工作
+})
+
+// 组件卸载时清理
+onBeforeUnmount(async () => {
+  // 清理 observer
+  if (observer) {
+    observer.disconnect()
+  }
+  
+  // 清理事件监听
+  if (unlisten) unlisten()
+  
+  // 清理终端
+  if (terminal) terminal.dispose()
+  
+  // 关闭 PTY 会话
+  if (props.sessionId) {
+    await invoke('close_pty_session', { sessionId: props.sessionId })
+  }
 })
 
 // 监听 sessionId 变化

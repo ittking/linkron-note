@@ -1,7 +1,7 @@
 <template>
   <div 
     ref="tabsContainerRef"
-    class="terminal-tabs" 
+    class="flex bg-base-200 border-b border-base-300 overflow-x-auto overflow-y-hidden flex-shrink-0 cursor-grab select-none no-scrollbar"
     @mousedown="handleMouseDown" 
     @mousemove="handleMouseMove" 
     @mouseup="handleMouseUp" 
@@ -10,46 +10,95 @@
     <div
       v-for="tab in tabs"
       :key="tab.id"
-      class="tab"
-      :class="{ active: tab.id === activeTabId }"
+      class="flex items-center px-4 py-2 cursor-pointer border-r border-base-300 whitespace-nowrap bg-base-200 transition-colors relative flex-shrink-0"
+      :class="[
+        tab.id === activeTabId 
+          ? 'text-primary bg-primary/10' 
+          : 'hover:bg-base-300'
+      ]"
       @click="handleTabClick(tab.id)"
       @contextmenu.prevent="handleContextMenu($event, tab)"
     >
-      <span class="tab-title">{{ tab.title }}</span>
+      <span class="text-sm pointer-events-none">{{ tab.title }}</span>
       <span
-        class="tab-close"
+        class="ml-2 opacity-60 cursor-pointer text-base leading-none p-0.5 flex-shrink-0 hover:opacity-100 hover:bg-base-content/10 rounded"
         @click.stop="closeTab(tab.id)"
         v-if="tabs.length > 1"
       >×</span>
+      <!-- 选中状态底部指示条 -->
+      <span
+        v-if="tab.id === activeTabId"
+        class="absolute bottom-0 left-1/2 -translate-x-1/2 w-5 h-0.5 bg-primary rounded-full"
+      ></span>
     </div>
-    <div class="tab-add" @click="addTab">+</div>
+    <div 
+      class="px-4 py-2 cursor-pointer opacity-60 text-xl leading-none transition-opacity flex-shrink-0 hover:opacity-100 hover:text-primary"
+      @click="addTab"
+    >+</div>
   </div>
   
   <!-- 右键菜单 -->
   <div
     v-if="contextMenu.visible"
-    class="context-menu"
+    class="fixed z-[1000] bg-base-200 border border-base-300 rounded-lg shadow-xl min-w-[192px] py-2"
     :style="{ left: contextMenu.x + 'px', top: contextMenu.y + 'px' }"
     @click.stop
   >
-    <div class="context-menu-item" @click="openInNewWindow">
+    <div 
+      class="flex items-center gap-2 px-4 py-2 hover:bg-base-300 cursor-pointer text-base-content transition-colors"
+      @click="openInNewWindow"
+    >
       <span>🔗</span>
-      <span>新窗口打开</span>
+      <span class="text-sm">新窗口打开</span>
     </div>
-    <div class="context-menu-item" @click="renameTab">
+    <div 
+      class="flex items-center gap-2 px-4 py-2 hover:bg-base-300 cursor-pointer text-base-content transition-colors"
+      @click="renameTab"
+    >
       <span>✏️</span>
-      <span>重命名</span>
+      <span class="text-sm">重命名</span>
     </div>
-    <div class="context-menu-divider"></div>
-    <div class="context-menu-item danger" @click="closeTab(contextMenu.tab.id)">
+    <div class="h-px bg-base-300 my-1"></div>
+    <div 
+      class="flex items-center gap-2 px-4 py-2 hover:bg-error/10 cursor-pointer text-error transition-colors"
+      @click="closeTab(contextMenu.tab.id)"
+    >
       <span>✕</span>
-      <span>关闭</span>
+      <span class="text-sm">关闭</span>
     </div>
   </div>
+
+  <!-- 重命名弹窗 -->
+  <dialog :open="renameDialog.visible" class="modal">
+    <div class="modal-box bg-base-200 border border-base-300">
+      <h3 class="font-bold text-lg text-base-content">重命名终端</h3>
+      <div class="py-4">
+        <input
+          v-model="renameDialog.newTitle"
+          type="text"
+          placeholder="输入新的名称"
+          class="input input-bordered w-full"
+          @keyup.enter="confirmRename"
+          ref="renameInputRef"
+        />
+      </div>
+      <div class="modal-action">
+        <button class="btn btn-ghost text-base-content/60 hover:text-base-content" @click="cancelRename">
+          取消
+        </button>
+        <button class="btn btn-primary text-primary-content" @click="confirmRename">
+          确定
+        </button>
+      </div>
+    </div>
+    <form method="dialog" class="modal-backdrop bg-black/50" @click="cancelRename">
+      <button></button>
+    </form>
+  </dialog>
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, onUnmounted } from 'vue'
+import { ref, reactive, onMounted, onUnmounted, nextTick } from 'vue'
 
 const props = defineProps({
   tabs: { type: Array, required: true },
@@ -59,11 +108,17 @@ const props = defineProps({
 const emit = defineEmits(['select', 'add', 'close', 'rename', 'openInNewWindow'])
 
 const tabsContainerRef = ref(null)
+const renameInputRef = ref(null)
 const contextMenu = reactive({
   visible: false,
   x: 0,
   y: 0,
   tab: null
+})
+
+const renameDialog = reactive({
+  visible: false,
+  newTitle: ''
 })
 
 // 拖动滚动相关
@@ -88,12 +143,12 @@ const handleMouseMove = (e) => {
   e.preventDefault()
   const x = e.pageX - tabsContainerRef.value.offsetLeft
   const walk = (x - startX) * 1.5 // 滚动速度
-  
+
   // 如果移动距离超过 5px，则认为是拖动
   if (Math.abs(walk) > 5) {
     hasMoved = true
   }
-  
+
   tabsContainerRef.value.scrollLeft = scrollLeft - walk
 }
 
@@ -134,13 +189,40 @@ const openInNewWindow = () => {
 }
 
 const renameTab = () => {
-  emit('rename', contextMenu.tab.id)
+  renameDialog.visible = true
+  renameDialog.newTitle = contextMenu.tab.title
   hideContextMenu()
+
+  // 聚焦输入框
+  nextTick(() => {
+    if (renameInputRef.value) {
+      renameInputRef.value.focus()
+      renameInputRef.value.select()
+    }
+  })
+}
+
+const confirmRename = () => {
+  if (renameDialog.newTitle.trim()) {
+    emit('rename', contextMenu.tab.id, renameDialog.newTitle.trim())
+  }
+  cancelRename()
+}
+
+const cancelRename = () => {
+  renameDialog.visible = false
+  renameDialog.newTitle = ''
 }
 
 // 点击其他地方关闭菜单
 const handleClickOutside = (e) => {
-  if (!e.target.closest('.context-menu') && !e.target.closest('.tab')) {
+  // 检查点击是否在右键菜单内部
+  const contextMenuEl = e.target.closest('.fixed.z-\\[1000\\]')
+  // 检查点击是否在 tab 上
+  const tab = e.target.closest('.tab')
+  
+  // 如果既不在右键菜单内，也不在 tab 上，则关闭菜单
+  if (!contextMenuEl && !tab) {
     hideContextMenu()
   }
 }
@@ -155,119 +237,5 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-.terminal-tabs {
-  display: flex;
-  background: hsl(var(--b2));
-  border-bottom: 1px solid hsl(var(--bc) / 0.2);
-  overflow-x: auto;
-  flex-shrink: 0;
-  cursor: grab;
-  user-select: none;
-  scrollbar-width: none; /* Firefox */
-  -ms-overflow-style: none; /* IE/Edge */
-}
-
-.terminal-tabs::-webkit-scrollbar {
-  display: none; /* Chrome/Safari/Opera */
-}
-
-.tab {
-  display: flex;
-  align-items: center;
-  padding: 8px 16px;
-  cursor: pointer;
-  border-right: 1px solid hsl(var(--bc) / 0.1);
-  white-space: nowrap;
-  background: hsl(var(--b2));
-  transition: background 0.2s;
-  position: relative;
-  flex-shrink: 0;
-}
-
-.tab:hover {
-  background: hsl(var(--b3));
-}
-
-.tab.active {
-  background: hsl(var(--b1));
-}
-
-.tab-title {
-  font-size: 13px;
-  color: hsl(var(--bc));
-  pointer-events: none;
-}
-
-.tab-close {
-  margin-left: 8px;
-  opacity: 0.6;
-  cursor: pointer;
-  font-size: 16px;
-  line-height: 1;
-  padding: 0 4px;
-  flex-shrink: 0;
-  color: hsl(var(--bc));
-}
-
-.tab-close:hover {
-  opacity: 1;
-  background: hsl(var(--bc) / 0.1);
-  border-radius: 2px;
-}
-
-.tab-add {
-  padding: 8px 16px;
-  cursor: pointer;
-  opacity: 0.6;
-  font-size: 18px;
-  line-height: 1;
-  transition: opacity 0.2s;
-  flex-shrink: 0;
-  color: hsl(var(--bc));
-}
-
-.tab-add:hover {
-  opacity: 1;
-}
-
-/* 右键菜单 */
-.context-menu {
-  position: fixed;
-  background: hsl(var(--b2));
-  border: 1px solid hsl(var(--bc) / 0.2);
-  border-radius: 4px;
-  padding: 4px 0;
-  min-width: 160px;
-  z-index: 1000;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-}
-
-.context-menu-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 16px;
-  cursor: pointer;
-  font-size: 13px;
-  color: hsl(var(--bc));
-  transition: background 0.1s;
-}
-
-.context-menu-item:hover {
-  background: hsl(var(--b3));
-}
-
-.context-menu-item.danger {
-  color: hsl(var(--er));
-}
-
-.context-menu-item.danger:hover {
-  background: hsl(var(--er) / 0.1);
-}
-
-.context-menu-divider {
-  height: 1px;
-  background: hsl(var(--bc) / 0.2);
-  margin: 4px 0;
-}
+/* 无需自定义样式，全部使用 Tailwind CSS 和 DaisyUI */
 </style>

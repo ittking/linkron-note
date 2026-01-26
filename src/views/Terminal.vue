@@ -65,13 +65,9 @@ const handleTabSelect = (id) => {
   terminalStore.selectTab(id)
 }
 
-const handleTabRename = (id) => {
-  const tab = terminalStore.tabs.value.find(t => t.id === id)
-  if (tab) {
-    const newTitle = prompt('请输入新的 Tab 名称:', tab.title)
-    if (newTitle && newTitle.trim()) {
-      terminalStore.updateTabTitle(id, newTitle.trim())
-    }
+const handleTabRename = (id, newTitle) => {
+  if (newTitle && newTitle.trim()) {
+    terminalStore.updateTabTitle(id, newTitle.trim())
   }
 }
 
