@@ -4,10 +4,8 @@ import { MoreHorizontal, ExternalLink, Edit, Trash2, ChevronDown, ChevronUp } fr
 import { useEditor, EditorContent } from '@tiptap/vue-3'
 import { invoke } from '@tauri-apps/api/core'
 import StarterKit from '@tiptap/starter-kit'
-import Image from '@tiptap/extension-image'
 import Highlight from '@tiptap/extension-highlight'
 import { TagExtension } from '@/extensions/tag-extension'
-import { useSettingStore } from '@/store/settingStore'
 import dayjs from 'dayjs'
 import 'dayjs/locale/zh-cn'
 
@@ -22,7 +20,6 @@ const props = defineProps({
 
 const emit = defineEmits(['click', 'open', 'edit', 'delete', 'tag-click'])
 
-const settingStore = useSettingStore()
 const menuVisible = ref(false)
 const isExpanded = ref(false)
 const contentRef = ref(null)
@@ -81,10 +78,6 @@ const editor = useEditor({
         keepMarks: true,
         keepAttributes: false,
       },
-    }),
-    Image.configure({
-      inline: true,
-      allowBase64: true,
     }),
     Highlight.configure({
       multicolor: true,
