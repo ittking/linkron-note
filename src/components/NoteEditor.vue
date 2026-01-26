@@ -362,7 +362,7 @@ async function handleImageUpload(event) {
         type: 'resizableImage',
         attrs: {
           src: resourceUrl,
-          width: '300px',
+          width: '100px',
         },
       }).run()
     } catch (error) {

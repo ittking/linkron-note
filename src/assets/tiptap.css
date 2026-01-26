@@ -60,19 +60,19 @@
 }
 
 .ProseMirror .resizable-image-wrapper:hover img {
-  outline: 2px dashed var(--primary, #3b82f6);
+  outline: 1px dashed var(--color-primary);
   outline-offset: -2px;
 }
 
 .ProseMirror .resize-handle {
   position: absolute;
-  width: 10px;
-  height: 10px;
-  background: var(--primary, #3b82f6);
+  width: 6px;
+  height: 6px;
+  background: var(--color-primary);
   border-radius: 0;
   cursor: nwse-resize;
-  bottom: 0;
-  right: 0;
+  bottom: -3px;
+  right: -3px;
   border: none;
   z-index: 10;
   display: none;
