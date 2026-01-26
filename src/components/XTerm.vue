@@ -24,6 +24,40 @@ let fitAddon = null
 let unlisten = null
 
 onMounted(async () => {
+  // 获取主题颜色 - 使用计算后的 RGB 值
+  const getComputedColor = (varName) => {
+    // 创建一个临时元素来获取计算后的颜色
+    const temp = document.createElement('div')
+    temp.style.color = `var(${varName})`
+    temp.style.display = 'none'
+    document.body.appendChild(temp)
+    
+    const computed = getComputedStyle(temp).color
+    document.body.removeChild(temp)
+    
+    return computed || ''
+  }
+
+  // 调色板（16色）
+  const palette = [
+    getComputedColor('--b1') || '#1e1e1e',      // black
+    getComputedColor('--er') || '#cd3131',      // red
+    getComputedColor('--su') || '#0dbc79',      // green
+    getComputedColor('--wa') || '#e5e510',      // yellow
+    getComputedColor('--in') || '#2472c8',      // blue
+    getComputedColor('--ac') || '#bc3fbc',      // magenta
+    getComputedColor('--in') || '#11a8cd',      // cyan
+    getComputedColor('--bc') || '#e5e5e5',      // white
+    '#666666',                                 // brightBlack
+    getComputedColor('--er') || '#f14c4c',      // brightRed
+    getComputedColor('--su') || '#23d18b',      // brightGreen
+    getComputedColor('--wa') || '#f5f543',      // brightYellow
+    getComputedColor('--in') || '#3b8eea',      // brightBlue
+    getComputedColor('--ac') || '#d670d6',      // brightMagenta
+    getComputedColor('--in') || '#29b8db',      // brightCyan
+    '#ffffff'                                  // brightWhite
+  ]
+
   // 初始化xterm.js
   terminal = new Terminal({
     cursorBlink: true,
@@ -32,30 +66,15 @@ onMounted(async () => {
     letterSpacing: 0,
     lineHeight: 1.2,
     scrollback: 1000,
+    allowProposedApi: true,
     allowTransparency: true,
+    colors: palette,
     theme: {
-      background: '#1e1e1e',
-      foreground: '#d4d4d4',
-      cursor: '#ffffff',
-      cursorAccent: '#000000',
-      black: '#000000',
-      red: '#cd3131',
-      green: '#0dbc79',
-      yellow: '#e5e510',
-      blue: '#2472c8',
-      magenta: '#bc3fbc',
-      cyan: '#11a8cd',
-      white: '#e5e5e5',
-      brightBlack: '#666666',
-      brightRed: '#f14c4c',
-      brightGreen: '#23d18b',
-      brightYellow: '#f5f543',
-      brightBlue: '#3b8eea',
-      brightMagenta: '#d670d6',
-      brightCyan: '#29b8db',
-      brightWhite: '#ffffff'
-    },
-    allowProposedApi: true
+      background: 'transparent',
+      foreground: getComputedColor('--bc') || '#d4d4d4',
+      cursor: getComputedColor('--bc') || '#ffffff',
+      cursorAccent: getComputedColor('--b1') || '#000000'
+    }
   })
 
   fitAddon = new FitAddon()
@@ -225,7 +244,6 @@ const focusTerminal = () => {
   width: 100%;
   height: 100%;
   padding: 0;
-  background: #1e1e1e;
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -245,6 +263,7 @@ const focusTerminal = () => {
   overflow-x: hidden !important;
   width: 100% !important;
   font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', Consolas, 'Courier New', monospace, 'Nerd Font Symbols', 'Nerd Font', 'Font Awesome 6 Free', 'Font Awesome 6 Brands', 'Font Awesome 6 Solid', 'Apple Symbols', 'Segoe UI Symbol', 'Segoe UI Emoji', sans-serif !important;
+  background-color: transparent !important;
 }
 
 /* 隐藏滚动条 */

@@ -157,8 +157,8 @@ onUnmounted(() => {
 <style scoped>
 .terminal-tabs {
   display: flex;
-  background: #2d2d2d;
-  border-bottom: 1px solid #3e3e3e;
+  background: hsl(var(--b2));
+  border-bottom: 1px solid hsl(var(--bc) / 0.2);
   overflow-x: auto;
   flex-shrink: 0;
   cursor: grab;
@@ -176,25 +176,25 @@ onUnmounted(() => {
   align-items: center;
   padding: 8px 16px;
   cursor: pointer;
-  border-right: 1px solid #3e3e3e;
+  border-right: 1px solid hsl(var(--bc) / 0.1);
   white-space: nowrap;
-  background: #2d2d2d;
+  background: hsl(var(--b2));
   transition: background 0.2s;
   position: relative;
   flex-shrink: 0;
 }
 
 .tab:hover {
-  background: #383838;
+  background: hsl(var(--b3));
 }
 
 .tab.active {
-  background: #1e1e1e;
+  background: hsl(var(--b1));
 }
 
 .tab-title {
   font-size: 13px;
-  color: #d4d4d4;
+  color: hsl(var(--bc));
   pointer-events: none;
 }
 
@@ -206,11 +206,12 @@ onUnmounted(() => {
   line-height: 1;
   padding: 0 4px;
   flex-shrink: 0;
+  color: hsl(var(--bc));
 }
 
 .tab-close:hover {
   opacity: 1;
-  background: rgba(255, 255, 255, 0.1);
+  background: hsl(var(--bc) / 0.1);
   border-radius: 2px;
 }
 
@@ -222,6 +223,7 @@ onUnmounted(() => {
   line-height: 1;
   transition: opacity 0.2s;
   flex-shrink: 0;
+  color: hsl(var(--bc));
 }
 
 .tab-add:hover {
@@ -231,8 +233,8 @@ onUnmounted(() => {
 /* 右键菜单 */
 .context-menu {
   position: fixed;
-  background: #2d2d2d;
-  border: 1px solid #3e3e3e;
+  background: hsl(var(--b2));
+  border: 1px solid hsl(var(--bc) / 0.2);
   border-radius: 4px;
   padding: 4px 0;
   min-width: 160px;
@@ -247,25 +249,25 @@ onUnmounted(() => {
   padding: 8px 16px;
   cursor: pointer;
   font-size: 13px;
-  color: #d4d4d4;
+  color: hsl(var(--bc));
   transition: background 0.1s;
 }
 
 .context-menu-item:hover {
-  background: #383838;
+  background: hsl(var(--b3));
 }
 
 .context-menu-item.danger {
-  color: #f48771;
+  color: hsl(var(--er));
 }
 
 .context-menu-item.danger:hover {
-  background: rgba(244, 135, 113, 0.1);
+  background: hsl(var(--er) / 0.1);
 }
 
 .context-menu-divider {
   height: 1px;
-  background: #3e3e3e;
+  background: hsl(var(--bc) / 0.2);
   margin: 4px 0;
 }
 </style>

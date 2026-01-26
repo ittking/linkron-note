@@ -105,7 +105,7 @@ onMounted(async () => {
   display: flex;
   flex-direction: column;
   height: 100%;
-  background: #1e1e1e;
+  background: hsl(var(--b1));
   overflow: hidden;
 }
 
@@ -124,8 +124,8 @@ onMounted(async () => {
   align-items: center;
   justify-content: center;
   height: 100%;
-  color: #888;
+  color: hsl(var(--bc) / 0.6);
   font-size: 14px;
-  background: #1e1e1e;
+  background: hsl(var(--b1));
 }
 </style>
