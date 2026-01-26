@@ -1,12 +1,77 @@
 <script setup>
-import { onMounted } from 'vue'
+import { onMounted, onUnmounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { BookOpen, Terminal, Settings, Minimize2 } from 'lucide-vue-next'
 import { useSettingStore } from './store/settingStore'
+import { getCurrentWindow, LogicalSize } from '@tauri-apps/api/window'
 
 const settingStore = useSettingStore()
 const router = useRouter()
 const route = useRoute()
+const appWindow = getCurrentWindow()
+
+// 防抖函数
+function debounce(func, wait) {
+  let timeout
+  return function executedFunction(...args) {
+    const later = () => {
+      clearTimeout(timeout)
+      func(...args)
+    }
+    clearTimeout(timeout)
+    timeout = setTimeout(later, wait)
+  }
+}
+
+// 保存窗口大小
+async function saveWindowSize() {
+  try {
+    const size = await appWindow.innerSize()
+    // 转换为 LogicalSize 以处理 DPI 缩放
+    const scaleFactor = await appWindow.scaleFactor()
+    const logicalWidth = size.width / scaleFactor
+    const logicalHeight = size.height / scaleFactor
+
+    // 确保值有效
+    if (logicalWidth > 0 && logicalHeight > 0) {
+      await settingStore.set('windowWidth', logicalWidth)
+      await settingStore.set('windowHeight', logicalHeight)
+    }
+  } catch (error) {
+    console.error('Failed to save window size:', error)
+  }
+}
+
+// 防抖的保存函数
+const debouncedSaveWindowSize = debounce(saveWindowSize, 300)
+
+// 恢复窗口大小
+async function restoreWindowSize() {
+  try {
+    const width = await settingStore.get('windowWidth', 800)
+    const height = await settingStore.get('windowHeight', 600)
+
+    // 确保值有效
+    if (width && height && width > 0 && height > 0) {
+      await appWindow.setSize(new LogicalSize(width, height))
+    }
+  } catch (error) {
+    console.error('Failed to restore window size:', error)
+  }
+}
+
+// 监听窗口大小变化
+let unlistenResize = null
+
+async function setupWindowResizeListener() {
+  try {
+    unlistenResize = await appWindow.onResized(() => {
+      debouncedSaveWindowSize()
+    })
+  } catch (error) {
+    console.error('Failed to setup window resize listener:', error)
+  }
+}
 
 const tabs = [
   { name: '笔记', path: '/note', icon: BookOpen },
@@ -33,6 +98,19 @@ onMounted(async () => {
     document.documentElement.setAttribute('data-theme', theme)
   } catch (error) {
     console.error('Failed to load theme:', error)
+  }
+
+  // 恢复窗口大小
+  await restoreWindowSize()
+
+  // 设置窗口大小变化监听
+  await setupWindowResizeListener()
+})
+
+// 组件卸载时清理监听器
+onUnmounted(() => {
+  if (unlistenResize) {
+    unlistenResize()
   }
 })
 </script>
