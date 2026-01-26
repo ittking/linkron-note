@@ -242,10 +242,15 @@ const focusTerminal = () => {
   font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', Consolas, 'Courier New', monospace, 'Nerd Font Symbols', 'Nerd Font', 'Font Awesome 6 Free', 'Font Awesome 6 Brands', 'Font Awesome 6 Solid', 'Apple Symbols', 'Segoe UI Symbol', 'Segoe UI Emoji', sans-serif !important;
 }
 
-/* 隐藏滚动条但保留功能 */
-.xterm-container :deep(.xterm-viewport::-webkit-scrollbar) {
-  width: 0px;
-  background: transparent;
+/* 隐藏滚动条 */
+.xterm-container :deep(.xterm-viewport)::-webkit-scrollbar {
+  width: 0px !important;
+  background: transparent !important;
+}
+
+.xterm-container :deep(.xterm-viewport) {
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
 }
 
 .xterm-container :deep(.xterm-screen) {
