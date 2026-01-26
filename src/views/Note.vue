@@ -187,19 +187,20 @@ async function handleEditorSubmit() {
 }
 
 // 图片上传处理
-async function handleImageUpload(file) {
-    const reader = new FileReader()
-    reader.onload = async (e) => {
+async function handleImageUpload(imagePath) {
+    try {
         const newNote = await noteStore.addNote({
             type: 'image',
-            content: file.name || '图片笔记',
-            images: [e.target.result]
+            content: '图片笔记',
+            images: [imagePath]
         })
         // 直接在数组开头添加新笔记
         notes.value.unshift(newNote)
         showToast('图片笔记创建成功', 'success')
+    } catch (error) {
+        console.error('Failed to create image note:', error)
+        showToast('图片笔记创建失败', 'error')
     }
-    reader.readAsDataURL(file)
 }
 
 // 拖拽事件处理
@@ -258,13 +259,30 @@ function handleDroppedData(data) {
 }
 
 // 处理拖拽文件
-function handleDroppedFile(file) {
+async function handleDroppedFile(file) {
     if (file.type.startsWith('image/')) {
-        const reader = new FileReader()
-        reader.onload = (e) => {
-            createImageNote(e.target.result, file.name)
+        try {
+            // 读取文件为 ArrayBuffer
+            const arrayBuffer = await file.arrayBuffer()
+            const uint8Array = new Uint8Array(arrayBuffer)
+            
+            // 调用后端命令保存图片
+            const workDirectory = await noteStore.getWorkDirectory()
+            const imagePath = await invoke('save_image', {
+                fileData: Array.from(uint8Array),
+                fileName: file.name,
+                workDirectory
+            })
+            
+            // 使用 iterm:// 协议
+            const resourceUrl = await invoke('get_resource_url', { relativePath: imagePath })
+            
+            // 插入图片到编辑器
+            editorContent.value += `<img src="${resourceUrl}" alt="${file.name}" />`
+        } catch (error) {
+            console.error('Failed to save image:', error)
+            showToast('图片保存失败', 'error')
         }
-        reader.readAsDataURL(file)
     } else {
         showToast('不支持的文件类型', 'error')
     }

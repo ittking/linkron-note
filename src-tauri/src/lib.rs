@@ -4,6 +4,7 @@ mod autostart;
 mod filesystem;
 mod terminal;
 mod database;
+mod protocol;
 
 #[cfg(any(windows, target_os = "macos"))]
 mod window_manager;
@@ -28,8 +29,10 @@ pub fn run() {
                     window_manager::set_window_on_all_desktops(&window);
                 }
             }
+
             Ok(())
         })
+        .register_uri_scheme_protocol("iterm", protocol::iterm_protocol_handler)
         .invoke_handler(tauri::generate_handler![
             greet,
             mouse::start_mouse_listener,
@@ -39,6 +42,9 @@ pub fn run() {
             autostart::is_autostart_enabled,
             filesystem::check_directory_exists,
             filesystem::create_directory,
+            filesystem::save_image,
+            filesystem::get_image_path,
+            filesystem::get_resource_url,
             terminal::create_pty_session,
             terminal::write_to_pty,
             terminal::resize_pty,

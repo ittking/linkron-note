@@ -45,6 +45,7 @@ const props = defineProps({
 const emit = defineEmits(['update:modelValue', 'submit', 'image-upload'])
 
 const settingStore = useSettingStore()
+const imageInputRef = ref(null)
 
 // 获取工作目录
 async function getWorkDirectory() {
@@ -330,10 +331,35 @@ function insertTag() {
   editor.value?.chain().focus().insertContent('#').run()
 }
 
-function handleImageUpload(event) {
+// 触发图片上传
+function triggerImageUpload() {
+  imageInputRef.value?.click()
+}
+
+async function handleImageUpload(event) {
   const file = event.target.files[0]
   if (file) {
-    emit('image-upload', file)
+    try {
+      // 读取文件为 ArrayBuffer
+      const arrayBuffer = await file.arrayBuffer()
+      const uint8Array = new Uint8Array(arrayBuffer)
+      
+      // 调用后端命令保存图片
+      const workDirectory = await getWorkDirectory()
+      const imagePath = await invoke('save_image', {
+        fileData: Array.from(uint8Array),
+        fileName: file.name,
+        workDirectory
+      })
+      
+      // 使用 iterm:// 协议
+      const resourceUrl = await invoke('get_resource_url', { relativePath: imagePath })
+      
+      // 插入图片到编辑器
+      editor.value?.chain().focus().setImage({ src: resourceUrl }).run()
+    } catch (error) {
+      console.error('Failed to save image:', error)
+    }
   }
   // 重置 input
   event.target.value = ''
@@ -376,11 +402,13 @@ function handleSubmit() {
 
         <!-- 图片 -->
         <button
+          @click="triggerImageUpload"
           class="w-6 h-6 rounded-md flex items-center justify-center text-base-content/50 hover:text-base-content hover:bg-base-200 transition-all duration-200"
           title="插入图片"
         >
           <ImageIcon :size="14" />
           <input
+            ref="imageInputRef"
             type="file"
             accept="image/*"
             class="hidden"

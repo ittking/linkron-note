@@ -2,10 +2,12 @@
 import { computed, ref, onMounted, onBeforeUnmount, watch } from 'vue'
 import { MoreHorizontal, ExternalLink, Edit, Trash2, ChevronDown, ChevronUp } from 'lucide-vue-next'
 import { useEditor, EditorContent } from '@tiptap/vue-3'
+import { invoke } from '@tauri-apps/api/core'
 import StarterKit from '@tiptap/starter-kit'
 import Image from '@tiptap/extension-image'
 import Highlight from '@tiptap/extension-highlight'
 import { TagExtension } from '@/extensions/tag-extension'
+import { useSettingStore } from '@/store/settingStore'
 import dayjs from 'dayjs'
 import 'dayjs/locale/zh-cn'
 
@@ -20,11 +22,51 @@ const props = defineProps({
 
 const emit = defineEmits(['click', 'open', 'edit', 'delete', 'tag-click'])
 
+const settingStore = useSettingStore()
 const menuVisible = ref(false)
 const isExpanded = ref(false)
 const contentRef = ref(null)
 const isOverflowing = ref(false)
 const MAX_HEIGHT = 120 // 最大高度，超过这个高度显示展开按钮
+
+// 从内容中提取图片列表
+const extractedImages = computed(() => {
+  if (!props.note.content) return []
+  const imgRegex = /<img[^>]*src=["']([^"']+)["'][^>]*>/gi
+  const images = []
+  let match
+  while ((match = imgRegex.exec(props.note.content)) !== null) {
+    // 解码 HTML 实体（如 &amp; -> &）
+    images.push(decodeHtmlEntities(match[1]))
+  }
+  return images
+})
+
+// 解析图片路径（异步）
+async function resolveImagePath(src) {
+  // 如果是相对路径（以 resources/ 开头），使用 iterm:// 协议
+  if (src.startsWith('resources/')) {
+    try {
+      const resourceUrl = await invoke('get_resource_url', {
+        relativePath: src
+      })
+      return resourceUrl
+    } catch (error) {
+      console.error('Failed to resolve image path:', error)
+      return src
+    }
+  }
+  // 如果是 file:// 协议或其他格式，直接返回
+  return src
+}
+
+// 解析后的图片路径列表
+const resolvedImages = ref([])
+
+// 监听 extractedImages 变化，解析图片路径
+watch(extractedImages, async (newImages) => {
+  resolvedImages.value = await Promise.all(newImages.map(resolveImagePath))
+}, { immediate: true })
 
 // 创建只读编辑器实例来渲染内容
 const editor = useEditor({
@@ -85,19 +127,6 @@ function decodeHtmlEntities(str) {
   textarea.innerHTML = str
   return textarea.value
 }
-
-// 从内容中提取图片列表
-const extractedImages = computed(() => {
-  if (!props.note.content) return []
-  const imgRegex = /<img[^>]*src=["']([^"']+)["'][^>]*>/gi
-  const images = []
-  let match
-  while ((match = imgRegex.exec(props.note.content)) !== null) {
-    // 解码 HTML 实体（如 &amp; -> &）
-    images.push(decodeHtmlEntities(match[1]))
-  }
-  return images
-})
 
 // 从内容中提取标签列表
 const extractedTags = computed(() => {
@@ -266,9 +295,9 @@ onBeforeUnmount(() => {
     </div>
 
     <!-- 图片列表 -->
-    <div v-if="extractedImages.length > 0 && !isExpanded" class="flex flex-wrap gap-2 mt-3">
+    <div v-if="resolvedImages.length > 0 && !isExpanded" class="flex flex-wrap gap-2 mt-3">
       <img
-        v-for="(img, index) in extractedImages"
+        v-for="(img, index) in resolvedImages"
         :key="index"
         :src="img"
         class="w-20 h-20 rounded-lg object-cover border border-base-200 cursor-pointer hover:opacity-80 transition-opacity"

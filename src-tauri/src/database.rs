@@ -249,7 +249,6 @@ impl Database {
             ],
         )?;
 
-        // 解析并创建标签关联
         self.parse_and_create_tags(&id, &note_data.content)?;
 
         Ok(Note {
