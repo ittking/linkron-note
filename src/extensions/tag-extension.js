@@ -51,7 +51,7 @@ export const TagExtension = Node.create({
       {
         "data-type": "tag",
         class:
-          "inline-flex items-center gap-1 rounded-md text-primary text-xs font-medium cursor-pointer hover:text-primary/80 transition-colors",
+          "inline-flex items-center gap-1 rounded-md text-primary text-sm cursor-pointer hover:text-primary/80 transition-colors",
         "data-id": HTMLAttributes.id,
         "data-name": HTMLAttributes.name,
         "data-display-name": HTMLAttributes.displayName,
@@ -66,7 +66,7 @@ export const TagExtension = Node.create({
     return ({ node }) => {
       const span = document.createElement("span");
       span.className =
-        "inline-flex items-center gap-1 rounded-md text-primary text-xs font-medium cursor-pointer hover:text-primary/80 transition-colors";
+        "inline-flex items-center gap-1 rounded-md text-primary text-sm cursor-pointer hover:text-primary/80 transition-colors";
       span.dataset.type = "tag";
       span.dataset.id = node.attrs.id || "";
       span.dataset.name = node.attrs.name || "";
