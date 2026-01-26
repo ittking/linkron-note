@@ -3,7 +3,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onBeforeUnmount, watch, onUnmounted, onActivated, onDeactivated } from 'vue'
+import { ref, onMounted, onBeforeUnmount, watch, onActivated, onDeactivated } from 'vue'
 import { Terminal } from 'xterm'
 import { FitAddon } from 'xterm-addon-fit'
 import { invoke } from '@tauri-apps/api/core'
@@ -22,6 +22,12 @@ const terminalContainer = ref(null)
 let terminal = null
 let fitAddon = null
 let unlisten = null
+let resizeObserver = null // 保存 ResizeObserver 实例
+let isTabActive = true // 标记当前 tab 是否激活
+let resizeTimeout = null // 保存 resize timeout
+let lastWidth = 0 // 保存上一次宽度
+let lastHeight = 0 // 保存上一次高度
+let handleResize = null // 保存窗口 resize 处理函数
 
 onMounted(async () => {
   // 获取主题颜色 - 使用计算后的 RGB 值
@@ -131,12 +137,12 @@ onMounted(async () => {
   terminal.loadAddon(fitAddon)
   terminal.open(terminalContainer.value)
   
-  // 等待 DOM 更新后再 fit
+  // 延迟 fit，避免与 onActivated 冲突
   setTimeout(() => {
     if (fitAddon) {
       fitAddon.fit()
     }
-  }, 100)
+  }, 200)
 
   // 监听用户输入
   terminal.onData((data) => {
@@ -170,59 +176,12 @@ onMounted(async () => {
   setTimeout(() => {
     focusTerminal()
   }, 200)
-})
 
-// 组件被 keep-alive 激活时
-onActivated(() => {
-  // 聚焦终端
-  setTimeout(() => {
-    focusTerminal()
-  }, 50)
-})
-
-// 组件被 keep-alive 停用时
-onDeactivated(() => {
-  // 可以在这里做一些清理工作
-})
-
-// 组件卸载时清理
-onBeforeUnmount(async () => {
-  // 清理 observer
-  if (observer) {
-    observer.disconnect()
-  }
-  
-  // 清理事件监听
-  if (unlisten) unlisten()
-  
-  // 清理终端
-  if (terminal) terminal.dispose()
-  
-  // 关闭 PTY 会话
-  if (props.sessionId) {
-    await invoke('close_pty_session', { sessionId: props.sessionId })
-  }
-})
-
-// 监听 sessionId 变化
-watch(() => props.sessionId, async (newId) => {
-  if (terminal && fitAddon) {
-    fitAddon.fit()
-    await invoke('resize_pty', {
-      sessionId: newId,
-      cols: terminal.cols,
-      rows: terminal.rows
-    })
-  }
-})
-
-// 监听容器大小变化
-onMounted(() => {
-  let resizeTimeout = null
-  let lastWidth = 0
-  let lastHeight = 0
-  
-  const resizeObserver = new ResizeObserver((entries) => {
+  // 创建 ResizeObserver（只创建一次）
+  resizeObserver = new ResizeObserver((entries) => {
+    // 如果 tab 不活跃，不处理 resize
+    if (!isTabActive) return
+    
     // 防抖，避免频繁触发
     if (resizeTimeout) {
       clearTimeout(resizeTimeout)
@@ -256,7 +215,10 @@ onMounted(() => {
   }
   
   // 监听窗口大小变化
-  const handleResize = () => {
+  handleResize = () => {
+    // 如果 tab 不活跃，不处理 resize
+    if (!isTabActive) return
+    
     if (resizeTimeout) {
       clearTimeout(resizeTimeout)
     }
@@ -282,14 +244,69 @@ onMounted(() => {
   }
   
   window.addEventListener('resize', handleResize)
+})
+
+// 组件被 keep-alive 激活时
+onActivated(() => {
+  isTabActive = true
   
-  onUnmounted(() => {
-    if (resizeTimeout) {
-      clearTimeout(resizeTimeout)
-    }
+  // 聚焦终端并滚动到底部
+  setTimeout(() => {
+    focusTerminal()
+    
+    // 滚动到底部
+    setTimeout(() => {
+      if (terminal) {
+        terminal.scrollToBottom()
+      }
+    }, 100)
+  }, 50)
+})
+
+// 组件被 keep-alive 停用时
+onDeactivated(() => {
+  isTabActive = false
+})
+
+// 组件卸载时清理
+onBeforeUnmount(async () => {
+  // 清理 ResizeObserver
+  if (resizeObserver) {
     resizeObserver.disconnect()
+  }
+  
+  // 清理 resize timeout
+  if (resizeTimeout) {
+    clearTimeout(resizeTimeout)
+  }
+  
+  // 移除窗口 resize 事件监听
+  if (handleResize) {
     window.removeEventListener('resize', handleResize)
-  })
+  }
+  
+  // 清理事件监听
+  if (unlisten) unlisten()
+  
+  // 清理终端
+  if (terminal) terminal.dispose()
+  
+  // 关闭 PTY 会话
+  if (props.sessionId) {
+    await invoke('close_pty_session', { sessionId: props.sessionId })
+  }
+})
+
+// 监听 sessionId 变化
+watch(() => props.sessionId, async (newId) => {
+  if (terminal && fitAddon) {
+    fitAddon.fit()
+    await invoke('resize_pty', {
+      sessionId: newId,
+      cols: terminal.cols,
+      rows: terminal.rows
+    })
+  }
 })
 
 // 聚焦终端
