@@ -5,7 +5,7 @@
       :key="tab.id"
       class="tab"
       :class="{ active: tab.id === activeTabId }"
-      @click="selectTab(tab.id)"
+      @click="handleTabClick(tab.id)"
     >
       <span class="tab-title">{{ tab.title }}</span>
       <span
@@ -26,6 +26,11 @@ const props = defineProps({
 
 const emit = defineEmits(['select', 'add', 'close'])
 
+const handleTabClick = (id) => {
+  console.log('TerminalTab: handleTabClick called, id:', id, 'current activeTabId:', props.activeTabId)
+  selectTab(id)
+}
+
 const selectTab = (id) => {
   console.log('TerminalTab: selectTab clicked, id:', id)
   emit('select', id)
@@ -40,6 +45,7 @@ const closeTab = (id) => emit('close', id)
   background: #2d2d2d;
   border-bottom: 1px solid #3e3e3e;
   overflow-x: auto;
+  flex-shrink: 0;
 }
 
 .tab {
@@ -52,6 +58,8 @@ const closeTab = (id) => emit('close', id)
   white-space: nowrap;
   background: #2d2d2d;
   transition: background 0.2s;
+  position: relative;
+  z-index: 1;
 }
 
 .tab:hover {
@@ -65,6 +73,7 @@ const closeTab = (id) => emit('close', id)
 .tab-title {
   font-size: 13px;
   color: #d4d4d4;
+  pointer-events: none;
 }
 
 .tab-close {
@@ -74,6 +83,7 @@ const closeTab = (id) => emit('close', id)
   font-size: 16px;
   line-height: 1;
   padding: 0 4px;
+  flex-shrink: 0;
 }
 
 .tab-close:hover {
@@ -89,6 +99,7 @@ const closeTab = (id) => emit('close', id)
   font-size: 18px;
   line-height: 1;
   transition: opacity 0.2s;
+  flex-shrink: 0;
 }
 
 .tab-add:hover {

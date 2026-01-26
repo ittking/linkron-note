@@ -1,8 +1,8 @@
 <template>
   <div class="terminal-view">
     <TerminalTab
-      :tabs="terminalStore.tabs"
-      :activeTabId="terminalStore.activeTabId"
+      :tabs="terminalStore.tabs.value"
+      :activeTabId="terminalStore.activeTabId.value"
       @select="handleTabSelect"
       @add="addTerminal"
       @close="closeTerminal"
@@ -10,10 +10,10 @@
     <div class="terminal-content">
       <!-- 调试信息 -->
       <div style="color: #666; padding: 4px; font-size: 12px;">
-        activeTabId: {{ terminalStore.activeTabId }} | visibleTabId: {{ visibleTabId }}
+        activeTabId: {{ terminalStore.activeTabId.value }} | visibleTabId: {{ visibleTabId }}
       </div>
       
-      <template v-for="tab in terminalStore.tabs" :key="tab.id">
+      <template v-for="tab in terminalStore.tabs.value" :key="tab.id">
         <XTerm
           v-if="tab.id === visibleTabId"
           :sessionId="tab.id"
@@ -22,7 +22,7 @@
           @data="handleTerminalInput"
         />
       </template>
-      <div v-if="terminalStore.tabs.length === 0" class="empty-state">
+      <div v-if="terminalStore.tabs.value.length === 0" class="empty-state">
         <p>点击 + 创建新终端</p>
       </div>
     </div>
@@ -30,7 +30,7 @@
 </template>
 
 <script setup>
-import { onMounted, ref, computed } from 'vue'
+import { onMounted, ref, computed, watch } from 'vue'
 import { useTerminalStore } from '@/store/terminalStore'
 import { invoke } from '@tauri-apps/api/core'
 import TerminalTab from '@/components/TerminalTab.vue'
@@ -41,8 +41,8 @@ const currentWorkingDir = ref(null)
 
 // 计算当前应该显示的 Tab
 const visibleTabId = computed(() => {
-  console.log('visibleTabId computed:', terminalStore.activeTabId)
-  return terminalStore.activeTabId
+  console.log('visibleTabId computed:', terminalStore.activeTabId.value)
+  return terminalStore.activeTabId.value
 })
 
 // 获取当前工作目录
@@ -73,36 +73,41 @@ const handleTabSelect = (id) => {
 }
 
 const handleTerminalInput = async (data) => {
-  if (terminalStore.activeTabId) {
+  if (terminalStore.activeTabId.value) {
     await invoke('write_to_pty', {
-      sessionId: terminalStore.activeTabId,
+      sessionId: terminalStore.activeTabId.value,
       data
     })
   }
 }
+
+// 监听 activeTabId 的变化
+watch(() => terminalStore.activeTabId.value, (newVal, oldVal) => {
+  console.log('activeTabId changed from', oldVal, 'to', newVal)
+})
 
 onMounted(async () => {
   // 获取当前工作目录
   await getCurrentDirectory()
   
   // 如果没有 Tab，则创建一个
-  if (terminalStore.tabs.length === 0) {
+  if (terminalStore.tabs.value.length === 0) {
     console.log('Creating first terminal...')
     addTerminal()
-    console.log('After addTerminal, tabs:', terminalStore.tabs.length, 'activeTabId:', terminalStore.activeTabId)
+    console.log('After addTerminal, tabs:', terminalStore.tabs.value.length, 'activeTabId:', terminalStore.activeTabId.value)
   }
   
   console.log('Terminal store state:', {
-    tabs: terminalStore.tabs,
-    activeTabId: terminalStore.activeTabId,
+    tabs: terminalStore.tabs.value,
+    activeTabId: terminalStore.activeTabId.value,
     activeTab: terminalStore.activeTab
   })
   
   // 添加定时器检查状态
   setTimeout(() => {
     console.log('Terminal store state after 500ms:', {
-      tabs: terminalStore.tabs,
-      activeTabId: terminalStore.activeTabId,
+      tabs: terminalStore.tabs.value,
+      activeTabId: terminalStore.activeTabId.value,
       activeTab: terminalStore.activeTab
     })
   }, 500)
@@ -110,8 +115,8 @@ onMounted(async () => {
   // 再添加一个定时器
   setTimeout(() => {
     console.log('Terminal store state after 1000ms:', {
-      tabs: terminalStore.tabs,
-      activeTabId: terminalStore.activeTabId,
+      tabs: terminalStore.tabs.value,
+      activeTabId: terminalStore.activeTabId.value,
       activeTab: terminalStore.activeTab
     })
   }, 1000)

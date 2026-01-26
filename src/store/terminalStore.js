@@ -1,4 +1,4 @@
-import { reactive, computed } from 'vue'
+import { reactive, computed, toRefs } from 'vue'
 import { ulid } from 'ulid'
 
 /**
@@ -75,8 +75,7 @@ function clearTabs() {
 
 export function useTerminalStore() {
   return {
-    tabs: state.tabs,
-    activeTabId: state.activeTabId,
+    ...toRefs(state),
     activeTab,
     createTab,
     closeTab,
