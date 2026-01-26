@@ -8,14 +8,9 @@
       @close="closeTerminal"
     />
     <div class="terminal-content">
-      <!-- 调试信息 -->
-      <div style="color: #666; padding: 4px; font-size: 12px;">
-        activeTabId: {{ terminalStore.activeTabId.value }} | visibleTabId: {{ visibleTabId }}
-      </div>
-      
       <template v-for="tab in terminalStore.tabs.value" :key="tab.id">
         <XTerm
-          v-if="tab.id === visibleTabId"
+          v-show="tab.id === visibleTabId"
           :sessionId="tab.id"
           :shell="tab.shell"
           :workingDir="currentWorkingDir"
@@ -139,6 +134,7 @@ onMounted(async () => {
   display: flex;
   flex-direction: column;
   min-height: 0;
+  min-width: 0;
 }
 
 .empty-state {
