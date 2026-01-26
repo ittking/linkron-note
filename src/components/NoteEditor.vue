@@ -319,6 +319,11 @@ function toggleOrderedList() {
   editor.value?.chain().focus().toggleOrderedList().run()
 }
 
+// 插入标签 #
+function insertTag() {
+  editor.value?.chain().focus().insertContent('#').run()
+}
+
 function handleImageUpload(event) {
   const file = event.target.files[0]
   if (file) {
