@@ -383,7 +383,7 @@ function handleSubmit() {
     <!-- 编辑器内容区域 -->
     <EditorContent 
       :editor="editor" 
-      class="mb-3 transition-all duration-200 overflow-y-auto max-h-[400px]"
+      class="mb-3 transition-all duration-200 overflow-y-auto max-h-[400px] no-scrollbar"
       :class="{ 
         'min-h-[80px]': props.isScrolledToTop,
         'min-h-[40px]': !props.isScrolledToTop
