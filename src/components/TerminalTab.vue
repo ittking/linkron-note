@@ -32,14 +32,22 @@
       ></span>
     </div>
     <div 
-      class="px-4 py-2 cursor-pointer opacity-60 text-xl leading-none transition-opacity flex-shrink-0 hover:opacity-100 hover:text-primary"
+      class="tab-add px-4 py-2 cursor-pointer opacity-60 text-xl leading-none transition-opacity flex-shrink-0 hover:opacity-100 hover:text-primary"
       @click="addTab"
     >+</div>
   </div>
   
+  <!-- 透明蒙版层 -->
+  <div
+    v-if="contextMenu.visible"
+    class="fixed inset-0 z-[999] bg-transparent"
+    @click="hideContextMenu"
+  ></div>
+  
   <!-- 右键菜单 -->
   <div
     v-if="contextMenu.visible"
+    data-context-menu
     class="fixed z-[1000] bg-base-200 border border-base-300 rounded-lg shadow-xl min-w-[192px] py-2"
     :style="{ left: contextMenu.x + 'px', top: contextMenu.y + 'px' }"
     @click.stop
@@ -214,25 +222,12 @@ const cancelRename = () => {
   renameDialog.newTitle = ''
 }
 
-// 点击其他地方关闭菜单
-const handleClickOutside = (e) => {
-  // 检查点击是否在右键菜单内部
-  const contextMenuEl = e.target.closest('.fixed.z-\\[1000\\]')
-  // 检查点击是否在 tab 上
-  const tab = e.target.closest('.tab')
-  
-  // 如果既不在右键菜单内，也不在 tab 上，则关闭菜单
-  if (!contextMenuEl && !tab) {
-    hideContextMenu()
-  }
-}
-
 onMounted(() => {
-  document.addEventListener('click', handleClickOutside)
+  // 不再需要全局点击监听，蒙版层会处理
 })
 
 onUnmounted(() => {
-  document.removeEventListener('click', handleClickOutside)
+  // 不再需要清理全局点击监听
 })
 </script>
 
