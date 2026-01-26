@@ -24,11 +24,19 @@ export function useNoteStore() {
   }
 
   /**
-   * 获取所有笔记
+   * 获取所有笔记（分页）
    */
-  async function getNotes() {
+  async function getNotes(page = 1, pageSize = 20) {
     const workDirectory = await getWorkDirectory()
-    return await invoke('get_all_notes', { workDirectory })
+    return await invoke('get_all_notes', { page, pageSize, workDirectory })
+  }
+
+  /**
+   * 获取笔记总数
+   */
+  async function getNotesCount() {
+    const workDirectory = await getWorkDirectory()
+    return await invoke('get_notes_count', { workDirectory })
   }
 
   /**
@@ -106,6 +114,7 @@ export function useNoteStore() {
   return {
     initDatabase,
     getNotes,
+    getNotesCount,
     getNote,
     addNote,
     updateNote,

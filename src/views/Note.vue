@@ -21,6 +21,12 @@ const toastMessage = ref('')
 const toastVisible = ref(false)
 const toastType = ref('info')
 
+// 分页相关状态
+const currentPage = ref(1)
+const pageSize = ref(20)
+const hasMore = ref(true)
+const isLoading = ref(false)
+
 // 编辑相关状态
 const editingNote = ref(null)
 const isEditing = ref(false)
@@ -58,6 +64,15 @@ onActivated(async () => {
 function handleNoteListScroll() {
     if (noteListRef.value) {
         isNoteListScrolledToTop.value = noteListRef.value.scrollTop === 0
+        
+        // 滚动到底部时加载更多
+        const { scrollTop, scrollHeight, clientHeight } = noteListRef.value
+        const distanceToBottom = scrollHeight - scrollTop - clientHeight
+        
+        // 距离底部小于 100px 时加载更多
+        if (distanceToBottom < 100 && hasMore.value && !isLoading.value) {
+            loadNotes()
+        }
     }
 }
 
@@ -77,8 +92,39 @@ function showToast(message, type = 'info') {
 }
 
 // 加载笔记
-async function loadNotes() {
-    notes.value = await noteStore.getNotes()
+async function loadNotes(reset = false) {
+    if (isLoading.value) return
+    
+    if (reset) {
+        currentPage.value = 1
+        notes.value = []
+        hasMore.value = true
+    }
+    
+    if (!hasMore.value) return
+    
+    isLoading.value = true
+    
+    try {
+        const newNotes = await noteStore.getNotes(currentPage.value, pageSize.value)
+        
+        if (newNotes.length < pageSize.value) {
+            hasMore.value = false
+        }
+        
+        if (reset) {
+            notes.value = newNotes
+        } else {
+            notes.value = [...notes.value, ...newNotes]
+        }
+        
+        currentPage.value++
+    } catch (error) {
+        console.error('Failed to load notes:', error)
+        showToast('加载笔记失败', 'error')
+    } finally {
+        isLoading.value = false
+    }
 }
 
 // 编辑器提交
@@ -92,7 +138,7 @@ async function handleEditorSubmit() {
             editingNote.value = null
             isEditing.value = false
             editorContent.value = ''
-            await loadNotes()
+            await loadNotes(true)
             showToast('笔记更新成功', 'success')
         } else {
             // 创建模式：创建新笔记
@@ -102,7 +148,7 @@ async function handleEditorSubmit() {
                 images: []
             })
             editorContent.value = ''
-            await loadNotes()
+            await loadNotes(true)
             showToast('笔记创建成功', 'success')
         }
     }
@@ -117,7 +163,7 @@ async function handleImageUpload(file) {
             content: file.name || '图片笔记',
             images: [e.target.result]
         })
-        await loadNotes()
+        await loadNotes(true)
         showToast('图片笔记创建成功', 'success')
     }
     reader.readAsDataURL(file)
@@ -212,7 +258,7 @@ async function createLinkNote(url) {
                     'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgZmlsbD0iIzJhMmEzMiIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBkb21pbmFudC1iYXNlbGluZT0ibWlkZGxlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LXNpemU9IjI0IiBmaWxsPSIjNmI2Yjc2Ij5JbWFnZSAyPC90ZXh0Pjwvc3ZnPg=='
                 ]
             })
-            await loadNotes()
+            await loadNotes(true)
             showToast('笔记创建成功', 'success')
         }, 1000)
     } catch (error) {
@@ -227,7 +273,7 @@ async function createImageNote(imageData, fileName) {
         content: fileName || '图片笔记',
         images: [imageData]
     })
-    await loadNotes()
+    await loadNotes(true)
     showToast('图片笔记创建成功', 'success')
 }
 
@@ -239,7 +285,7 @@ async function createTextNote(text) {
             content: text,
             images: []
         })
-        await loadNotes()
+        await loadNotes(true)
         showToast('文字笔记创建成功', 'success')
     } catch (error) {
         showToast('创建笔记失败', 'error')
@@ -272,7 +318,7 @@ function handleMenuDelete(note) {
     confirmContent.value = '确定要删除这条笔记吗？'
     confirmOnOk.value = async () => {
         await noteStore.deleteNote(note.id)
-        await loadNotes()
+        await loadNotes(true)
         showToast('笔记已删除', 'success')
     }
     confirmVisible.value = true
@@ -336,6 +382,11 @@ function handleCancelEdit() {
 
                 <NoteCard v-for="note in notes" :key="note.id" :note="note" @click="handleCardClick"
                     @open="handleMenuOpen" @edit="handleMenuEdit" @delete="handleMenuDelete" />
+
+                <!-- Loading 组件 -->
+                <div v-if="isLoading" class="flex justify-center py-4">
+                    <span class="loading loading-spinner text-primary"></span>
+                </div>
             </div>
         </div>
 

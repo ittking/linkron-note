@@ -80,14 +80,15 @@ impl Database {
         Ok(())
     }
 
-    /// 获取所有笔记
-    pub fn get_all_notes(&self) -> SqliteResult<Vec<Note>> {
+    /// 获取所有笔记（分页）
+    pub fn get_all_notes(&self, page: u32, page_size: u32) -> SqliteResult<Vec<Note>> {
+        let offset = (page - 1) * page_size;
         let mut stmt = self.conn.prepare(
             "SELECT id, type, content, source_url, images, created_at, updated_at
-             FROM notes ORDER BY updated_at DESC"
+             FROM notes ORDER BY updated_at DESC LIMIT ? OFFSET ?"
         )?;
 
-        let notes = stmt.query_map([], |row| {
+        let notes = stmt.query_map(params![page_size, offset], |row| {
             Ok(Note {
                 id: row.get(0)?,
                 note_type: row.get(1)?,
@@ -100,6 +101,11 @@ impl Database {
         })?;
 
         notes.collect()
+    }
+
+    /// 获取笔记总数
+    pub fn count_notes(&self) -> SqliteResult<i64> {
+        self.conn.query_row("SELECT COUNT(*) FROM notes", [], |row| row.get(0))
     }
 
     /// 获取单个笔记
@@ -215,11 +221,6 @@ impl Database {
 
         notes.collect()
     }
-
-    /// 获取笔记数量
-    pub fn count_notes(&self) -> SqliteResult<i64> {
-        self.conn.query_row("SELECT COUNT(*) FROM notes", [], |row| row.get(0))
-    }
 }
 
 /// 获取数据库路径
@@ -269,12 +270,20 @@ pub async fn init_database(work_directory: Option<String>) -> Result<(), String>
     Ok(())
 }
 
-/// Tauri 命令：获取所有笔记
+/// Tauri 命令：获取所有笔记（分页）
 #[tauri::command]
-pub async fn get_all_notes(work_directory: Option<String>) -> Result<Vec<Note>, String> {
+pub async fn get_all_notes(page: u32, page_size: u32, work_directory: Option<String>) -> Result<Vec<Note>, String> {
     let db_path = get_database_path(work_directory)?;
     let db = Database::new(&db_path).map_err(|e| format!("Failed to open database: {}", e))?;
-    db.get_all_notes().map_err(|e| format!("Failed to get notes: {}", e))
+    db.get_all_notes(page, page_size).map_err(|e| format!("Failed to get notes: {}", e))
+}
+
+/// Tauri 命令：获取笔记总数
+#[tauri::command]
+pub async fn get_notes_count(work_directory: Option<String>) -> Result<i64, String> {
+    let db_path = get_database_path(work_directory)?;
+    let db = Database::new(&db_path).map_err(|e| format!("Failed to open database: {}", e))?;
+    db.count_notes().map_err(|e| format!("Failed to count notes: {}", e))
 }
 
 /// Tauri 命令：获取单个笔记
