@@ -3,9 +3,11 @@ import { onMounted, onUnmounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { BookOpen, Terminal, Settings, CheckSquare, Minimize2 } from 'lucide-vue-next'
 import { useSettingStore } from './store/settingStore'
+import { useNoteStore } from './store/noteStore'
 import { getCurrentWindow, LogicalSize } from '@tauri-apps/api/window'
 
 const settingStore = useSettingStore()
+const noteStore = useNoteStore()
 const router = useRouter()
 const route = useRoute()
 const appWindow = getCurrentWindow()
@@ -95,6 +97,13 @@ onMounted(async () => {
     document.documentElement.setAttribute('data-theme', theme)
   } catch (error) {
     console.error('Failed to load theme:', error)
+  }
+
+  // 初始化数据库
+  try {
+    await noteStore.initDatabase()
+  } catch (error) {
+    console.error('Failed to init database:', error)
   }
 
   // 恢复窗口大小

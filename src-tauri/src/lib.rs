@@ -3,6 +3,7 @@ mod mouse;
 mod autostart;
 mod filesystem;
 mod terminal;
+mod database;
 
 #[cfg(any(windows, target_os = "macos"))]
 mod window_manager;
@@ -42,7 +43,15 @@ pub fn run() {
             terminal::write_to_pty,
             terminal::resize_pty,
             terminal::close_pty_session,
-            terminal::get_current_directory
+            terminal::get_current_directory,
+            database::init_database,
+            database::get_all_notes,
+            database::get_note,
+            database::create_note,
+            database::update_note,
+            database::delete_note,
+            database::search_notes,
+            database::migrate_from_json
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
