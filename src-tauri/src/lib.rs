@@ -2,6 +2,7 @@
 mod mouse;
 mod autostart;
 mod filesystem;
+mod terminal;
 
 #[cfg(any(windows, target_os = "macos"))]
 mod window_manager;
@@ -36,7 +37,12 @@ pub fn run() {
             autostart::set_autostart,
             autostart::is_autostart_enabled,
             filesystem::check_directory_exists,
-            filesystem::create_directory
+            filesystem::create_directory,
+            terminal::create_pty_session,
+            terminal::write_to_pty,
+            terminal::resize_pty,
+            terminal::close_pty_session,
+            terminal::get_current_directory
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
