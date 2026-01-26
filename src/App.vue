@@ -1,7 +1,7 @@
 <script setup>
 import { onMounted, onUnmounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { BookOpen, Terminal, Settings, Minimize2 } from 'lucide-vue-next'
+import { BookOpen, Terminal, Settings, CheckSquare, Minimize2 } from 'lucide-vue-next'
 import { useSettingStore } from './store/settingStore'
 import { getCurrentWindow, LogicalSize } from '@tauri-apps/api/window'
 
@@ -75,6 +75,7 @@ async function setupWindowResizeListener() {
 
 const tabs = [
   { name: '笔记', path: '/note', icon: BookOpen },
+  { name: '待办', path: '/todo', icon: CheckSquare },
   { name: '终端', path: '/term', icon: Terminal },
   { name: '设置', path: '/setting', icon: Settings }
 ]
@@ -85,10 +86,6 @@ function navigateTo(path) {
 
 function isActive(path) {
   return route.path === path
-}
-
-function getCurrentTitle() {
-  return route.meta?.title || ''
 }
 
 onMounted(async () => {
@@ -143,9 +140,6 @@ onUnmounted(() => {
         <Terminal :size="16" class="text-primary" />
         <span class="text-sm font-medium text-base-content">ITERM</span>
       </div>
-
-      <!-- 中间：当前页面标题 -->
-      <div class="flex-1 text-base-content/60 text-center text-xs" data-tauri-drag-region>{{ getCurrentTitle() }}</div>
 
       <!-- 右侧：功能按钮 -->
       <div class="flex items-center gap-1.5 text-base-content/60">

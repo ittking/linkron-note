@@ -18,6 +18,12 @@ const routes = [
     meta: { title: '终端', keepAlive: true }
   },
   {
+    path: '/todo',
+    name: 'Todo',
+    component: () => import('@/views/Todo.vue'),
+    meta: { title: '待办', keepAlive: true }
+  },
+  {
     path: '/setting',
     name: 'setting',
     component: () => import('@/views/Setting.vue'),
