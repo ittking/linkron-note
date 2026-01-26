@@ -1,11 +1,17 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onActivated, nextTick } from 'vue'
+import { onBeforeRouteLeave } from 'vue-router'
 import { ExternalLink, Edit, Trash2 } from 'lucide-vue-next'
 import NoteCard from '@/components/NoteCard.vue'
 import NoteEditor from '@/components/NoteEditor.vue'
 import { useNoteStore } from '@/store/noteStore'
 
 const noteStore = useNoteStore()
+
+// 滚动位置保存
+const noteListRef = ref(null)
+let savedScrollTop = 0
+const isNoteListScrolledToTop = ref(true)
 
 const notes = ref([])
 const editorContent = ref('')
@@ -14,8 +20,6 @@ const dragCounter = ref(0) // 拖拽计数器
 const toastMessage = ref('')
 const toastVisible = ref(false)
 const toastType = ref('info')
-const noteListRef = ref(null)
-const isNoteListScrolledToTop = ref(true)
 
 // 笔记详情抽屉
 const drawerVisible = ref(false)
@@ -25,6 +29,34 @@ const confirmVisible = ref(false)
 const confirmTitle = ref('')
 const confirmContent = ref('')
 const confirmOnOk = ref(null)
+
+// 路由离开前保存滚动位置
+onBeforeRouteLeave((to, from, next) => {
+  if (noteListRef.value) {
+    savedScrollTop = noteListRef.value.scrollTop
+    console.log('Note onBeforeRouteLeave, scrollHeight:', noteListRef.value.scrollHeight, 'clientHeight:', noteListRef.value.clientHeight, 'saved scrollTop:', savedScrollTop)
+  }
+  next()
+})
+
+// 组件激活时恢复滚动位置
+onActivated(async () => {
+  console.log('Note onActivated start, savedScrollTop:', savedScrollTop)
+  await nextTick()
+  
+  // 使用 setTimeout 确保 DOM 完全更新
+  setTimeout(() => {
+    if (noteListRef.value) {
+      console.log('noteListRef exists, scrollHeight:', noteListRef.value.scrollHeight, 'clientHeight:', noteListRef.value.clientHeight, 'current scrollTop:', noteListRef.value.scrollTop)
+      if (savedScrollTop > 0) {
+        noteListRef.value.scrollTop = savedScrollTop
+        console.log('Restored scrollTop to:', savedScrollTop, 'actual scrollTop after set:', noteListRef.value.scrollTop)
+      }
+    } else {
+      console.log('noteListRef is null')
+    }
+  }, 50)
+})
 
 // 监听笔记列表滚动
 function handleNoteListScroll() {

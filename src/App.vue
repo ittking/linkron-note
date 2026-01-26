@@ -77,9 +77,9 @@ onMounted(async () => {
       <div class="h-full max-w-200 mx-auto">
         <router-view v-slot="{ Component, route }">
           <keep-alive v-if="route.meta?.keepAlive">
-            <component :is="Component" :key="route.name" />
+            <component :is="Component" />
           </keep-alive>
-          <component v-else :is="Component" :key="route.name" />
+          <component v-else :is="Component" />
         </router-view>
       </div>
     </div>

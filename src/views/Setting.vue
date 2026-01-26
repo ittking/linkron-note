@@ -1,5 +1,5 @@
 <template>
-  <div class="h-full p-4 overflow-y-auto no-scrollbar">
+  <div ref="scrollContainer" class="h-full p-4 overflow-y-auto no-scrollbar">
     <div class="space-y-4">
       <!-- 开机启动 -->
       <div class="card bg-base-200 shadow-sm">
@@ -126,12 +126,17 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onActivated, nextTick } from 'vue'
+import { onBeforeRouteLeave } from 'vue-router'
 import { invoke } from '@tauri-apps/api/core'
 import { open } from '@tauri-apps/plugin-dialog'
 import { useSettingStore } from '../store/settingStore'
 
 const settingStore = useSettingStore()
+
+// 滚动位置保存
+const scrollContainer = ref(null)
+let savedScrollTop = 0
 
 // 开机启动
 const autoStartEnabled = ref(false)
@@ -191,6 +196,34 @@ const themes = [
   'abyss',
   'silk'
 ]
+
+// 路由离开前保存滚动位置
+onBeforeRouteLeave((to, from, next) => {
+  if (scrollContainer.value) {
+    savedScrollTop = scrollContainer.value.scrollTop
+    console.log('Setting onBeforeRouteLeave, scrollHeight:', scrollContainer.value.scrollHeight, 'clientHeight:', scrollContainer.value.clientHeight, 'saved scrollTop:', savedScrollTop)
+  }
+  next()
+})
+
+// 组件激活时恢复滚动位置
+onActivated(async () => {
+  console.log('Setting onActivated start, savedScrollTop:', savedScrollTop)
+  await nextTick()
+  
+  // 使用 setTimeout 确保 DOM 完全更新
+  setTimeout(() => {
+    if (scrollContainer.value) {
+      console.log('scrollContainer exists, scrollHeight:', scrollContainer.value.scrollHeight, 'clientHeight:', scrollContainer.value.clientHeight, 'current scrollTop:', scrollContainer.value.scrollTop)
+      if (savedScrollTop > 0) {
+        scrollContainer.value.scrollTop = savedScrollTop
+        console.log('Restored scrollTop to:', savedScrollTop, 'actual scrollTop after set:', scrollContainer.value.scrollTop)
+      }
+    } else {
+      console.log('scrollContainer is null')
+    }
+  }, 50)
+})
 
 // 初始化
 onMounted(async () => {
