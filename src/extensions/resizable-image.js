@@ -71,17 +71,6 @@ export const ResizableImage = Node.create({
       // 创建拖拽手柄
       const handle = document.createElement('div')
       handle.className = 'resize-handle'
-      handle.style.position = 'absolute'
-      handle.style.width = '10px'
-      handle.style.height = '10px'
-      handle.style.background = 'var(--primary, #3b82f6)'
-      handle.style.borderRadius = '0'
-      handle.style.cursor = 'nwse-resize'
-      handle.style.bottom = '0'
-      handle.style.right = '0'
-      handle.style.border = 'none'
-      handle.style.zIndex = '10'
-      handle.style.display = 'none'
 
       dom.appendChild(img)
       dom.appendChild(handle)

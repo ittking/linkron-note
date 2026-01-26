@@ -66,13 +66,13 @@
 
 .ProseMirror .resize-handle {
   position: absolute;
-  width: 6px;
-  height: 6px;
-  background: var(--color-primary);
+  width: 6px !important;
+  height: 6px !important;
+  background: var(--color-primary) !important;
   border-radius: 0;
   cursor: nwse-resize;
-  bottom: -3px;
-  right: -3px;
+  bottom: 6px !important;
+  right: 6px !important;
   border: none;
   z-index: 10;
   display: none;
