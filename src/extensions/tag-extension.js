@@ -89,6 +89,7 @@ export const TagExtension = Node.create({
               type: this.name,
               attrs: props,
             })
+            .insertContent(' ') // 插入一个空格，让用户可以继续输入
             .run()
         },
         // 配置空格键触发
