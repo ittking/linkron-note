@@ -10,7 +10,7 @@
     <div
       v-for="tab in tabs"
       :key="tab.id"
-      class="flex items-center px-4 py-2 cursor-pointer border-r border-base-300 whitespace-nowrap bg-base-200 transition-colors relative flex-shrink-0"
+      class="flex items-center px-3 py-1.5 cursor-pointer border-r border-base-300 whitespace-nowrap bg-base-200 transition-colors relative flex-shrink-0"
       :class="[
         tab.id === activeTabId 
           ? 'text-primary bg-primary/10' 
@@ -19,9 +19,9 @@
       @click="handleTabClick(tab.id)"
       @contextmenu.prevent="handleContextMenu($event, tab)"
     >
-      <span class="text-sm pointer-events-none">{{ tab.title }}</span>
+      <span class="text-xs pointer-events-none">{{ tab.title }}</span>
       <span
-        class="ml-2 opacity-60 cursor-pointer text-base leading-none p-0.5 flex-shrink-0 hover:opacity-100 hover:bg-base-content/10 rounded"
+        class="ml-2 opacity-60 cursor-pointer text-sm leading-none p-0.5 flex-shrink-0 hover:opacity-100 hover:bg-base-content/10 rounded"
         @click.stop="closeTab(tab.id)"
         v-if="tabs.length > 1"
       >×</span>
@@ -32,7 +32,7 @@
       ></span>
     </div>
     <div 
-      class="tab-add px-4 py-2 cursor-pointer opacity-60 text-xl leading-none transition-opacity flex-shrink-0 hover:opacity-100 hover:text-primary"
+      class="tab-add px-3 py-1.5 cursor-pointer opacity-60 text-lg leading-none transition-opacity flex-shrink-0 hover:opacity-100 hover:text-primary"
       @click="addTab"
     >+</div>
   </div>
