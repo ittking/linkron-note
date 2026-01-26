@@ -56,14 +56,14 @@
       class="flex items-center gap-2 px-4 py-2 hover:bg-base-300 cursor-pointer text-base-content transition-colors"
       @click="openInNewWindow"
     >
-      <span>🔗</span>
+      <ExternalLink :size="16" />
       <span class="text-sm">新窗口打开</span>
     </div>
     <div 
       class="flex items-center gap-2 px-4 py-2 hover:bg-base-300 cursor-pointer text-base-content transition-colors"
       @click="renameTab"
     >
-      <span>✏️</span>
+      <Edit2 :size="16" />
       <span class="text-sm">重命名</span>
     </div>
     <div class="h-px bg-base-300 my-1"></div>
@@ -71,7 +71,7 @@
       class="flex items-center gap-2 px-4 py-2 hover:bg-error/10 cursor-pointer text-error transition-colors"
       @click="closeTab(contextMenu.tab.id)"
     >
-      <span>✕</span>
+      <X :size="16" />
       <span class="text-sm">关闭</span>
     </div>
   </div>
@@ -107,6 +107,7 @@
 
 <script setup>
 import { ref, reactive, onMounted, onUnmounted, nextTick } from 'vue'
+import { ExternalLink, Edit2, X } from 'lucide-vue-next'
 
 const props = defineProps({
   tabs: { type: Array, required: true },

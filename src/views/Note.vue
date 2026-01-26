@@ -1,7 +1,7 @@
 <script setup>
 import { ref, onMounted, onActivated, nextTick } from 'vue'
 import { onBeforeRouteLeave } from 'vue-router'
-import { ExternalLink, Edit, Trash2 } from 'lucide-vue-next'
+import { ExternalLink, Edit, Trash2, Download } from 'lucide-vue-next'
 import NoteCard from '@/components/NoteCard.vue'
 import NoteEditor from '@/components/NoteEditor.vue'
 import { useNoteStore } from '@/store/noteStore'
@@ -308,7 +308,7 @@ function handleConfirmOk() {
             @dragover="handleDragOver"
             @drop="handleDrop"
         >
-            <div class="text-5xl text-primary mb-4 animate-bounce">📥</div>
+            <Download :size="48" class="text-primary mb-4 animate-bounce" />
             <div class="text-base font-medium text-primary mb-2">释放以创建笔记</div>
             <div class="text-sm text-base-content/60">支持链接、文字、图片</div>
         </div>
