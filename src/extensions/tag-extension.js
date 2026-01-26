@@ -1,6 +1,5 @@
 import { Node } from '@tiptap/core'
 import Suggestion from '@tiptap/suggestion'
-import tippy from 'tippy.js'
 
 export const TagExtension = Node.create({
   name: 'tag',
