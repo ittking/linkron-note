@@ -2,7 +2,6 @@
 
 .ProseMirror {
   outline: none;
-  overflow-y: auto;
   max-height: 100%;
   letter-spacing: 0.06em;
 }
