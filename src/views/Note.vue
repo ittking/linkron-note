@@ -105,6 +105,9 @@ async function loadNotes(reset = false) {
     
     isLoading.value = true
     
+    // 延时1000ms，模拟加载延迟
+    await new Promise(resolve => setTimeout(resolve, 1000))
+    
     try {
         const newNotes = await noteStore.getNotes(currentPage.value, pageSize.value)
         
