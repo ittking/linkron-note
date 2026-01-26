@@ -8,15 +8,16 @@
       @close="closeTerminal"
     />
     <div class="terminal-content">
-      <template v-for="tab in terminalStore.tabs.value" :key="tab.id">
+      <keep-alive>
         <XTerm
-          v-show="tab.id === visibleTabId"
-          :sessionId="tab.id"
-          :shell="tab.shell"
+          v-if="visibleTabId"
+          :key="visibleTabId"
+          :sessionId="visibleTabId"
+          :shell="terminalStore.activeTab.value?.shell"
           :workingDir="currentWorkingDir"
           @data="handleTerminalInput"
         />
-      </template>
+      </keep-alive>
       <div v-if="terminalStore.tabs.value.length === 0" class="empty-state">
         <p>点击 + 创建新终端</p>
       </div>

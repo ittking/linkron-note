@@ -3,7 +3,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onBeforeUnmount, watch, onUnmounted } from 'vue'
+import { ref, onMounted, onBeforeUnmount, watch, onUnmounted, onActivated, onDeactivated } from 'vue'
 import { Terminal } from 'xterm'
 import { FitAddon } from 'xterm-addon-fit'
 import { invoke } from '@tauri-apps/api/core'
@@ -111,7 +111,20 @@ onBeforeUnmount(async () => {
   }
 })
 
-// 监听窗口大小变化
+// 组件被 keep-alive 激活时
+onActivated(() => {
+  // 聚焦终端
+  setTimeout(() => {
+    focusTerminal()
+  }, 50)
+})
+
+// 组件被 keep-alive 停用时
+onDeactivated(() => {
+  // 可以在这里做一些清理工作
+})
+
+// 监听 sessionId 变化
 watch(() => props.sessionId, async (newId) => {
   if (terminal && fitAddon) {
     fitAddon.fit()
@@ -123,21 +136,11 @@ watch(() => props.sessionId, async (newId) => {
   }
 })
 
-// 监听组件显示状态变化（用于 v-show）
-watch(() => terminalContainer.value, (newVal, oldVal) => {
-  if (newVal && !oldVal && fitAddon) {
-    // 当组件从隐藏变为显示时，重新 fit
-    setTimeout(() => {
-      if (fitAddon) {
-        fitAddon.fit()
-      }
-    }, 50)
-  }
-})
-
 // 监听容器大小变化
 onMounted(() => {
   let resizeTimeout = null
+  let lastWidth = 0
+  let lastHeight = 0
   
   const resizeObserver = new ResizeObserver((entries) => {
     // 防抖，避免频繁触发
@@ -146,19 +149,29 @@ onMounted(() => {
     }
     
     resizeTimeout = setTimeout(() => {
-      if (fitAddon && terminal) {
-        fitAddon.fit()
-        // 同步到后端 PTY
-        invoke('resize_pty', {
-          sessionId: props.sessionId,
-          cols: terminal.cols,
-          rows: terminal.rows
-        }).catch(err => {})
+      if (fitAddon && terminal && terminalContainer.value) {
+        const newWidth = terminalContainer.value.offsetWidth
+        const newHeight = terminalContainer.value.offsetHeight
+        
+        // 只有当尺寸真正改变时才 fit
+        if (newWidth !== lastWidth || newHeight !== lastHeight) {
+          lastWidth = newWidth
+          lastHeight = newHeight
+          fitAddon.fit()
+          // 同步到后端 PTY
+          invoke('resize_pty', {
+            sessionId: props.sessionId,
+            cols: terminal.cols,
+            rows: terminal.rows
+          }).catch(err => {})
+        }
       }
     }, 100)
   })
   
   if (terminalContainer.value) {
+    lastWidth = terminalContainer.value.offsetWidth
+    lastHeight = terminalContainer.value.offsetHeight
     resizeObserver.observe(terminalContainer.value)
   }
   
@@ -169,13 +182,21 @@ onMounted(() => {
     }
     
     resizeTimeout = setTimeout(() => {
-      if (fitAddon && terminal) {
-        fitAddon.fit()
-        invoke('resize_pty', {
-          sessionId: props.sessionId,
-          cols: terminal.cols,
-          rows: terminal.rows
-        }).catch(err => {})
+      if (fitAddon && terminal && terminalContainer.value) {
+        const newWidth = terminalContainer.value.offsetWidth
+        const newHeight = terminalContainer.value.offsetHeight
+        
+        // 只有当尺寸真正改变时才 fit
+        if (newWidth !== lastWidth || newHeight !== lastHeight) {
+          lastWidth = newWidth
+          lastHeight = newHeight
+          fitAddon.fit()
+          invoke('resize_pty', {
+            sessionId: props.sessionId,
+            cols: terminal.cols,
+            rows: terminal.rows
+          }).catch(err => {})
+        }
       }
     }, 100)
   }
@@ -241,21 +262,18 @@ const focusTerminal = () => {
   padding: 0;
   height: 100%;
   width: 100%;
-  overflow: visible;
   font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', Consolas, 'Courier New', monospace, 'Nerd Font Symbols', 'Nerd Font', 'Font Awesome 6 Free', 'Font Awesome 6 Brands', 'Font Awesome 6 Solid', 'Apple Symbols', 'Segoe UI Symbol', 'Segoe UI Emoji', sans-serif !important;
 }
 
 .xterm-container :deep(.xterm-rows) {
   padding: 0;
   width: 100%;
-  overflow: visible;
   font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', Consolas, 'Courier New', monospace, 'Nerd Font Symbols', 'Nerd Font', 'Font Awesome 6 Free', 'Font Awesome 6 Brands', 'Font Awesome 6 Solid', 'Apple Symbols', 'Segoe UI Symbol', 'Segoe UI Emoji', sans-serif !important;
 }
 
 .xterm-container :deep(.xterm-scroll-layer) {
   height: 100% !important;
   width: 100% !important;
-  overflow: visible;
   font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', Consolas, 'Courier New', monospace, 'Nerd Font Symbols', 'Nerd Font', 'Font Awesome 6 Free', 'Font Awesome 6 Brands', 'Font Awesome 6 Solid', 'Apple Symbols', 'Segoe UI Symbol', 'Segoe UI Emoji', sans-serif !important;
 }
 
