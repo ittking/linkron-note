@@ -32,11 +32,6 @@ impl TerminalManager {
         rows: u16,
         working_dir: Option<String>,
     ) -> Result<(), String> {
-        eprintln!("Creating PTY session: {}", session_id);
-        eprintln!("Shell: {}", shell);
-        eprintln!("Working dir: {:?}", working_dir);
-        eprintln!("Size: {}x{}", cols, rows);
-
         let pty_system = native_pty_system();
 
         let pty_pair = pty_system
@@ -46,10 +41,7 @@ impl TerminalManager {
                 pixel_width: 0,
                 pixel_height: 0,
             })
-            .map_err(|e| {
-                eprintln!("Failed to open PTY: {}", e);
-                format!("Failed to open PTY: {}", e)
-            })?;
+            .map_err(|e| format!("Failed to open PTY: {}", e))?;
 
         let mut cmd = CommandBuilder::new(shell);
         cmd.env("TERM", "xterm-256color");
@@ -60,12 +52,7 @@ impl TerminalManager {
         let _child = pty_pair
             .slave
             .spawn_command(cmd)
-            .map_err(|e| {
-                eprintln!("Failed to spawn shell: {}", e);
-                format!("Failed to spawn shell: {}", e)
-            })?;
-
-        eprintln!("PTY session created successfully: {}", session_id);
+            .map_err(|e| format!("Failed to spawn shell: {}", e))?;
 
         let reader = pty_pair.master.try_clone_reader().unwrap();
         let writer = pty_pair.master.take_writer().unwrap();
