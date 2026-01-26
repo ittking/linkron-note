@@ -76,9 +76,10 @@ onMounted(async () => {
     <div class="flex-1 overflow-hidden">
       <div class="h-full max-w-200 mx-auto">
         <router-view v-slot="{ Component, route }">
-          <keep-alive :include="['Note', 'Terminal', 'Setting']">
+          <keep-alive v-if="route.meta?.keepAlive">
             <component :is="Component" :key="route.name" />
           </keep-alive>
+          <component v-else :is="Component" :key="route.name" />
         </router-view>
       </div>
     </div>
