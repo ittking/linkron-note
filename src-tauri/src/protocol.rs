@@ -98,22 +98,12 @@ pub fn iterm_protocol_handler<R: tauri::Runtime>(
     let path = request.uri().path();
     let resource_path = path.trim_start_matches('/');
 
-    eprintln!("[iterm protocol] Request path: {}", path);
-    eprintln!("[iterm protocol] Resource path: {}", resource_path);
-
     let base_dir = get_base_directory(app);
-    eprintln!("[iterm protocol] Base directory: {:?}", base_dir);
 
     // 验证并规范化路径
     let file_path = match validate_and_normalize_path(&base_dir, resource_path) {
-        Some(p) => {
-            eprintln!("[iterm protocol] Resolved file path: {:?}", p);
-            p
-        }
-        None => {
-            eprintln!("[iterm protocol] Failed to validate path");
-            return build_error_response(400, "Invalid request path");
-        }
+        Some(p) => p,
+        None => return build_error_response(400, "Invalid request path"),
     };
 
     match std::fs::read(&file_path) {
@@ -121,8 +111,6 @@ pub fn iterm_protocol_handler<R: tauri::Runtime>(
             let mime_type = mime_guess::from_path(&file_path)
                 .first_or_octet_stream()
                 .to_string();
-
-            eprintln!("[iterm protocol] Success: {} bytes, MIME: {}", content.len(), mime_type);
 
             Response::builder()
                 .header("Content-Type", mime_type)
@@ -132,9 +120,6 @@ pub fn iterm_protocol_handler<R: tauri::Runtime>(
                 .body(content)
                 .unwrap_or_else(|_| build_error_response(500, "Failed to build response"))
         }
-        Err(e) => {
-            eprintln!("[iterm protocol] Failed to read file: {}", e);
-            build_error_response(404, "File not found")
-        }
+        Err(_) => build_error_response(404, "File not found"),
     }
 }
