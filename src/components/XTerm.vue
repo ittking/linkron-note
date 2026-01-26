@@ -250,16 +250,9 @@ onMounted(async () => {
 onActivated(() => {
   isTabActive = true
   
-  // 聚焦终端并滚动到底部
+  // 聚焦终端
   setTimeout(() => {
     focusTerminal()
-    
-    // 滚动到底部
-    setTimeout(() => {
-      if (terminal) {
-        terminal.scrollToBottom()
-      }
-    }, 100)
   }, 50)
 })
 
