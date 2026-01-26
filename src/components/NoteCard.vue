@@ -5,6 +5,7 @@ import { useEditor, EditorContent } from '@tiptap/vue-3'
 import StarterKit from '@tiptap/starter-kit'
 import Image from '@tiptap/extension-image'
 import Highlight from '@tiptap/extension-highlight'
+import { TagExtension } from '@/extensions/tag-extension'
 import dayjs from 'dayjs'
 import 'dayjs/locale/zh-cn'
 
@@ -46,6 +47,7 @@ const editor = useEditor({
     Highlight.configure({
       multicolor: true,
     }),
+    TagExtension, // 添加 TagExtension 以正确渲染标签
   ],
   editable: false, // 只读模式
   editorProps: {

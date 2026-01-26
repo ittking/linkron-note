@@ -38,6 +38,9 @@ export const TagExtension = Node.create({
         getAttrs: (node) => ({
           id: node.getAttribute('data-id'),
           name: node.getAttribute('data-name'),
+          displayName: node.getAttribute('data-display-name'),
+          path: node.getAttribute('data-path'),
+          level: parseInt(node.getAttribute('data-level') || '1', 10),
         }),
       },
     ]
@@ -51,6 +54,9 @@ export const TagExtension = Node.create({
         class: 'inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-primary/10 text-primary text-xs font-medium cursor-pointer hover:bg-primary/20 transition-colors',
         'data-id': HTMLAttributes.id,
         'data-name': HTMLAttributes.name,
+        'data-display-name': HTMLAttributes.displayName,
+        'data-path': HTMLAttributes.path,
+        'data-level': HTMLAttributes.level,
       },
       '#' + (HTMLAttributes.displayName || HTMLAttributes.name),
     ]
