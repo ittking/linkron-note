@@ -66,12 +66,6 @@ onMounted(async () => {
   setTimeout(() => {
     if (fitAddon) {
       fitAddon.fit()
-      console.log('Terminal fitted:', { 
-        cols: terminal.cols, 
-        rows: terminal.rows,
-        containerWidth: terminalContainer.value?.offsetWidth,
-        containerHeight: terminalContainer.value?.offsetHeight
-      })
     }
   }, 100)
 
@@ -133,11 +127,9 @@ watch(() => props.sessionId, async (newId) => {
 watch(() => terminalContainer.value, (newVal, oldVal) => {
   if (newVal && !oldVal && fitAddon) {
     // 当组件从隐藏变为显示时，重新 fit
-    console.log('XTerm component shown, refitting...')
     setTimeout(() => {
       if (fitAddon) {
         fitAddon.fit()
-        console.log('XTerm refitted:', { cols: terminal.cols, rows: terminal.rows })
       }
     }, 50)
   }
@@ -156,16 +148,12 @@ onMounted(() => {
     resizeTimeout = setTimeout(() => {
       if (fitAddon && terminal) {
         fitAddon.fit()
-        console.log('Terminal resized:', { 
-          cols: terminal.cols, 
-          rows: terminal.rows 
-        })
         // 同步到后端 PTY
         invoke('resize_pty', {
           sessionId: props.sessionId,
           cols: terminal.cols,
           rows: terminal.rows
-        }).catch(err => console.error('Failed to resize PTY:', err))
+        }).catch(err => {})
       }
     }, 100)
   })
@@ -183,15 +171,11 @@ onMounted(() => {
     resizeTimeout = setTimeout(() => {
       if (fitAddon && terminal) {
         fitAddon.fit()
-        console.log('Terminal resized by window:', { 
-          cols: terminal.cols, 
-          rows: terminal.rows 
-        })
         invoke('resize_pty', {
           sessionId: props.sessionId,
           cols: terminal.cols,
           rows: terminal.rows
-        }).catch(err => console.error('Failed to resize PTY:', err))
+        }).catch(err => {})
       }
     }, 100)
   }
