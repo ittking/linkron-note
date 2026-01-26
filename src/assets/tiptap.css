@@ -33,6 +33,10 @@
   margin: 0.25rem 0;
 }
 
+.ProseMirror hr {
+  margin: 1rem 0;
+}
+
 .ProseMirror img {
   max-width: 100%;
   height: auto;

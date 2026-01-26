@@ -116,18 +116,21 @@ const editor = useEditor({
                   const editor = currentProps.editor
                   const { from } = currentProps.range
                   
+                  // 先聚焦编辑器
+                  editor.view.focus()
+                  
                   // 删除当前标签输入（从 # 开始）
-                  editor.view.dispatch(
-                    editor.view.state.tr.delete(from, currentProps.range.to)
-                  )
+                  const tr = editor.view.state.tr.delete(from, currentProps.range.to)
                   
                   // 插入选中的标签名称
-                  editor.view.dispatch(
-                    editor.view.state.tr.insertText('#' + item.name, from)
-                  )
+                  tr.insertText('#' + item.name, from)
                   
-                  // 重新获取光标位置
+                  // 设置光标位置到插入的文本后面
                   const newTo = from + item.name.length + 1
+                  tr.setSelection(editor.view.state.tr.selection.constructor.near(tr.doc.resolve(newTo)))
+                  
+                  // 应用 transaction
+                  editor.view.dispatch(tr)
                   
                   // 更新 range，让建议继续工作
                   currentProps.range = { from, to: newTo }
@@ -215,18 +218,21 @@ const editor = useEditor({
                   const editor = currentProps.editor
                   const { from } = currentProps.range
                   
+                  // 先聚焦编辑器
+                  editor.view.focus()
+                  
                   // 删除当前标签输入（从 # 开始）
-                  editor.view.dispatch(
-                    editor.view.state.tr.delete(from, currentProps.range.to)
-                  )
+                  const tr = editor.view.state.tr.delete(from, currentProps.range.to)
                   
                   // 插入选中的标签名称
-                  editor.view.dispatch(
-                    editor.view.state.tr.insertText('#' + selectedTag.name, from)
-                  )
+                  tr.insertText('#' + selectedTag.name, from)
                   
-                  // 重新获取光标位置
+                  // 设置光标位置到插入的文本后面
                   const newTo = from + selectedTag.name.length + 1
+                  tr.setSelection(editor.view.state.tr.selection.constructor.near(tr.doc.resolve(newTo)))
+                  
+                  // 应用 transaction
+                  editor.view.dispatch(tr)
                   
                   // 更新 range，让建议继续工作
                   currentProps.range = { from, to: newTo }
