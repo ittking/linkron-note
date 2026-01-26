@@ -22,13 +22,11 @@ function createTab() {
   state.tabCounter++
   const newTab = {
     id: `terminal-${ulid()}`,
-    title: `Terminal ${state.tabCounter}`,
+    title: `T${state.tabCounter}`,
     shell: 'powershell.exe'
   }
   state.tabs.push(newTab)
   state.activeTabId = newTab.id
-  console.log('createTab: new tab created', newTab)
-  console.log('createTab: activeTabId set to', state.activeTabId)
   return newTab
 }
 
@@ -51,9 +49,7 @@ function closeTab(id) {
  * 选择终端 Tab
  */
 function selectTab(id) {
-  console.log('selectTab called with id:', id, 'current activeTabId:', state.activeTabId)
   state.activeTabId = id
-  console.log('selectTab completed, new activeTabId:', state.activeTabId)
 }
 
 /**

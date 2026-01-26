@@ -6,6 +6,8 @@
       @select="handleTabSelect"
       @add="addTerminal"
       @close="closeTerminal"
+      @rename="handleTabRename"
+      @openInNewWindow="handleTabOpenInNewWindow"
     />
     <div class="terminal-content">
       <keep-alive>
@@ -61,6 +63,21 @@ const closeTerminal = (id) => {
 
 const handleTabSelect = (id) => {
   terminalStore.selectTab(id)
+}
+
+const handleTabRename = (id) => {
+  const tab = terminalStore.tabs.value.find(t => t.id === id)
+  if (tab) {
+    const newTitle = prompt('请输入新的 Tab 名称:', tab.title)
+    if (newTitle && newTitle.trim()) {
+      terminalStore.updateTabTitle(id, newTitle.trim())
+    }
+  }
+}
+
+const handleTabOpenInNewWindow = (id) => {
+  // TODO: 实现新窗口打开功能
+  alert('新窗口打开功能暂未实现')
 }
 
 const handleTerminalInput = async (data) => {
