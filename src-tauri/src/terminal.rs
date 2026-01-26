@@ -30,7 +30,7 @@ impl TerminalManager {
         shell: &str,
         cols: u16,
         rows: u16,
-        working_dir: Option<String>,
+        _working_dir: Option<String>,
     ) -> Result<(), String> {
         let pty_system = native_pty_system();
 
