@@ -117,10 +117,7 @@ const editor = useEditor({
                 component.appendChild(itemEl)
               })
             } else {
-              // 没有匹配标签时，隐藏下拉列表
-              if (popup) {
-                popup.hide()
-              }
+              if (popup) popup.hide()
             }
           }
 
