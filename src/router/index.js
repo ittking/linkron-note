@@ -6,29 +6,22 @@ const routes = [
     redirect: '/note'
   },
   {
-    path: '/',
-    name: 'Home',
-    component: () => import('@/views/Home.vue'),
-    children: [
-      {
-        path: '/note',
-        name: 'Note',
-        component: () => import('@/views/Note.vue'),
-        meta: { title: '笔记' }
-      },
-      {
-        path: '/term',
-        name: 'Terminal',
-        component: () => import('@/views/Terminal.vue'),
-        meta: { title: '终端' }
-      },
-      {
-        path: '/setting',
-        name: 'Setting',
-        component: () => import('@/views/Setting.vue'),
-        meta: { title: '设置' }
-      }
-    ]
+    path: '/note',
+    name: 'Note',
+    component: () => import('@/views/Note.vue'),
+    meta: { title: '笔记', keepAlive: true }
+  },
+  {
+    path: '/term',
+    name: 'Terminal',
+    component: () => import('@/views/Terminal.vue'),
+    meta: { title: '终端', keepAlive: true }
+  },
+  {
+    path: '/setting',
+    name: 'setting',
+    component: () => import('@/views/Setting.vue'),
+    meta: { title: '设置', keepAlive: true }
   }
 ]
 
