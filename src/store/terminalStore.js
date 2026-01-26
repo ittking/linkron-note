@@ -16,13 +16,48 @@ const activeTab = computed(() =>
 )
 
 /**
+ * 获取下一个可用的终端编号
+ * 从 1 开始，找到第一个未被使用的编号
+ */
+function getNextAvailableTabNumber() {
+  // 获取所有当前终端的编号
+  const usedNumbers = state.tabs
+    .map(tab => {
+      // 从标题中提取数字（如 T1 -> 1, T2 -> 2）
+      const match = tab.title.match(/^T(\d+)$/)
+      return match ? parseInt(match[1], 10) : null
+    })
+    .filter(num => num !== null && num > 0)
+    .sort((a, b) => a - b)
+
+  // 如果没有终端，返回 1
+  if (usedNumbers.length === 0) {
+    return 1
+  }
+
+  // 找到第一个可用的编号（从 1 开始递增检查）
+  let nextNumber = 1
+  for (const usedNum of usedNumbers) {
+    if (usedNum === nextNumber) {
+      nextNumber++
+    } else if (usedNum > nextNumber) {
+      // 发现了空缺，直接使用这个编号
+      return nextNumber
+    }
+  }
+
+  // 所有编号都被使用了，使用下一个最大的编号
+  return nextNumber
+}
+
+/**
  * 创建新的终端 Tab
  */
 function createTab() {
-  state.tabCounter++
+  const tabNumber = getNextAvailableTabNumber()
   const newTab = {
     id: `terminal-${ulid()}`,
-    title: `T${state.tabCounter}`,
+    title: `T${tabNumber}`,
     shell: 'powershell.exe'
   }
   state.tabs.push(newTab)
