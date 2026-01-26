@@ -39,7 +39,17 @@ export const ResizableImage = Node.create({
   parseHTML() {
     return [
       {
-        tag: 'img[data-resizable]',
+        tag: 'img',
+        // 获取所有 img 标签，使其支持 resize
+        getAttrs: node => {
+          const img = node
+          return {
+            src: img.getAttribute('src'),
+            alt: img.getAttribute('alt'),
+            title: img.getAttribute('title'),
+            width: img.getAttribute('data-width') || img.style.width || img.getAttribute('width'),
+          }
+        },
       },
     ]
   },

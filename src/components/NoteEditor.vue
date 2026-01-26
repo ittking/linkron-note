@@ -3,7 +3,6 @@ import { ref, computed, watch } from 'vue'
 import { useEditor, EditorContent } from '@tiptap/vue-3'
 import { invoke } from '@tauri-apps/api/core'
 import StarterKit from '@tiptap/starter-kit'
-import Image from '@tiptap/extension-image'
 import Highlight from '@tiptap/extension-highlight'
 import Placeholder from '@tiptap/extension-placeholder'
 import { TagExtension } from '@/extensions/tag-extension'
@@ -65,10 +64,6 @@ const editor = useEditor({
         keepMarks: true,
         keepAttributes: false,
       },
-    }),
-    Image.configure({
-      inline: true,
-      allowBase64: true,
     }),
     ResizableImage,
     Highlight.configure({
