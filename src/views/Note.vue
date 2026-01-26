@@ -18,7 +18,7 @@ let updateEditorHeightTimer = null
 function updateEditorHeightDebounced(scrollTop) {
     clearTimeout(updateEditorHeightTimer)
     updateEditorHeightTimer = setTimeout(() => {
-        isNoteListScrolledToTop.value = scrollTop <= 40
+        isNoteListScrolledToTop.value = scrollTop <= 100
     }, 200)
 }
 
