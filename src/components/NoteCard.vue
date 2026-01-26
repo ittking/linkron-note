@@ -164,51 +164,6 @@ onBeforeUnmount(() => {
 })
 </script>
 
-<style scoped>
-/* Tiptap 编辑器样式 */
-:deep(.ProseMirror) {
-  outline: none;
-  overflow-y: auto;
-  max-height: 100%;
-}
-
-:deep(.ProseMirror ul),
-:deep(.ProseMirror ol) {
-  padding: 0 1rem;
-  margin: 0.5rem 0;
-}
-
-:deep(.ProseMirror ul) {
-  list-style-type: disc;
-}
-
-:deep(.ProseMirror ol) {
-  list-style-type: decimal;
-}
-
-:deep(.ProseMirror li) {
-  margin: 0.25rem 0;
-}
-
-:deep(.ProseMirror img) {
-  max-width: 100%;
-  height: auto;
-  border-radius: 8px;
-  margin: 0.5rem 0;
-}
-
-:deep(.ProseMirror strong) {
-  font-weight: 600;
-}
-
-:deep(.ProseMirror mark) {
-  background-color: #fef08a;
-  color: inherit;
-  padding: 0.1em 0.2em;
-  border-radius: 0.2em;
-}
-</style>
-
 <template>
   <div
     class="note-card bg-base-100 border border-base-200 rounded-lg p-4 mb-3 cursor-pointer transition-all duration-200 hover:shadow-md"
