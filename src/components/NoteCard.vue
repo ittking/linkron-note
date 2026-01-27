@@ -1,6 +1,6 @@
 <script setup>
 import { computed, ref, onMounted, onBeforeUnmount, watch } from 'vue'
-import { MoreHorizontal, ExternalLink, Edit, Trash2, ChevronDown, ChevronUp } from 'lucide-vue-next'
+import { MoreHorizontal, Edit, Trash2, ChevronDown, ChevronUp } from 'lucide-vue-next'
 import { useEditor, EditorContent } from '@tiptap/vue-3'
 import { getResourceUrl } from '@/utils/fileUpload'
 import { openUrl, revealItemInDir } from '@tauri-apps/plugin-opener'
@@ -31,7 +31,7 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['click', 'open', 'edit', 'delete', 'expand', 'collapse'])
+const emit = defineEmits(['click', 'edit', 'delete', 'expand', 'collapse'])
 
 const noteStore = useNoteStore()
 
@@ -63,13 +63,9 @@ const noteType = computed(() => {
   // 默认返回 text
   return 'text'
 })
-const isTextNote = computed(() => noteType.value === 'text')
+
 const isLinkNote = computed(() => noteType.value === 'link')
 const isFileNote = computed(() => noteType.value === 'file')
-// 是否有附件（文件笔记）
-const hasAttachment = computed(() => {
-  return isFileNote.value && props.note.sourceUrl
-})
 
 // 附件 URL
 const attachmentUrl = ref('')
@@ -134,15 +130,11 @@ watch(() => props.note.content, (newValue) => {
   }
 })
 
-
-
 // 格式化日期
 const formattedDate = computed(() => {
   const date = dayjs(props.note.createdAt)
   return date.format('YYYY-MM-DD HH:mm:ss')
 })
-
-
 
 // 检查内容是否溢出
 function checkOverflow() {
@@ -194,9 +186,9 @@ async function revealFile() {
     const protocolUrl = await getResourceUrl(props.note.sourceUrl)
     // 再将协议 URL 转换为本地文件路径
     const workDirectory = await noteStore.getWorkDirectory()
-    const localPath = await invoke('get_local_path_from_protocol', { 
-      protocolUrl, 
-      workDirectory 
+    const localPath = await invoke('get_local_path_from_protocol', {
+      protocolUrl,
+      workDirectory
     })
     // 使用本地路径打开文件夹
     await revealItemInDir(localPath)
@@ -227,15 +219,13 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div
-    :data-note-id="note.id"
+  <div :data-note-id="note.id"
     class="note-card bg-base-100 border border-base-200 rounded-lg p-4 mb-3 cursor-pointer transition-all duration-200 hover:shadow-md"
-    :class="{ 
+    :class="{
       'link-card': isLinkNote,
       'expanded': isExpanded,
       'overflowing': isOverflowing
-    }"
-    @click="handleCardClick">
+    }" @click="handleCardClick">
     <!-- 顶部：日期 + 菜单 -->
     <div class="flex items-center justify-between mb-3">
       <div class="flex items-center gap-2">
@@ -267,24 +257,18 @@ onBeforeUnmount(() => {
 
     <!-- 笔记内容：TipTap 编辑器渲染（所有类型统一） -->
     <div v-if="note.content">
-      <div
-        ref="contentRef"
-        class="text-base-content leading-relaxed break-words"
-        :class="{
-          'line-clamp-5': !isExpanded && isOverflowing,
-          'max-h-[120px] overflow-hidden': !isExpanded && isOverflowing
-        }">
+      <div ref="contentRef" class="text-base-content leading-relaxed break-words" :class="{
+        'line-clamp-5': !isExpanded && isOverflowing,
+        'max-h-[120px] overflow-hidden': !isExpanded && isOverflowing
+      }">
         <EditorContent class="ProseMirror" :editor="editor" />
       </div>
 
       <!-- 展开/收起按钮 -->
-      <button
-        v-if="isOverflowing"
-        @click="toggleExpand"
-        :class="[
-          'mt-2 text-xs text-primary hover:text-primary/80 flex items-center gap-1',
-          isPinned ? 'fixed bottom-4 left-1/2 -translate-x-1/2 z-50 bg-base-100 border border-base-200 shadow-lg px-4 py-2 rounded-lg' : ''
-        ]">
+      <button v-if="isOverflowing" @click="toggleExpand" :class="[
+        'mt-2 text-xs text-primary hover:text-primary/80 flex items-center gap-1',
+        isPinned ? 'fixed bottom-4 left-1/2 -translate-x-1/2 z-50 bg-base-100 border border-base-200 shadow-lg px-4 py-2 rounded-lg' : ''
+      ]">
         <template v-if="!isExpanded">
           展开全文
           <ChevronDown :size="14" />
@@ -297,32 +281,28 @@ onBeforeUnmount(() => {
     </div>
 
     <!-- 图片列表 -->
-    <div v-if="note.images && note.images.length > 0" class="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-7 xl:grid-cols-8 gap-2 mt-3">
-      <div
-        v-for="(imageUrl, index) in note.images"
-        :key="index"
-        class="relative aspect-square rounded-md overflow-hidden border border-base-200 bg-base-200"
-      >
-        <img
-          :src="imageUrl"
-          class="w-full h-full object-cover"
-          alt="笔记图片"
-          loading="lazy"
-        />
+    <div v-if="note.images && note.images.length > 0"
+      class="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-7 xl:grid-cols-8 gap-2 mt-3">
+      <div v-for="(imageUrl, index) in note.images" :key="index"
+        class="relative aspect-square rounded-md overflow-hidden border border-base-200 bg-base-200">
+        <img :src="imageUrl" class="w-full h-full object-cover" alt="笔记图片" loading="lazy" />
       </div>
     </div>
 
     <!-- 底部信息 -->
     <div v-if="note.sourceUrl" class="mt-3 pt-2 border-t border-base-content/10 text-xs text-base-content/50">
-      <span v-if="isLinkNote" class="inline-flex items-center gap-1 max-w-[200px] overflow-hidden text-ellipsis whitespace-nowrap">
+      <span v-if="isLinkNote"
+        class="inline-flex items-center gap-1 max-w-[200px] overflow-hidden text-ellipsis whitespace-nowrap">
         来源：
-        <a href="#" @click.prevent.stop="openLink" class="text-primary break-all hover:underline cursor-pointer overflow-hidden text-ellipsis whitespace-nowrap">
+        <a href="#" @click.prevent.stop="openLink"
+          class="text-primary break-all hover:underline cursor-pointer overflow-hidden text-ellipsis whitespace-nowrap">
           {{ note.sourceUrl }}
         </a>
       </span>
       <span v-else-if="isFileNote" class="inline-flex items-center gap-1">
         附件：
-        <a :href="attachmentUrl" @click.stop="revealFile" target="_blank" class="text-primary hover:underline cursor-pointer">
+        <a :href="attachmentUrl" @click.stop="revealFile" target="_blank"
+          class="text-primary hover:underline cursor-pointer">
           {{ note.sourceUrl.split('/').pop() }}
         </a>
       </span>
@@ -331,5 +311,4 @@ onBeforeUnmount(() => {
 </template>
 
 
-<style scoped>
-</style>
+<style scoped></style>
