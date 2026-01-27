@@ -55,8 +55,7 @@ export function useNoteStore() {
     const noteDataWithDefaults = {
       type: noteData.type || 'text',
       content: noteData.content || '',
-      sourceUrl: noteData.sourceUrl || null,
-      images: noteData.images || []
+      sourceUrl: noteData.sourceUrl || null
     }
     return await invoke('create_note', { 
       noteData: noteDataWithDefaults, 

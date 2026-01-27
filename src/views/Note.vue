@@ -6,7 +6,7 @@ import { Download } from 'lucide-vue-next'
 import NoteCard from '@/components/NoteCard.vue'
 import NoteEditor from '@/components/NoteEditor.vue'
 import { useNoteStore } from '@/store/noteStore'
-import { saveFile } from '@/utils/fileUpload'
+import { saveFile, getResourceUrl } from '@/utils/fileUpload'
 import { extractTextFromFile, isSupportedFileType, getFileTypeDescription } from '@/utils/textExtraction'
 import { scrapeWebPage, isValidUrl, formatWebPageToNote } from '@/utils/webScraper'
 
@@ -192,8 +192,7 @@ async function handleEditorSubmit() {
             // 创建模式：创建新笔记
             const newNote = await noteStore.addNote({
                 type: 'text',
-                content: editorContent.value,
-                images: []
+                content: editorContent.value
             })
             // 直接在数组开头添加新笔记
             notes.value.unshift(newNote)
@@ -273,16 +272,20 @@ async function handleDroppedFile(file) {
     // 图片文件
     if (file.type.startsWith('image/')) {
         try {
+            // 保存图片文件
             const imagePath = await saveFile(file, 'image', workDirectory)
+            const resourceUrl = await getResourceUrl(imagePath)
             
-            // 创建图片笔记
+            // 创建带图片的 HTML 内容
+            const imageHtml = `<p><img src="${resourceUrl}" alt="${file.name}" style="max-width: 100%;"></p>`
+            
+            // 创建图文笔记
             const newNote = await noteStore.addNote({
-                type: 'image',
-                content: file.name,
-                images: [imagePath]
+                type: 'text',
+                content: imageHtml
             })
             notes.value.unshift(newNote)
-            showToast('图片笔记创建成功', 'success')
+            showToast('图片已添加到笔记', 'success')
         } catch (error) {
             console.error('图片保存失败:', error)
             showToast('图片保存失败', 'error')
@@ -307,19 +310,15 @@ async function handleDroppedFile(file) {
         try {
             showToast(`正在读取${getFileTypeDescription(file.name)}...`, 'info')
             
-            // 保存文件
-            const filePath = await saveFile(file, 'file', workDirectory)
-            
-            // 提取文本内容
-            const content = await extractTextFromFile(file, filePath, workDirectory)
+            // 提取文本内容（直接从文件读取，不保存）
+            const content = await extractTextFromFile(file, null, workDirectory)
             
             // 创建图文笔记（不包含文件名）
             const htmlContent = `<p>${content.replace(/\n/g, '<br>')}</p>`
             
             const newNote = await noteStore.addNote({
                 type: 'text',
-                content: htmlContent,
-                images: [filePath]
+                content: htmlContent
             })
             notes.value.unshift(newNote)
             showToast(`${getFileTypeDescription(file.name)}笔记创建成功`, 'success')
@@ -401,8 +400,7 @@ async function createLinkNote(url) {
         const newNote = await noteStore.addNote({
             type: 'link',
             content: content,
-            sourceUrl: url,
-            images: pageInfo.ogImage ? [pageInfo.ogImage] : []
+            sourceUrl: url
         })
         
         notes.value.unshift(newNote)
@@ -413,25 +411,12 @@ async function createLinkNote(url) {
     }
 }
 
-// 创建图片笔记
-async function createImageNote(imageData, fileName) {
-    const newNote = await noteStore.addNote({
-        type: 'image',
-        content: fileName || '图片笔记',
-        images: [imageData]
-    })
-    // 直接在数组开头添加新笔记
-    notes.value.unshift(newNote)
-    showToast('图片笔记创建成功', 'success')
-}
-
 // 创建文字笔记
 async function createTextNote(text) {
     try {
         const newNote = await noteStore.addNote({
             type: 'text',
-            content: text,
-            images: []
+            content: text
         })
         // 直接在数组开头添加新笔记
         notes.value.unshift(newNote)

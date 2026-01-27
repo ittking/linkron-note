@@ -11,23 +11,6 @@ export {}
 /* prettier-ignore */
 declare module 'vue' {
   export interface GlobalComponents {
-    AAlert: typeof import('ant-design-vue/es')['Alert']
-    AButton: typeof import('ant-design-vue/es')['Button']
-    ACard: typeof import('ant-design-vue/es')['Card']
-    ACol: typeof import('ant-design-vue/es')['Col']
-    AConfigProvider: typeof import('ant-design-vue/es')['ConfigProvider']
-    ADivider: typeof import('ant-design-vue/es')['Divider']
-    ADrawer: typeof import('ant-design-vue/es')['Drawer']
-    ADropdown: typeof import('ant-design-vue/es')['Dropdown']
-    AEmpty: typeof import('ant-design-vue/es')['Empty']
-    AForm: typeof import('ant-design-vue/es')['Form']
-    AFormItem: typeof import('ant-design-vue/es')['FormItem']
-    AInput: typeof import('ant-design-vue/es')['Input']
-    AMenu: typeof import('ant-design-vue/es')['Menu']
-    AMenuItem: typeof import('ant-design-vue/es')['MenuItem']
-    ARow: typeof import('ant-design-vue/es')['Row']
-    ATextarea: typeof import('ant-design-vue/es')['Textarea']
-    Index: typeof import('./components/NoteCard/Index.vue')['default']
     ModelSetting: typeof import('./components/ModelSetting.vue')['default']
     NoteCard: typeof import('./components/NoteCard.vue')['default']
     NoteEditor: typeof import('./components/NoteEditor.vue')['default']

@@ -13,7 +13,6 @@ pub struct Note {
     pub content: String,
     #[serde(rename = "sourceUrl")]
     pub source_url: Option<String>,
-    pub images: Vec<String>,
     #[serde(rename = "createdAt")]
     pub created_at: String,
     #[serde(rename = "updatedAt")]
@@ -28,14 +27,12 @@ pub struct NoteData {
     pub content: String,
     #[serde(rename = "sourceUrl")]
     pub source_url: Option<String>,
-    pub images: Option<Vec<String>>,
 }
 
 // 更新笔记的数据结构
 #[derive(Debug, Deserialize)]
 pub struct NoteUpdate {
     pub content: Option<String>,
-    pub images: Option<Vec<String>>,
 }
 
 // 标签数据结构
@@ -98,7 +95,6 @@ impl Database {
                 type TEXT NOT NULL DEFAULT 'text',
                 content TEXT NOT NULL,
                 source_url TEXT,
-                images TEXT,
                 created_at TEXT NOT NULL,
                 updated_at TEXT NOT NULL
             )",
@@ -177,7 +173,7 @@ impl Database {
     pub fn get_all_notes(&self, page: u32, page_size: u32) -> SqliteResult<Vec<Note>> {
         let offset = (page - 1) * page_size;
         let mut stmt = self.conn.prepare(
-            "SELECT id, type, content, source_url, images, created_at, updated_at
+            "SELECT id, type, content, source_url, created_at, updated_at
              FROM notes ORDER BY updated_at DESC LIMIT ? OFFSET ?"
         )?;
 
@@ -187,9 +183,8 @@ impl Database {
                 note_type: row.get(1)?,
                 content: row.get(2)?,
                 source_url: row.get(3)?,
-                images: serde_json::from_str(row.get::<_, String>(4)?.as_str()).unwrap_or_default(),
-                created_at: row.get(5)?,
-                updated_at: row.get(6)?,
+                created_at: row.get(4)?,
+                updated_at: row.get(5)?,
             })
         })?;
 
@@ -204,7 +199,7 @@ impl Database {
     /// 获取单个笔记
     pub fn get_note(&self, id: &str) -> SqliteResult<Option<Note>> {
         let mut stmt = self.conn.prepare(
-            "SELECT id, type, content, source_url, images, created_at, updated_at
+            "SELECT id, type, content, source_url, created_at, updated_at
              FROM notes WHERE id = ?"
         )?;
 
@@ -214,9 +209,8 @@ impl Database {
                 note_type: row.get(1)?,
                 content: row.get(2)?,
                 source_url: row.get(3)?,
-                images: serde_json::from_str(row.get::<_, String>(4)?.as_str()).unwrap_or_default(),
-                created_at: row.get(5)?,
-                updated_at: row.get(6)?,
+                created_at: row.get(4)?,
+                updated_at: row.get(5)?,
             })
         })?;
 
@@ -232,18 +226,14 @@ impl Database {
         let note_type = note_data.note_type.unwrap_or_else(|| "text".to_string());
         let now = chrono::Utc::now().to_rfc3339();
 
-        let images = note_data.images.unwrap_or_default();
-        let images_json = serde_json::to_string(&images).unwrap();
-
         self.conn.execute(
-            "INSERT INTO notes (id, type, content, source_url, images, created_at, updated_at)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+            "INSERT INTO notes (id, type, content, source_url, created_at, updated_at)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
             params![
                 &id,
                 &note_type,
                 &note_data.content,
                 &note_data.source_url,
-                &images_json,
                 &now,
                 &now
             ],
@@ -256,7 +246,6 @@ impl Database {
             note_type,
             content: note_data.content,
             source_url: note_data.source_url,
-            images,
             created_at: now.clone(),
             updated_at: now,
         })
@@ -286,14 +275,6 @@ impl Database {
             self.parse_and_create_tags(id, content)?;
         }
 
-        if let Some(images) = &updates.images {
-            let images_json = serde_json::to_string(images).unwrap();
-            self.conn.execute(
-                "UPDATE notes SET images = ?1, updated_at = ?2 WHERE id = ?3",
-                params![&images_json, &now, id],
-            )?;
-        }
-
         // 返回更新后的笔记
         self.get_note(id)?
             .ok_or_else(|| rusqlite::Error::QueryReturnedNoRows)
@@ -310,7 +291,7 @@ impl Database {
         let search_pattern = format!("%{}%", keyword);
 
         let mut stmt = self.conn.prepare(
-            "SELECT id, type, content, source_url, images, created_at, updated_at
+            "SELECT id, type, content, source_url, created_at, updated_at
              FROM notes WHERE content LIKE ?1
              ORDER BY updated_at DESC"
         )?;
@@ -321,9 +302,8 @@ impl Database {
                 note_type: row.get(1)?,
                 content: row.get(2)?,
                 source_url: row.get(3)?,
-                images: serde_json::from_str(row.get::<_, String>(4)?.as_str()).unwrap_or_default(),
-                created_at: row.get(5)?,
-                updated_at: row.get(6)?,
+                created_at: row.get(4)?,
+                updated_at: row.get(5)?,
             })
         })?;
 
@@ -479,12 +459,6 @@ pub async fn migrate_from_json(work_directory: Option<String>) -> Result<usize, 
                 .unwrap_or("")
                 .to_string(),
             source_url: note_json.get("sourceUrl").and_then(|v| v.as_str()).map(|s| s.to_string()),
-            images: note_json.get("images").and_then(|v| v.as_array()).map(|arr| {
-                arr.iter()
-                    .filter_map(|v| v.as_str())
-                    .map(|s| s.to_string())
-                    .collect()
-            }),
         };
 
         db.create_note(note_data)
@@ -735,7 +709,7 @@ impl Database {
     pub fn get_notes_by_tag(&self, tag_id: &str, page: u32, page_size: u32) -> SqliteResult<Vec<Note>> {
         let offset = (page - 1) * page_size;
         let mut stmt = self.conn.prepare(
-            "SELECT DISTINCT n.id, n.type, n.content, n.source_url, n.images, n.created_at, n.updated_at
+            "SELECT DISTINCT n.id, n.type, n.content, n.source_url, n.created_at, n.updated_at
          FROM notes n
          INNER JOIN note_tags nt ON n.id = nt.note_id
          WHERE nt.tag_id = ?
@@ -749,9 +723,8 @@ impl Database {
                 note_type: row.get(1)?,
                 content: row.get(2)?,
                 source_url: row.get(3)?,
-                images: serde_json::from_str(row.get::<_, String>(4)?.as_str()).unwrap_or_default(),
-                created_at: row.get(5)?,
-                updated_at: row.get(6)?,
+                created_at: row.get(4)?,
+                updated_at: row.get(5)?,
             })
         })?;
 

@@ -1,6 +1,6 @@
 <script setup>
 import { computed, ref, onMounted, onBeforeUnmount, watch } from 'vue'
-import { MoreHorizontal, ExternalLink, Edit, Trash2, ChevronDown, ChevronUp, Image as ImageIcon, FileText, Link as LinkIcon, File } from 'lucide-vue-next'
+import { MoreHorizontal, ExternalLink, Edit, Trash2, ChevronDown, ChevronUp, FileText, Link as LinkIcon } from 'lucide-vue-next'
 import { useEditor, EditorContent } from '@tiptap/vue-3'
 import { getResourceUrl } from '@/utils/fileUpload'
 import { openUrl, revealItemInDir } from '@tauri-apps/plugin-opener'
@@ -43,16 +43,12 @@ const MAX_HEIGHT = 120 // 最大高度，超过这个高度显示展开按钮
 
 // 笔记类型判断
 const noteType = computed(() => props.note.note_type || 'text')
-const isImageNote = computed(() => noteType.value === 'image')
 const isTextNote = computed(() => noteType.value === 'text')
 const isLinkNote = computed(() => noteType.value === 'link')
 
-// 图片笔记：从 note.images 数组获取
-const imageUrls = ref([])
-
 // 图文笔记：从内容中提取图片
 const extractedImages = computed(() => {
-  if (!props.note.content || isImageNote.value) return []
+  if (!props.note.content) return []
   const imgRegex = /<img[^>]*src=["']([^"']+)["'][^>]*>/gi
   const images = []
   let match
@@ -62,52 +58,10 @@ const extractedImages = computed(() => {
   return images
 })
 
-// 所有需要显示的图片（根据笔记类型）
-const displayImages = computed(() => {
-  if (isImageNote.value) {
-    return imageUrls.value
-  } else {
-    return extractedImages.value
-  }
-})
-
 // 是否有图片
 const hasImages = computed(() => {
-  return displayImages.value.length > 0
+  return extractedImages.value.length > 0
 })
-
-// 是否有附件（文件）
-const hasAttachments = computed(() => {
-  return props.note.images && props.note.images.length > 0
-})
-
-// 获取文件名
-const getFileName = (filePath) => {
-  if (!filePath) return '未知文件'
-  const parts = filePath.split(/[/\\]/)
-  return parts[parts.length - 1] || filePath
-}
-
-// 解析图片路径
-async function resolveImagePath(src) {
-  if (src.startsWith('resources/')) {
-    try {
-      const resourceUrl = await getResourceUrl(src)
-      return resourceUrl
-    } catch (error) {
-      console.error('Failed to resolve image path:', error)
-      return src
-    }
-  }
-  return src
-}
-
-// 监听图片变化，解析路径
-watch(() => props.note.images, async (newImages) => {
-  if (isImageNote.value && newImages) {
-    imageUrls.value = await Promise.all(newImages.map(resolveImagePath))
-  }
-}, { immediate: true })
 
 // 创建只读编辑器实例（仅用于图文笔记）
 const editor = useEditor({
@@ -198,7 +152,7 @@ function handleTagClick(tag) {
 
 // 检查内容是否溢出
 function checkOverflow() {
-  if (!contentRef.value || !editor.value || isImageNote.value) return
+  if (!contentRef.value || !editor.value) return
 
   const scrollHeight = contentRef.value.scrollHeight
   isOverflowing.value = scrollHeight > MAX_HEIGHT
@@ -245,27 +199,6 @@ function handleCardClick() {
   emit('click', props.note)
 }
 
-// 打开附件
-async function openAttachment() {
-  if (!hasAttachments.value || !props.note.images || props.note.images.length === 0) return
-  
-  const filePath = props.note.images[0]
-  try {
-    // 获取工作目录
-    const workDirectory = await noteStore.getWorkDirectory()
-    // 将协议 URL 转换为本地文件路径
-    const resourceUrl = await getResourceUrl(filePath)
-    const localPath = await invoke('get_local_path_from_protocol', { 
-      protocolUrl: resourceUrl,
-      workDirectory: workDirectory
-    })
-    // 使用 revealItemInDir 在文件资源管理器中显示文件
-    await revealItemInDir(localPath)
-  } catch (error) {
-    console.error('打开附件失败:', error)
-  }
-}
-
 // 点击外部关闭菜单
 function handleClickOutside(event) {
   if (menuVisible.value) {
@@ -287,7 +220,6 @@ onBeforeUnmount(() => {
     :data-note-id="note.id"
     class="note-card bg-base-100 border border-base-200 rounded-lg p-4 mb-3 cursor-pointer transition-all duration-200 hover:shadow-md"
     :class="{ 
-      'image-card': isImageNote, 
       'link-card': isLinkNote,
       'expanded': isExpanded,
       'overflowing': isOverflowing
@@ -298,7 +230,7 @@ onBeforeUnmount(() => {
       <div class="flex items-center gap-2">
         <!-- 类型图标 -->
         <component 
-          :is="isImageNote ? ImageIcon : isLinkNote ? LinkIcon : FileText" 
+          :is="isLinkNote ? LinkIcon : FileText" 
           :size="16" 
           class="text-base-content/50"
         />
@@ -333,20 +265,8 @@ onBeforeUnmount(() => {
       </div>
     </div>
 
-    <!-- 图片笔记：网格缩略图展示 -->
-    <div v-if="isImageNote && hasImages" class="grid grid-cols-[repeat(auto-fill,minmax(120px,1fr))] gap-2 mb-3">
-      <img 
-        v-for="(img, index) in displayImages" 
-        :key="index" 
-        :src="img"
-        class="w-full h-[120px] object-cover rounded-lg cursor-pointer hover:opacity-80 transition-opacity"
-        alt="Note image"
-        @click.stop
-      />
-    </div>
-
     <!-- 图文笔记：TipTap 编辑器渲染 -->
-    <div v-else-if="isTextNote && note.content">
+    <div v-if="isTextNote && note.content">
       <div
         ref="contentRef"
         class="text-base-content leading-relaxed break-words"
@@ -385,17 +305,14 @@ onBeforeUnmount(() => {
     </div>
 
     <!-- 底部信息 -->
-    <div v-if="note.sourceUrl || (hasAttachments && !isImageNote) || extractedTags.length > 0" class="mt-3 pt-2 border-t border-base-content/10 text-xs text-base-content/50 flex flex-wrap gap-3 items-center">
+    <div v-if="note.sourceUrl || extractedTags.length > 0" class="mt-3 pt-2 border-t border-base-content/10 text-xs text-base-content/50 flex flex-wrap gap-3 items-center">
       <span v-if="note.sourceUrl" class="inline-flex items-center gap-1 max-w-[200px] overflow-hidden text-ellipsis whitespace-nowrap">
         来源：
         <a href="#" @click.prevent.stop="openLink" class="text-primary break-all hover:underline cursor-pointer overflow-hidden text-ellipsis whitespace-nowrap">
           {{ note.sourceUrl }}
         </a>
       </span>
-      <span v-if="hasAttachments && !isImageNote" class="inline-flex items-center gap-1 max-w-[200px] overflow-hidden cursor-pointer hover:text-primary transition-colors" @click="openAttachment">
-        <File :size="12" />
-        <span class="overflow-hidden text-ellipsis whitespace-nowrap">附件：{{ getFileName(note.images[0]) }}</span>
-      </span>      <span v-if="extractedTags.length > 0" class="flex flex-wrap gap-1.5 ml-auto">
+      <span v-if="extractedTags.length > 0" class="flex flex-wrap gap-1.5 ml-auto">
         <span v-for="tag in extractedTags" :key="tag.id" @click.stop="handleTagClick(tag)"
           class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-primary/10 text-primary text-xs font-medium cursor-pointer hover:bg-primary/20 transition-colors">
           <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
