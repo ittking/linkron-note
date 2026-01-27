@@ -113,12 +113,16 @@ function createSelectionMenu() {
   document.body.appendChild(reference)
 
   // 创建 Tippy 实例
+  // 获取 #iterm-panel 元素，确保悬浮菜单在命名空间内
+  const itermPanel = document.getElementById('iterm-panel')
+  const appendTarget = itermPanel || document.body
+
   tippyInstance.value = tippy(reference, {
     content: menu,
     trigger: 'manual',
     interactive: true,
     placement: 'top',
-    appendTo: document.body,
+    appendTo: appendTarget,
     getReferenceClientRect: () => {
       const { view, state } = props.editor
       const { selection } = state
