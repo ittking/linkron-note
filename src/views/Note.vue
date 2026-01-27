@@ -288,7 +288,21 @@ async function handleDroppedFile(file) {
             showToast('图片保存失败', 'error')
         }
     }
-    // 文档文件（txt、md、pdf、docx）
+    // .url 文件 - 解析文件内容获取 URL
+    else if (file.name.endsWith('.url')) {
+        try {
+            const url = await extractUrlFromUrlFile(file)
+            if (url && isValidUrl(url)) {
+                createLinkNote(url)
+            } else {
+                showToast('无法从 .url 文件中提取有效的 URL', 'error')
+            }
+        } catch (error) {
+            console.error('解析 .url 文件失败:', error)
+            showToast('解析 .url 文件失败: ' + error.message, 'error')
+        }
+    }
+    // 文档文件（txt、md）
     else if (isSupportedFileType(file.name)) {
         try {
             showToast(`正在读取${getFileTypeDescription(file.name)}...`, 'info')
@@ -318,6 +332,53 @@ async function handleDroppedFile(file) {
     else {
         showToast(`不支持的文件类型: ${file.name}`, 'error')
     }
+}
+
+// 从 .url 文件中提取 URL
+async function extractUrlFromUrlFile(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader()
+        
+        reader.onload = (e) => {
+            try {
+                const content = e.target.result
+                
+                // .url 文件格式通常是 INI 格式
+                // 查找 URL= 这一行
+                const urlMatch = content.match(/^URL=(.+)$/m)
+                
+                if (urlMatch && urlMatch[1]) {
+                    resolve(urlMatch[1].trim())
+                } else {
+                    // 尝试其他格式：InternetShortcut
+                    const internetShortcutMatch = content.match(/^\[InternetShortcut\]([\s\S]*?)^\[.*\]$/m)
+                    if (internetShortcutMatch) {
+                        const sectionContent = internetShortcutMatch[1]
+                        const urlLine = sectionContent.match(/^URL=(.+)$/m)
+                        if (urlLine && urlLine[1]) {
+                            resolve(urlLine[1].trim())
+                        }
+                    }
+                    
+                    // 如果都找不到，尝试查找任何包含 http/https 的行
+                    const httpMatch = content.match(/(https?:\/\/[^\s]+)/)
+                    if (httpMatch) {
+                        resolve(httpMatch[1].trim())
+                    } else {
+                        reject(new Error('未找到 URL'))
+                    }
+                }
+            } catch (error) {
+                reject(error)
+            }
+        }
+        
+        reader.onerror = () => {
+            reject(new Error('读取文件失败'))
+        }
+        
+        reader.readAsText(file)
+    })
 }
 
 // 创建链接笔记

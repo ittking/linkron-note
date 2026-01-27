@@ -1,7 +1,9 @@
 /**
  * 网页抓取工具
- * 提供网页元数据提取和内容抓取功能
+ * 使用后端 Rust 抓取网页 HTML 内容，前端负责解析
  */
+
+import { invoke } from '@tauri-apps/api/core'
 
 /**
  * 抓取网页信息
@@ -14,20 +16,8 @@ export async function scrapeWebPage(url) {
   }
 
   try {
-    const response = await fetch(url, {
-      method: 'GET',
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-        'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
-      },
-    })
-
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`)
-    }
-
-    const html = await response.text()
+    // 使用后端 Rust 抓取网页 HTML
+    const html = await invoke('fetch_webpage_html', { url })
     return parseWebPage(html)
   } catch (error) {
     console.error('网页抓取失败:', error)

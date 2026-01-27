@@ -6,6 +6,7 @@ mod terminal;
 mod database;
 mod protocol;
 mod file_reader;
+mod web_scraper;
 
 #[cfg(any(windows, target_os = "macos"))]
 mod window_manager;
@@ -70,7 +71,8 @@ pub fn run() {
             database::search_tags,
             file_reader::read_text_file,
             file_reader::read_file_text,
-            file_reader::get_file_metadata
+            file_reader::get_file_metadata,
+            web_scraper::fetch_webpage_html
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
