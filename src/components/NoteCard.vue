@@ -5,6 +5,7 @@ import { useEditor, EditorContent } from '@tiptap/vue-3'
 import { invoke } from '@tauri-apps/api/core'
 import StarterKit from '@tiptap/starter-kit'
 import Highlight from '@tiptap/extension-highlight'
+import Image from '@tiptap/extension-image'
 import { TagExtension } from '@/extensions/tag-extension'
 import dayjs from 'dayjs'
 import 'dayjs/locale/zh-cn'
@@ -82,7 +83,8 @@ const editor = useEditor({
     Highlight.configure({
       multicolor: true,
     }),
-    TagExtension, // 添加 TagExtension 以正确渲染标签
+    TagExtension,
+    Image,
   ],
   editable: false, // 只读模式
   editorProps: {
