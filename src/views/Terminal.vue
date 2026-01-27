@@ -57,7 +57,14 @@ const addTerminal = () => {
   terminalStore.createTab()
 }
 
-const closeTerminal = (id) => {
+const closeTerminal = async (id) => {
+  // 关闭 PTY 会话
+  try {
+    await invoke('close_pty_session', { sessionId: id })
+  } catch (error) {
+    console.error('Failed to close PTY session:', error)
+  }
+  // 关闭 tab
   terminalStore.closeTab(id)
 }
 

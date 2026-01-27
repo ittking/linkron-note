@@ -67,8 +67,10 @@ function createTab() {
 
 /**
  * 关闭终端 Tab
+ * @param {string} id - 要关闭的 tab ID
+ * @param {Function} onCloseCallback - 关闭后的回调函数，用于执行清理操作
  */
-function closeTab(id) {
+function closeTab(id, onCloseCallback) {
   const index = state.tabs.findIndex(tab => tab.id === id)
   if (index > -1) {
     state.tabs.splice(index, 1)
@@ -76,6 +78,10 @@ function closeTab(id) {
       state.activeTabId = state.tabs.length > 0
         ? state.tabs[Math.max(0, index - 1)].id
         : null
+    }
+    // 执行关闭回调（如关闭终端进程）
+    if (onCloseCallback && typeof onCloseCallback === 'function') {
+      onCloseCallback(id)
     }
   }
 }
