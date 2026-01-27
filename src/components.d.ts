@@ -27,12 +27,15 @@ declare module 'vue' {
     AMenuItem: typeof import('ant-design-vue/es')['MenuItem']
     ARow: typeof import('ant-design-vue/es')['Row']
     ATextarea: typeof import('ant-design-vue/es')['Textarea']
+    ModelSetting: typeof import('./components/ModelSetting.vue')['default']
     NoteCard: typeof import('./components/NoteCard.vue')['default']
     NoteEditor: typeof import('./components/NoteEditor.vue')['default']
+    PreferencesSetting: typeof import('./components/PreferencesSetting.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
     SelectionMenu: typeof import('./components/SelectionMenu.vue')['default']
     TerminalTab: typeof import('./components/TerminalTab.vue')['default']
+    ThemeSetting: typeof import('./components/ThemeSetting.vue')['default']
     XTerm: typeof import('./components/XTerm.vue')['default']
   }
 }
