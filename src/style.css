@@ -86,11 +86,6 @@ body,
   font-size: 14px;
 }
 
-.tag-suggestion-item:hover,
-.tag-suggestion-item.is-selected {
-  background-color: hsl(var(--p) / 0.1);
-}
-
 .tag-suggestion-item .tag-icon {
   color: hsl(var(--p));
   flex-shrink: 0;
