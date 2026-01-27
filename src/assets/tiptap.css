@@ -47,7 +47,7 @@
 .ProseMirror .resizable-image-wrapper {
   display: inline-block;
   position: relative;
-  margin: 0 0.5rem;
+  margin: 0.5rem;
 }
 
 .ProseMirror .resizable-image-wrapper img {
@@ -60,17 +60,16 @@
 
 .ProseMirror .resizable-image-wrapper:hover img {
   outline: 1px dashed var(--color-primary);
-  outline-offset: -2px;
 }
 
 .ProseMirror .resize-handle {
   position: absolute;
-  width: 0.5em !important;
-  height: 0.5em !important;
-  background: var(--color-primary) !important;
+  width: 8px;
+  height:8px;
+  background: var(--color-primary);
   cursor: nwse-resize;
-  bottom: -0.1em !important;
-  right: 0.4em !important;
+  bottom: -4px;
+  right: 4px;
   border: none;
   z-index: 10;
   display: none;
