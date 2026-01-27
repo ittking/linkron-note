@@ -48,6 +48,10 @@ const props = defineProps({
   images: {
     type: Array,
     default: () => []
+  },
+  shouldClear: {
+    type: Boolean,
+    default: false
   }
 })
 
@@ -395,6 +399,22 @@ const editor = useEditor({
 
 // 移除了对 props.modelValue 的 watch，避免用户输入时频繁更新编辑器导致状态丢失
 // 编辑器内容只在初始化时设置一次，后续用户输入不会反向同步
+
+// 监听 shouldClear 标志，强制清空编辑器和图片
+watch(() => props.shouldClear, (shouldClear) => {
+  if (shouldClear && editor.value) {
+    editor.value.commands.clearContent()
+    images.value = []
+  }
+})
+
+// 监听 modelValue 变化（仅用于编辑模式初始化内容）
+watch(() => props.modelValue, (newValue) => {
+  // 只在编辑模式下，且编辑器已初始化，且内容真正不同时才更新
+  if (props.isEditing && editor.value && newValue && newValue !== editor.value.getHTML()) {
+    editor.value.commands.setContent(newValue, false)
+  }
+})
 
 // 计算是否有内容
 const hasContent = computed(() => {

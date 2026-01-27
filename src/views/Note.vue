@@ -59,6 +59,7 @@ const isLoading = ref(false)
 // 编辑相关状态
 const editingNote = ref(null)
 const isEditing = ref(false)
+const shouldClearEditor = ref(false) // 添加标志位用于强制清空编辑器
 
 // 标签筛选相关状态
 const currentFilterTag = ref(null)
@@ -450,7 +451,11 @@ function handleMenuOpen(note) {
 
 function handleMenuEdit(note) {
     editingNote.value = note
-    editorContent.value = note.content
+    shouldClearEditor.value = false // 重置清空标志
+    // 延迟一帧设置 editorContent，确保 NoteEditor 组件已经挂载
+    nextTick(() => {
+      editorContent.value = note.content
+    })
     isEditing.value = true
     // images 会通过 props 传递给 NoteEditor
     showToast('进入编辑模式', 'info')
@@ -504,6 +509,7 @@ function handleConfirmOk() {
 
 // 取消编辑
 function handleCancelEdit() {
+    shouldClearEditor.value = true // 设置清空标志
     editingNote.value = null
     isEditing.value = false
     editorContent.value = ''
@@ -519,6 +525,7 @@ function handleCancelEdit() {
             <NoteEditor v-model="editorContent" placeholder="现在的想法是..."
                 :is-scrolled-to-top="isNoteListScrolledToTop" :is-editing="isEditing"
                 :images="editingNote?.images || []"
+                :should-clear="shouldClearEditor"
                 @submit="handleEditorSubmit">
                 <template #actions>
                     <button v-if="isEditing" @click="handleCancelEdit"
