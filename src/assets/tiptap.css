@@ -42,8 +42,6 @@
 .ProseMirror img {
   max-width: 100%;
   height: auto;
-  border-radius: 8px;
-  margin: 0 0.5rem;
 }
 
 /* 可调整大小的图片样式 */
@@ -61,6 +59,7 @@
 
 .ProseMirror .resizable-image-wrapper:hover img {
   outline: 1px dashed var(--color-primary);
+  outline-offset: -1px;
 }
 
 .ProseMirror .resize-handle {
@@ -70,7 +69,7 @@
   background: var(--color-primary);
   cursor: nwse-resize;
   bottom: -4px;
-  right: 4px;
+  right: -4px;
   border: none;
   z-index: 10;
   display: none;
