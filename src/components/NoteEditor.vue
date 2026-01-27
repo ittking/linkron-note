@@ -7,6 +7,7 @@ import Highlight from '@tiptap/extension-highlight'
 import Placeholder from '@tiptap/extension-placeholder'
 import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight'
 import { common, createLowlight } from 'lowlight'
+import { DOMParser } from 'prosemirror-model'
 import { TagExtension } from '@/extensions/tag-extension'
 import { ResizableImage } from '@/extensions/resizable-image'
 import tippy from 'tippy.js'
@@ -300,6 +301,66 @@ const editor = useEditor({
   editorProps: {
     attributes: {
       class: 'prose prose-sm max-w-none focus:outline-none py-2 text-sm',
+    },
+    handlePaste: (view, event, slice) => {
+      // 获取粘贴的数据
+      const items = Array.from(event.clipboardData?.items || [])
+      const hasImage = items.some(item => item.type.startsWith('image/'))
+
+      // 如果粘贴的是图片
+      if (hasImage) {
+        event.preventDefault()
+
+        // 查找图片文件
+        const imageFile = items.find(item => item.type.startsWith('image/'))?.getAsFile()
+
+        if (imageFile) {
+          handleImageUpload({ target: { files: [imageFile] } })
+        }
+        return true
+      }
+
+      // 如果粘贴的是 HTML 内容，处理 h 标签
+      const html = event.clipboardData?.getData('text/html')
+      if (html) {
+        event.preventDefault()
+
+        // 创建临时 DOM 元素来解析 HTML
+        const tempDiv = document.createElement('div')
+        tempDiv.innerHTML = html
+
+        // 将所有 h 标签替换为 p 标签，但保留文本内容
+        const headings = tempDiv.querySelectorAll('h1, h2, h3, h4, h5, h6')
+        headings.forEach(heading => {
+          const text = heading.textContent
+          // 使用 <strong> 标签来模拟标题的加粗效果
+          heading.innerHTML = `<strong>${text}</strong>`
+          heading.replaceWith(document.createElement('p').appendChild(heading.firstChild.cloneNode(true)))
+        })
+
+        // 获取处理后的纯文本（包含基本的加粗标记）
+        const text = tempDiv.innerText
+
+        // 插入文本内容
+        view.dispatch(
+          view.state.tr.insertText(text)
+        )
+
+        return true
+      }
+
+      // 如果粘贴的是纯文本，清除格式
+      const text = event.clipboardData?.getData('text/plain')
+      if (text) {
+        event.preventDefault()
+        view.dispatch(
+          view.state.tr
+            .insertText(text)
+        )
+        return true
+      }
+
+      return false
     },
   },
   onUpdate: ({ editor }) => {

@@ -71,6 +71,12 @@ importers:
       lucide-vue-next:
         specifier: ^0.469.0
         version: 0.469.0(vue@3.5.27)
+      prosemirror-model:
+        specifier: ^1.25.4
+        version: 1.25.4
+      prosemirror-state:
+        specifier: ^1.4.4
+        version: 1.4.4
       tippy.js:
         specifier: ^6.3.7
         version: 6.3.7
