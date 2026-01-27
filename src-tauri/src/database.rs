@@ -503,35 +503,40 @@ pub async fn migrate_from_json(work_directory: Option<String>) -> Result<usize, 
 // ========== 标签相关函数 ==========
 
 impl Database {
-    /// 解析多级标签名称
-    /// 返回 (全名, 显示名称, 路径, 层级)
-    fn parse_tag_name(name: &str) -> (String, String, String, i32) {
-        let parts: Vec<&str> = name.split('/').collect();
-        let level = parts.len() as i32;
-        let display_name = parts.last().map_or(name, |v| v).to_string();
-        let path = if parts.len() > 1 {
-            parts[..parts.len()-1].join("/")
-        } else {
-            String::new()
-        };
-        (name.to_string(), display_name, path, level)
-    }
-
     /// 解析内容中的标签并创建关联
     fn parse_and_create_tags(&self, note_id: &str, content: &str) -> SqliteResult<()> {
         // 使用正则表达式匹配标签：#标签名 或 #标签名/子标签
         let re = Regex::new(r"#([a-zA-Z0-9_\u4e00-\u9fa5/]+)").unwrap();
-        
+
         for cap in re.captures_iter(content) {
             if let Some(tag_name) = cap.get(1) {
                 let tag_name_str = tag_name.as_str();
-                // 创建或获取标签
-                if let Ok(tag) = self.create_or_get_tag(tag_name_str, None) {
-                    // 创建标签关联
-                    self.conn.execute(
-                        "INSERT OR IGNORE INTO note_tags (note_id, tag_id) VALUES (?1, ?2)",
-                        params![note_id, &tag.id],
-                    )?;
+
+                // 解析多级标签
+                let parts: Vec<&str> = tag_name_str.split('/').collect();
+
+                // 创建或获取所有层级的标签（从父级到子级）
+                let mut current_path = String::new();
+                for (i, part) in parts.iter().enumerate() {
+                    let full_name = if i == 0 {
+                        part.to_string()
+                    } else {
+                        format!("{}/{}", current_path, part)
+                    };
+
+                    // 创建或获取标签
+                    if let Ok(_tag) = self.create_or_get_tag(&full_name, None) {
+                        // 只将最末级的标签与笔记关联
+                        if i == parts.len() - 1 {
+                            self.conn.execute(
+                                "INSERT OR IGNORE INTO note_tags (note_id, tag_id) VALUES (?1, ?2)",
+                                params![note_id, &_tag.id],
+                            )?;
+                        }
+                    }
+
+                    // 更新当前路径
+                    current_path = full_name;
                 }
             }
         }
@@ -540,11 +545,22 @@ impl Database {
 
     /// 创建或获取标签
     pub fn create_or_get_tag(&self, name: &str, color: Option<&str>) -> SqliteResult<Tag> {
-        let (full_name, display_name, path, level) = Self::parse_tag_name(name);
+        // 解析标签名
+        let parts: Vec<&str> = name.split('/').collect();
+        let level = parts.len() as i32;
+        let display_name = parts.last().unwrap_or(&name).to_string();
+
+        // path 是父级标签的完整路径（不包括当前标签名）
+        let path = if parts.len() > 1 {
+            parts[..parts.len()-1].join("/")
+        } else {
+            String::new()
+        };
+
         let now = chrono::Utc::now().to_rfc3339();
 
         // 尝试获取已存在的标签
-        if let Some(tag) = self.get_tag_by_name(&full_name)? {
+        if let Some(tag) = self.get_tag_by_name(name)? {
             return Ok(tag);
         }
 
@@ -553,12 +569,12 @@ impl Database {
         self.conn.execute(
             "INSERT INTO tags (id, name, display_name, path, level, color, created_at, updated_at)
              VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
-            params![&id, &full_name, &display_name, &path, level, color, &now, &now],
+            params![&id, &name, &display_name, &path, level, color, &now, &now],
         )?;
 
         Ok(Tag {
             id,
-            name: full_name,
+            name: name.to_string(),
             display_name,
             path,
             level,
