@@ -313,8 +313,8 @@ async function handleDroppedFile(file) {
             // 提取文本内容
             const content = await extractTextFromFile(file, filePath, workDirectory)
             
-            // 创建图文笔记
-            const htmlContent = `<h3>${file.name}</h3><p>${content.replace(/\n/g, '<br>')}</p>`
+            // 创建图文笔记（不包含文件名）
+            const htmlContent = `<p>${content.replace(/\n/g, '<br>')}</p>`
             
             const newNote = await noteStore.addNote({
                 type: 'text',

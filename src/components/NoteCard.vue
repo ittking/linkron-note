@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref, onMounted, onBeforeUnmount, watch, nextTick } from 'vue'
+import { computed, ref, onMounted, onBeforeUnmount, watch } from 'vue'
 import { MoreHorizontal, ExternalLink, Edit, Trash2, ChevronDown, ChevronUp, Image as ImageIcon, FileText, Link as LinkIcon, File } from 'lucide-vue-next'
 import { useEditor, EditorContent } from '@tiptap/vue-3'
 import { getResourceUrl } from '@/utils/fileUpload'
@@ -36,7 +36,6 @@ const isExpanded = ref(false)
 const contentRef = ref(null)
 const isOverflowing = ref(false)
 const MAX_HEIGHT = 120 // 最大高度，超过这个高度显示展开按钮
-const currentMaxHeight = ref('none')
 
 // 笔记类型判断
 const noteType = computed(() => props.note.note_type || 'text')
@@ -139,25 +138,8 @@ const editor = useEditor({
   },
 })
 
-// 编辑器 class
-const editorClass = computed(() => {
-  const baseClass = 'prose prose-sm max-w-none text-[14px]'
-  return !isExpanded.value ? `${baseClass} editor-collapsed` : baseClass
-})
-
-function updateEditorClass() {
-  if (editor.value) {
-    editor.value.view.dom.className = editorClass.value
-  }
-}
-
-watch(isExpanded, () => {
-  updateEditorClass()
-})
-
 watch(editor, (newEditor) => {
   if (newEditor) {
-    updateEditorClass()
     setTimeout(checkOverflow, 200)
   }
 })
@@ -206,81 +188,15 @@ function handleTagClick(tag) {
 function checkOverflow() {
   if (!contentRef.value || !editor.value || isImageNote.value) return
 
-  const originalEditorClass = editor.value.view.dom.className
-  editor.value.view.dom.className = editor.value.view.dom.className.replace(' editor-collapsed', '')
-
-  nextTick(() => {
-    if (!contentRef.value || !editor.value) return
-
-    const originalMaxHeight = contentRef.value.style.maxHeight
-    const originalOverflow = contentRef.value.style.overflow
-
-    contentRef.value.style.maxHeight = 'none'
-    contentRef.value.style.overflow = 'visible'
-
-    const scrollHeight = contentRef.value.scrollHeight
-
-    contentRef.value.style.maxHeight = originalMaxHeight
-    contentRef.value.style.overflow = originalOverflow
-
-    editor.value.view.dom.className = originalEditorClass
-
-    isOverflowing.value = scrollHeight > MAX_HEIGHT
-  })
+  const scrollHeight = contentRef.value.scrollHeight
+  isOverflowing.value = scrollHeight > MAX_HEIGHT
 }
 
 // 切换展开/收起
 function toggleExpand(event) {
   event.stopPropagation()
-
-  if (isExpanded.value) {
-    if (contentRef.value) {
-      const originalMaxHeight = contentRef.value.style.maxHeight
-      const originalOverflow = contentRef.value.style.overflow
-
-      contentRef.value.style.maxHeight = 'none'
-      contentRef.value.style.overflow = 'visible'
-
-      const realHeight = contentRef.value.scrollHeight
-
-      contentRef.value.style.maxHeight = originalMaxHeight
-      contentRef.value.style.overflow = originalOverflow
-
-      currentMaxHeight.value = realHeight + 'px'
-      contentRef.value.offsetHeight
-      currentMaxHeight.value = '120px'
-    }
-    isExpanded.value = false
-  } else {
-    if (contentRef.value) {
-      const originalMaxHeight = contentRef.value.style.maxHeight
-      const originalOverflow = contentRef.value.style.overflow
-
-      contentRef.value.style.maxHeight = 'none'
-      contentRef.value.style.overflow = 'visible'
-
-      const realHeight = contentRef.value.scrollHeight
-
-      contentRef.value.style.maxHeight = originalMaxHeight
-      contentRef.value.style.overflow = originalOverflow
-
-      currentMaxHeight.value = realHeight + 'px'
-    }
-    isExpanded.value = true
-  }
+  isExpanded.value = !isExpanded.value
 }
-
-// 内容区域样式
-const contentStyle = computed(() => {
-  if (!isOverflowing.value) {
-    return {}
-  }
-
-  return {
-    maxHeight: isExpanded.value ? currentMaxHeight.value : '120px',
-    opacity: 1
-  }
-})
 
 // 菜单项点击处理
 function handleMenuClick(action) {
@@ -346,120 +262,6 @@ onBeforeUnmount(() => {
 })
 </script>
 
-<style scoped>
-:deep(.editor-collapsed img) {
-  display: none;
-}
-
-.image-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-  gap: 8px;
-}
-
-.image-item {
-  width: 100%;
-  height: 120px;
-  object-fit: cover;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: opacity 0.2s;
-}
-
-.image-item:hover {
-  opacity: 0.8;
-}
-
-.link-preview {
-  padding: 12px;
-  background-color: hsl(var(--b1));
-  border-radius: 8px;
-}
-
-.link-title {
-  font-size: 16px;
-  font-weight: 600;
-  margin-bottom: 8px;
-  color: hsl(var(--bc));
-}
-
-.link-description {
-  font-size: 14px;
-  color: hsl(var(--bc) / 0.7);
-  margin-bottom: 12px;
-  line-height: 1.5;
-}
-
-.link-url {
-  font-size: 12px;
-  color: hsl(var(--p));
-  text-decoration: none;
-  word-break: break-all;
-}
-
-.link-url:hover {
-  text-decoration: underline;
-}
-
-.note-footer {
-  margin-top: 12px;
-  padding-top: 8px;
-  border-top: 1px solid hsl(var(--bc) / 0.1);
-  font-size: 12px;
-  color: hsl(var(--bc) / 0.5);
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  align-items: center;
-}
-
-.source-url {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  max-width: 200px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.source-link {
-  color: hsl(var(--p));
-  text-decoration: none;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  cursor: pointer;
-}
-
-.source-link:hover {
-  text-decoration: underline;
-}
-
-.attachment-file {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  max-width: 200px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  cursor: pointer;
-  transition: color 0.2s;
-}
-
-.attachment-file:hover {
-  color: hsl(var(--p));
-}
-
-.tag-info {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-left: auto;
-}
-</style>
-
 <template>
   <div
     class="note-card bg-base-100 border border-base-200 rounded-lg p-4 mb-3 cursor-pointer transition-all duration-200 hover:shadow-md"
@@ -506,12 +308,12 @@ onBeforeUnmount(() => {
     </div>
 
     <!-- 图片笔记：网格缩略图展示 -->
-    <div v-if="isImageNote && hasImages" class="image-grid mb-3">
+    <div v-if="isImageNote && hasImages" class="grid grid-cols-[repeat(auto-fill,minmax(120px,1fr))] gap-2 mb-3">
       <img 
         v-for="(img, index) in displayImages" 
         :key="index" 
         :src="img"
-        class="image-item"
+        class="w-full h-[120px] object-cover rounded-lg cursor-pointer hover:opacity-80 transition-opacity"
         alt="Note image"
         @click.stop
       />
@@ -521,47 +323,48 @@ onBeforeUnmount(() => {
     <div v-else-if="isTextNote && note.content">
       <div
         ref="contentRef"
-        class="text-base-content leading-relaxed break-words overflow-hidden transition-all duration-300 ease-in-out"
-        :class="{ 'line-clamp-5': !isExpanded && isOverflowing }"
-        :style="contentStyle">
+        class="text-base-content leading-relaxed break-words"
+        :class="{
+          'line-clamp-5': !isExpanded && isOverflowing,
+          'max-h-[120px] overflow-hidden': !isExpanded && isOverflowing
+        }">
         <EditorContent class="ProseMirror" :editor="editor" />
       </div>
 
       <!-- 展开/收起按钮 -->
       <button v-if="isOverflowing" @click="toggleExpand"
-        class="mt-2 text-xs text-primary hover:text-primary/80 flex items-center gap-1 transition-all duration-200">
+        class="mt-2 text-xs text-primary hover:text-primary/80 flex items-center gap-1">
         <template v-if="!isExpanded">
           展开全文
-          <ChevronDown :size="14" class="transition-transform duration-300" />
+          <ChevronDown :size="14" />
         </template>
         <template v-else>
           收起
-          <ChevronUp :size="14" class="transition-transform duration-300" />
+          <ChevronUp :size="14" />
         </template>
       </button>
     </div>
 
     <!-- 链接笔记：链接预览卡片 -->
-    <div v-else-if="isLinkNote" class="link-preview">
-      <p v-if="note.content" class="link-description">{{ note.content }}</p>
-      <a v-if="note.sourceUrl" :href="note.sourceUrl" target="_blank" class="link-url" @click.stop>
+    <div v-else-if="isLinkNote" class="p-3 bg-base-200 rounded-lg">
+      <p v-if="note.content" class="text-sm text-base-content/70 mb-3 leading-relaxed">{{ note.content }}</p>
+      <a v-if="note.sourceUrl" :href="note.sourceUrl" target="_blank" class="text-xs text-primary break-all hover:underline" @click.stop>
         {{ note.sourceUrl }}
       </a>
     </div>
 
     <!-- 底部信息 -->
-    <div class="note-footer">
-      <span v-if="note.sourceUrl" class="source-url">
+    <div v-if="note.sourceUrl || (hasAttachments && !isImageNote) || extractedTags.length > 0" class="mt-3 pt-2 border-t border-base-content/10 text-xs text-base-content/50 flex flex-wrap gap-3 items-center">
+      <span v-if="note.sourceUrl" class="inline-flex items-center gap-1 max-w-[200px] overflow-hidden text-ellipsis whitespace-nowrap">
         来源：
-        <a href="#" @click.prevent.stop="openLink" class="source-link">
+        <a href="#" @click.prevent.stop="openLink" class="text-primary break-all hover:underline cursor-pointer overflow-hidden text-ellipsis whitespace-nowrap">
           {{ note.sourceUrl }}
         </a>
       </span>
-      <span v-if="hasAttachments && !isImageNote" class="attachment-file" @click="openAttachment">
+      <span v-if="hasAttachments && !isImageNote" class="inline-flex items-center gap-1 max-w-[200px] overflow-hidden cursor-pointer hover:text-primary transition-colors" @click="openAttachment">
         <File :size="12" />
-        {{ getFileName(note.images[0]) }}
-      </span>
-      <span v-if="extractedTags.length > 0" class="tag-info">
+        <span class="overflow-hidden text-ellipsis whitespace-nowrap">附件：{{ getFileName(note.images[0]) }}</span>
+      </span>      <span v-if="extractedTags.length > 0" class="flex flex-wrap gap-1.5 ml-auto">
         <span v-for="tag in extractedTags" :key="tag.id" @click.stop="handleTagClick(tag)"
           class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-primary/10 text-primary text-xs font-medium cursor-pointer hover:bg-primary/20 transition-colors">
           <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
@@ -575,3 +378,7 @@ onBeforeUnmount(() => {
     </div>
   </div>
 </template>
+
+
+<style scoped>
+</style>
