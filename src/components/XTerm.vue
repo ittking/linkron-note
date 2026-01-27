@@ -36,11 +36,25 @@ onMounted(async () => {
     const temp = document.createElement('div')
     temp.style.color = `var(${varName})`
     temp.style.display = 'none'
-    document.body.appendChild(temp)
-    
+
+    // 由于使用了命名空间，需要将临时元素添加到 #iterm-panel 内部
+    const itermPanel = document.getElementById('iterm-panel')
+    if (itermPanel) {
+      itermPanel.appendChild(temp)
+    } else {
+      // 如果找不到 iterm-panel，降级到 body
+      document.body.appendChild(temp)
+    }
+
     const computed = getComputedStyle(temp).color
-    document.body.removeChild(temp)
-    
+
+    // 移除临时元素
+    if (itermPanel && temp.parentNode === itermPanel) {
+      itermPanel.removeChild(temp)
+    } else {
+      document.body.removeChild(temp)
+    }
+
     return computed || ''
   }
 
@@ -88,11 +102,15 @@ onMounted(async () => {
   const observer = new MutationObserver(() => {
     updateTerminalTheme()
   })
-  
-  observer.observe(document.documentElement, {
-    attributes: true,
-    attributeFilter: ['data-theme']
-  })
+
+  // 监听 #iterm-panel 元素的 data-theme 属性变化
+  const itermPanel = document.getElementById('iterm-panel')
+  if (itermPanel) {
+    observer.observe(itermPanel, {
+      attributes: true,
+      attributeFilter: ['data-theme']
+    })
+  }
 
   // 调色板（16色）
   const palette = [
