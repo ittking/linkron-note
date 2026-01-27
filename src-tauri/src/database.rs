@@ -13,10 +13,22 @@ pub struct Note {
     pub content: String,
     #[serde(rename = "sourceUrl")]
     pub source_url: Option<String>,
+    #[serde(default)]
+    pub images: Vec<String>,
     #[serde(rename = "createdAt")]
     pub created_at: String,
     #[serde(rename = "updatedAt")]
     pub updated_at: String,
+}
+
+/// 序列化图片数组为 JSON 字符串
+fn serialize_images(images: &Vec<String>) -> String {
+    serde_json::to_string(images).unwrap_or_else(|_| "[]".to_string())
+}
+
+/// 反序列化 JSON 字符串为图片数组
+fn deserialize_images(images_str: &str) -> Vec<String> {
+    serde_json::from_str(images_str).unwrap_or_default()
 }
 
 // 创建笔记的数据结构
@@ -27,12 +39,15 @@ pub struct NoteData {
     pub content: String,
     #[serde(rename = "sourceUrl")]
     pub source_url: Option<String>,
+    #[serde(default)]
+    pub images: Vec<String>,
 }
 
 // 更新笔记的数据结构
 #[derive(Debug, Deserialize)]
 pub struct NoteUpdate {
     pub content: Option<String>,
+    pub images: Option<Vec<String>>,
 }
 
 // 标签数据结构
@@ -95,11 +110,18 @@ impl Database {
                 type TEXT NOT NULL DEFAULT 'text',
                 content TEXT NOT NULL,
                 source_url TEXT,
+                images TEXT DEFAULT '[]',
                 created_at TEXT NOT NULL,
                 updated_at TEXT NOT NULL
             )",
             [],
         )?;
+
+        // 检查并添加 images 列（兼容旧版本数据库）
+        self.conn.execute(
+            "ALTER TABLE notes ADD COLUMN images TEXT DEFAULT '[]'",
+            [],
+        ).ok(); // 忽略列已存在的错误
 
         // 创建 tags 表
         self.conn.execute(
@@ -173,18 +195,22 @@ impl Database {
     pub fn get_all_notes(&self, page: u32, page_size: u32) -> SqliteResult<Vec<Note>> {
         let offset = (page - 1) * page_size;
         let mut stmt = self.conn.prepare(
-            "SELECT id, type, content, source_url, created_at, updated_at
+            "SELECT id, type, content, source_url,
+             COALESCE(images, '[]') as images,
+             created_at, updated_at
              FROM notes ORDER BY updated_at DESC LIMIT ? OFFSET ?"
         )?;
 
         let notes = stmt.query_map(params![page_size, offset], |row| {
+            let images_str: String = row.get(4)?;
             Ok(Note {
                 id: row.get(0)?,
                 note_type: row.get(1)?,
                 content: row.get(2)?,
                 source_url: row.get(3)?,
-                created_at: row.get(4)?,
-                updated_at: row.get(5)?,
+                images: deserialize_images(&images_str),
+                created_at: row.get(5)?,
+                updated_at: row.get(6)?,
             })
         })?;
 
@@ -199,18 +225,22 @@ impl Database {
     /// 获取单个笔记
     pub fn get_note(&self, id: &str) -> SqliteResult<Option<Note>> {
         let mut stmt = self.conn.prepare(
-            "SELECT id, type, content, source_url, created_at, updated_at
+            "SELECT id, type, content, source_url,
+             COALESCE(images, '[]') as images,
+             created_at, updated_at
              FROM notes WHERE id = ?"
         )?;
 
         let mut notes = stmt.query_map(params![id], |row| {
+            let images_str: String = row.get(4)?;
             Ok(Note {
                 id: row.get(0)?,
                 note_type: row.get(1)?,
                 content: row.get(2)?,
                 source_url: row.get(3)?,
-                created_at: row.get(4)?,
-                updated_at: row.get(5)?,
+                images: deserialize_images(&images_str),
+                created_at: row.get(5)?,
+                updated_at: row.get(6)?,
             })
         })?;
 
@@ -225,15 +255,17 @@ impl Database {
         let id = Ulid::new().to_string();
         let note_type = note_data.note_type.unwrap_or_else(|| "text".to_string());
         let now = chrono::Utc::now().to_rfc3339();
+        let images_json = serialize_images(&note_data.images);
 
         self.conn.execute(
-            "INSERT INTO notes (id, type, content, source_url, created_at, updated_at)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+            "INSERT INTO notes (id, type, content, source_url, images, created_at, updated_at)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
             params![
                 &id,
                 &note_type,
                 &note_data.content,
                 &note_data.source_url,
+                &images_json,
                 &now,
                 &now
             ],
@@ -246,6 +278,7 @@ impl Database {
             note_type,
             content: note_data.content,
             source_url: note_data.source_url,
+            images: note_data.images,
             created_at: now.clone(),
             updated_at: now,
         })
@@ -259,11 +292,22 @@ impl Database {
 
         let now = chrono::Utc::now().to_rfc3339();
 
+        // 根据提供的字段构建更新语句
         if let Some(content) = &updates.content {
-            self.conn.execute(
-                "UPDATE notes SET content = ?1, updated_at = ?2 WHERE id = ?3",
-                params![content, &now, id],
-            )?;
+            if let Some(images) = &updates.images {
+                // 同时更新 content 和 images
+                let images_json = serialize_images(images);
+                self.conn.execute(
+                    "UPDATE notes SET content = ?1, images = ?2, updated_at = ?3 WHERE id = ?4",
+                    params![content, &images_json, &now, id],
+                )?;
+            } else {
+                // 只更新 content
+                self.conn.execute(
+                    "UPDATE notes SET content = ?1, updated_at = ?2 WHERE id = ?3",
+                    params![content, &now, id],
+                )?;
+            }
             
             // 删除旧的标签关联
             self.conn.execute(
@@ -273,6 +317,13 @@ impl Database {
             
             // 解析并创建新的标签关联
             self.parse_and_create_tags(id, content)?;
+        } else if let Some(images) = &updates.images {
+            // 只更新 images
+            let images_json = serialize_images(images);
+            self.conn.execute(
+                "UPDATE notes SET images = ?1, updated_at = ?2 WHERE id = ?3",
+                params![&images_json, &now, id],
+            )?;
         }
 
         // 返回更新后的笔记
@@ -291,19 +342,23 @@ impl Database {
         let search_pattern = format!("%{}%", keyword);
 
         let mut stmt = self.conn.prepare(
-            "SELECT id, type, content, source_url, created_at, updated_at
+            "SELECT id, type, content, source_url,
+             COALESCE(images, '[]') as images,
+             created_at, updated_at
              FROM notes WHERE content LIKE ?1
              ORDER BY updated_at DESC"
         )?;
 
         let notes = stmt.query_map(params![search_pattern], |row| {
+            let images_str: String = row.get(4)?;
             Ok(Note {
                 id: row.get(0)?,
                 note_type: row.get(1)?,
                 content: row.get(2)?,
                 source_url: row.get(3)?,
-                created_at: row.get(4)?,
-                updated_at: row.get(5)?,
+                images: deserialize_images(&images_str),
+                created_at: row.get(5)?,
+                updated_at: row.get(6)?,
             })
         })?;
 
@@ -459,6 +514,7 @@ pub async fn migrate_from_json(work_directory: Option<String>) -> Result<usize, 
                 .unwrap_or("")
                 .to_string(),
             source_url: note_json.get("sourceUrl").and_then(|v| v.as_str()).map(|s| s.to_string()),
+            images: vec![], // 迁移的笔记默认为空图片数组
         };
 
         db.create_note(note_data)
@@ -709,7 +765,9 @@ impl Database {
     pub fn get_notes_by_tag(&self, tag_id: &str, page: u32, page_size: u32) -> SqliteResult<Vec<Note>> {
         let offset = (page - 1) * page_size;
         let mut stmt = self.conn.prepare(
-            "SELECT DISTINCT n.id, n.type, n.content, n.source_url, n.created_at, n.updated_at
+            "SELECT DISTINCT n.id, n.type, n.content, n.source_url,
+             COALESCE(n.images, '[]') as images,
+             n.created_at, n.updated_at
          FROM notes n
          INNER JOIN note_tags nt ON n.id = nt.note_id
          WHERE nt.tag_id = ?
@@ -718,13 +776,15 @@ impl Database {
         )?;
 
         let notes = stmt.query_map(params![tag_id, page_size, offset], |row| {
+            let images_str: String = row.get(4)?;
             Ok(Note {
                 id: row.get(0)?,
                 note_type: row.get(1)?,
                 content: row.get(2)?,
                 source_url: row.get(3)?,
-                created_at: row.get(4)?,
-                updated_at: row.get(5)?,
+                images: deserialize_images(&images_str),
+                created_at: row.get(5)?,
+                updated_at: row.get(6)?,
             })
         })?;
 

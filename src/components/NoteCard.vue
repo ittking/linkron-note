@@ -1,6 +1,6 @@
 <script setup>
 import { computed, ref, onMounted, onBeforeUnmount, watch } from 'vue'
-import { MoreHorizontal, ExternalLink, Edit, Trash2, ChevronDown, ChevronUp, FileText, Link as LinkIcon } from 'lucide-vue-next'
+import { MoreHorizontal, ExternalLink, Edit, Trash2, ChevronDown, ChevronUp } from 'lucide-vue-next'
 import { useEditor, EditorContent } from '@tiptap/vue-3'
 import { getResourceUrl } from '@/utils/fileUpload'
 import { openUrl, revealItemInDir } from '@tauri-apps/plugin-opener'
@@ -225,15 +225,9 @@ onBeforeUnmount(() => {
       'overflowing': isOverflowing
     }"
     @click="handleCardClick">
-    <!-- 顶部：类型图标 + 日期 + 菜单 -->
+    <!-- 顶部：日期 + 菜单 -->
     <div class="flex items-center justify-between mb-3">
       <div class="flex items-center gap-2">
-        <!-- 类型图标 -->
-        <component 
-          :is="isLinkNote ? LinkIcon : FileText" 
-          :size="16" 
-          class="text-base-content/50"
-        />
         <span class="text-xs text-base-content/50">{{ formattedDate }}</span>
       </div>
       <div class="relative">
@@ -294,6 +288,28 @@ onBeforeUnmount(() => {
           <ChevronUp :size="14" />
         </template>
       </button>
+    </div>
+
+    <!-- 图片列表 -->
+    <div v-if="note.images && note.images.length > 0" class="grid grid-cols-4 gap-2 mb-3">
+      <div
+        v-for="(imageUrl, index) in note.images.slice(0, 4)"
+        :key="index"
+        class="relative aspect-square rounded-md overflow-hidden border border-base-200 bg-base-200"
+      >
+        <img
+          :src="imageUrl"
+          class="w-full h-full object-cover"
+          alt="笔记图片"
+          loading="lazy"
+        />
+      </div>
+      <div
+        v-if="note.images.length > 4"
+        class="aspect-square rounded-md overflow-hidden border border-base-200 bg-base-200 flex items-center justify-center text-xs text-base-content/50"
+      >
+        +{{ note.images.length - 4 }}
+      </div>
     </div>
 
     <!-- 链接笔记：链接预览卡片 -->

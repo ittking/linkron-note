@@ -44,42 +44,6 @@
   height: auto;
 }
 
-/* 可调整大小的图片样式 */
-.ProseMirror .resizable-image-wrapper {
-  display: inline-block !important;
-  position: relative;
-}
-
-.ProseMirror .resizable-image-wrapper img {
-  display: block;
-  max-width: 100%;
-  height: auto;
-  border-radius: 0;
-}
-
-.ProseMirror .resizable-image-wrapper:hover img {
-  outline: 1px dashed var(--color-primary);
-  outline-offset: -1px;
-}
-
-.ProseMirror .resize-handle {
-  position: absolute;
-  width: 8px;
-  height:8px;
-  background: var(--color-primary);
-  cursor: nwse-resize;
-  bottom: -4px;
-  right: -4px;
-  border: none;
-  z-index: 10;
-  display: none;
-  border-radius: 50%;
-}
-
-.ProseMirror .resizable-image-wrapper:hover .resize-handle {
-  display: block;
-}
-
 .ProseMirror strong {
   font-weight: 600;
 }

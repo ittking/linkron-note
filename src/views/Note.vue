@@ -164,20 +164,26 @@ async function loadNotes(reset = false) {
 }
 
 // 编辑器提交
-async function handleEditorSubmit() {
-    if (editorContent.value.trim()) {
+async function handleEditorSubmit(noteData) {
+    // noteData 包含 { content, images }
+    const content = noteData?.content || editorContent.value
+    const images = noteData?.images || []
+
+    if (content.trim() || images.length > 0) {
         if (isEditing.value && editingNote.value) {
             // 编辑模式：更新笔记
             try {
                 await noteStore.updateNote(editingNote.value.id, {
-                    content: editorContent.value
+                    content: content,
+                    images: images
                 })
                 // 直接在数组中更新笔记
                 const index = notes.value.findIndex(n => n.id === editingNote.value.id)
                 if (index !== -1) {
                     notes.value[index] = {
                         ...notes.value[index],
-                        content: editorContent.value
+                        content: content,
+                        images: images
                     }
                 }
                 editingNote.value = null
@@ -192,7 +198,8 @@ async function handleEditorSubmit() {
             // 创建模式：创建新笔记
             const newNote = await noteStore.addNote({
                 type: 'text',
-                content: editorContent.value
+                content: content,
+                images: images
             })
             // 直接在数组开头添加新笔记
             notes.value.unshift(newNote)
@@ -396,11 +403,12 @@ async function createLinkNote(url) {
         // 格式化为笔记内容
         const content = formatWebPageToNote(pageInfo)
         
-        // 创建链接笔记
+        // 创建链接笔记，包含爬取的图片
         const newNote = await noteStore.addNote({
             type: 'link',
             content: content,
-            sourceUrl: url
+            sourceUrl: url,
+            images: pageInfo.images || [] // 添加图片数组
         })
         
         notes.value.unshift(newNote)
@@ -444,6 +452,7 @@ function handleMenuEdit(note) {
     editingNote.value = note
     editorContent.value = note.content
     isEditing.value = true
+    // images 会通过 props 传递给 NoteEditor
     showToast('进入编辑模式', 'info')
 }
 
@@ -508,7 +517,9 @@ function handleCancelEdit() {
         <!-- 编辑器区域 -->
         <div class="px-4 py-3">
             <NoteEditor v-model="editorContent" placeholder="现在的想法是..."
-                :is-scrolled-to-top="isNoteListScrolledToTop" :is-editing="isEditing" @submit="handleEditorSubmit">
+                :is-scrolled-to-top="isNoteListScrolledToTop" :is-editing="isEditing"
+                :images="editingNote?.images || []"
+                @submit="handleEditorSubmit">
                 <template #actions>
                     <button v-if="isEditing" @click="handleCancelEdit"
                         class="px-3 h-7 rounded-md flex items-center justify-center transition-all duration-200 bg-base-300 text-base-content/60 hover:bg-base-200 hover:text-base-content text-xs"

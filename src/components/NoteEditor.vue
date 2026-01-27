@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { useEditor, EditorContent } from '@tiptap/vue-3'
 import { invoke } from '@tauri-apps/api/core'
 import StarterKit from '@tiptap/starter-kit'
@@ -8,7 +8,6 @@ import Placeholder from '@tiptap/extension-placeholder'
 import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight'
 import { common, createLowlight } from 'lowlight'
 import { TagExtension } from '@/extensions/tag-extension'
-import { ResizableImage } from '@/extensions/resizable-image'
 import tippy from 'tippy.js'
 import { useSettingStore } from '@/store/settingStore'
 import { saveImage, getResourceUrl } from '@/utils/fileUpload'
@@ -45,6 +44,10 @@ const props = defineProps({
   isEditing: {
     type: Boolean,
     default: false
+  },
+  images: {
+    type: Array,
+    default: () => []
   }
 })
 
@@ -52,14 +55,37 @@ const emit = defineEmits(['update:modelValue', 'submit', 'image-upload'])
 
 const settingStore = useSettingStore()
 const imageInputRef = ref(null)
+const images = ref([])
+
+// 监听 props.images 变化，同步到本地状态
+watch(() => props.images, (newImages) => {
+  // 只在编辑模式下才同步外部 images 变化
+  // 避免在新建笔记模式下被意外重置
+  if (props.isEditing && newImages) {
+    // 比较新旧数组，避免不必要的更新
+    const currentImagesStr = JSON.stringify(images.value)
+    const newImagesStr = JSON.stringify(newImages)
+    if (currentImagesStr !== newImagesStr) {
+      images.value = [...newImages]
+    }
+  }
+}, { deep: true })
 
 // 获取工作目录
 async function getWorkDirectory() {
   return await settingStore.get('workDirectory', '')
 }
 
+// 组件挂载时初始化编辑器内容
+onMounted(() => {
+  // 只在编辑模式下初始化内容
+  if (props.isEditing && editor.value && props.modelValue) {
+    editor.value.commands.setContent(props.modelValue, false)
+  }
+})
+
 const editor = useEditor({
-  content: props.modelValue,
+  content: '', // 初始为空，在 onMounted 中设置
   extensions: [
     StarterKit.configure({
       bulletList: {
@@ -72,7 +98,6 @@ const editor = useEditor({
       },
       codeBlock: false, // 禁用默认的 CodeBlock，使用 CodeBlockLowlight 代替
     }),
-    ResizableImage,
     Highlight.configure({
       multicolor: true,
     }),
@@ -368,12 +393,8 @@ const editor = useEditor({
   },
 })
 
-// 监听外部 modelValue 变化
-watch(() => props.modelValue, (newValue) => {
-  if (editor.value && newValue !== editor.value.getHTML()) {
-    editor.value.commands.setContent(newValue, false)
-  }
-})
+// 移除了对 props.modelValue 的 watch，避免用户输入时频繁更新编辑器导致状态丢失
+// 编辑器内容只在初始化时设置一次，后续用户输入不会反向同步
 
 // 计算是否有内容
 const hasContent = computed(() => {
@@ -385,7 +406,7 @@ const hasContent = computed(() => {
   // 检查是否有图片
   let hasImage = false
   editor.value.state.doc.descendants((node) => {
-    if (node.type.name === 'image' || node.type.name === 'resizableImage') {
+    if (node.type.name === 'image') {
       hasImage = true
       return false // 找到图片后停止遍历
     }
@@ -436,14 +457,8 @@ async function handleImageUpload(event) {
       const imagePath = await saveImage(file, workDirectory)
       const resourceUrl = await getResourceUrl(imagePath)
 
-      // 插入图片到编辑器
-      editor.value?.chain().focus().insertContent({
-        type: 'resizableImage',
-        attrs: {
-          src: resourceUrl,
-          width: '100px',
-        },
-      }).run()
+      // 添加到图片列表（不再插入到编辑器）
+      images.value.push(resourceUrl)
     } catch (error) {
       console.error('图片上传失败:', error)
     }
@@ -452,11 +467,39 @@ async function handleImageUpload(event) {
   event.target.value = ''
 }
 
+// 删除图片
+function removeImage(index) {
+  images.value.splice(index, 1)
+}
+
+// 从编辑器内容中提取图片 URL
+function extractImagesFromContent(htmlContent) {
+  const imgRegex = /<img[^>]+src="([^"]+)"/g
+  const extractedImages = []
+  let match
+  while ((match = imgRegex.exec(htmlContent)) !== null) {
+    extractedImages.push(match[1])
+  }
+  return extractedImages
+}
+
 function handleSubmit() {
-  if (hasContent.value) {
-    emit('submit')
+  if (hasContent.value || images.value.length > 0) {
+    // 从编辑器内容中提取图片 URL（如果用户手动插入）
+    const editorImages = extractImagesFromContent(editor.value.getHTML())
+
+    // 合并图片列表（去重）
+    const allImages = [...new Set([...images.value, ...editorImages])]
+
+    // 通过 emit 传递完整的笔记数据
+    emit('submit', {
+      content: editor.value.getHTML(),
+      images: allImages
+    })
+
     if (!props.isEditing) {
       editor.value?.commands.clearContent()
+      images.value = []
     }
   }
 }
@@ -471,6 +514,33 @@ function handleSubmit() {
         'min-h-[80px]': props.isScrolledToTop,
         'min-h-[40px]': !props.isScrolledToTop
       }" />
+
+      <!-- 图片列表 -->
+      <div v-if="images.length > 0" class="px-4 pb-3">
+        <div class="flex flex-wrap gap-2">
+          <div
+            v-for="(imageUrl, index) in images"
+            :key="index"
+            class="relative w-[100px] h-[100px] rounded-lg overflow-hidden border border-base-200"
+          >
+            <img
+              :src="imageUrl"
+              class="w-full h-full object-cover"
+              alt="上传的图片"
+            />
+            <button
+              @click="removeImage(index)"
+              class="absolute top-1 right-1 w-5 h-5 bg-black/50 hover:bg-black/70 rounded-full flex items-center justify-center text-white transition-all duration-200"
+              title="删除图片"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </button>
+          </div>
+        </div>
+      </div>
 
     <!-- 底部工具栏 -->
     <div class="flex items-center justify-between p-4 pt-0">
@@ -534,3 +604,56 @@ function handleSubmit() {
     <SelectionMenu v-if="editor" :editor="editor" />
   </div>
 </template>
+
+<style scoped>
+/* 图片列表样式 */
+.images-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 12px 16px 8px 16px;
+}
+
+.image-item {
+  position: relative;
+  width: 100px;
+  height: 100px;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid #e5e7eb;
+  transition: all 0.2s;
+}
+
+.image-item:hover {
+  border-color: #d1d5db;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.image-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.image-item .delete-btn {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 20px;
+  height: 20px;
+  background: rgba(0, 0, 0, 0.5);
+  border: none;
+  border-radius: 50%;
+  color: white;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s;
+  padding: 0;
+}
+
+.image-item .delete-btn:hover {
+  background: rgba(0, 0, 0, 0.7);
+}
+</style>
