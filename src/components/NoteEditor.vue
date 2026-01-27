@@ -11,6 +11,7 @@ import { TagExtension } from '@/extensions/tag-extension'
 import { ResizableImage } from '@/extensions/resizable-image'
 import tippy from 'tippy.js'
 import { useSettingStore } from '@/store/settingStore'
+import { saveImage, getResourceUrl } from '@/utils/fileUpload'
 import SelectionMenu from './SelectionMenu.vue'
 import {
   Hash,
@@ -415,20 +416,10 @@ async function handleImageUpload(event) {
   const file = event.target.files[0]
   if (file) {
     try {
-      // 读取文件为 ArrayBuffer
-      const arrayBuffer = await file.arrayBuffer()
-      const uint8Array = new Uint8Array(arrayBuffer)
-
-      // 调用后端命令保存图片
+      // 使用抽离的工具方法保存图片
       const workDirectory = await getWorkDirectory()
-      const imagePath = await invoke('save_image', {
-        fileData: Array.from(uint8Array),
-        fileName: file.name,
-        workDirectory
-      })
-
-      // 使用 iterm:// 协议
-      const resourceUrl = await invoke('get_resource_url', { relativePath: imagePath })
+      const imagePath = await saveImage(file, workDirectory)
+      const resourceUrl = await getResourceUrl(imagePath)
 
       // 插入图片到编辑器
       editor.value?.chain().focus().insertContent({
@@ -439,7 +430,7 @@ async function handleImageUpload(event) {
         },
       }).run()
     } catch (error) {
-      // 图片保存失败，静默处理
+      console.error('图片上传失败:', error)
     }
   }
   // 重置 input

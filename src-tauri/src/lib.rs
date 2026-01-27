@@ -5,6 +5,7 @@ mod filesystem;
 mod terminal;
 mod database;
 mod protocol;
+mod file_reader;
 
 #[cfg(any(windows, target_os = "macos"))]
 mod window_manager;
@@ -43,6 +44,7 @@ pub fn run() {
             filesystem::check_directory_exists,
             filesystem::create_directory,
             filesystem::save_image,
+            filesystem::save_file,
             filesystem::get_image_path,
             filesystem::get_resource_url,
             terminal::create_pty_session,
@@ -65,7 +67,10 @@ pub fn run() {
             database::remove_tag_from_note,
             database::delete_tag,
             database::get_notes_by_tag,
-            database::search_tags
+            database::search_tags,
+            file_reader::read_text_file,
+            file_reader::read_file_text,
+            file_reader::get_file_metadata
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

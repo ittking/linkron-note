@@ -116,3 +116,70 @@ pub fn get_resource_url(relative_path: String) -> String {
         format!("iterm://{}", normalized)
     }
 }
+
+/// 保存文件（通用接口，支持图片和附件）
+/// 返回相对路径
+#[tauri::command]
+pub async fn save_file(
+    file_data: Vec<u8>,
+    file_name: String,
+    file_type: String,
+    work_directory: Option<String>
+) -> Result<String, String> {
+    use std::path::PathBuf;
+
+    // 确定基础目录
+    let base_dir = if let Some(work_dir) = work_directory {
+        PathBuf::from(&work_dir)
+    } else {
+        let mut path = dirs::data_local_dir().ok_or("Failed to get data directory")?;
+        path.push("iterm");
+        path
+    };
+
+    // 根据文件类型确定子目录
+    let resources_dir = base_dir.join("resources");
+    let target_dir = if file_type == "image" {
+        resources_dir.join("images")
+    } else {
+        resources_dir.join("files")
+    };
+
+    // 创建目标目录
+    std::fs::create_dir_all(&target_dir)
+        .map_err(|e| format!("Failed to create directory: {}", e))?;
+
+    // 生成唯一文件名（使用时间戳）
+    let timestamp = chrono::Utc::now().timestamp();
+    let file_path_buf = PathBuf::from(&file_name);
+
+    // 获取文件名（不含扩展名）和扩展名
+    let file_stem = file_path_buf
+        .file_stem()
+        .and_then(|s| s.to_str())
+        .unwrap_or("file");
+    let ext = file_path_buf
+        .extension()
+        .and_then(|e| e.to_str())
+        .unwrap_or("bin");
+
+    // 限制文件名长度并生成唯一文件名
+    let stem_short = file_stem.chars().take(20).collect::<String>();
+    let unique_file_name = format!("{}-{}.{}", timestamp, stem_short, ext);
+
+    // 构建完整文件路径
+    let file_path = target_dir.join(&unique_file_name);
+
+    // 写入文件
+    std::fs::write(&file_path, &file_data)
+        .map_err(|e| format!("Failed to write file: {}", e))?;
+
+    // 返回相对路径
+    let relative_path = if file_type == "image" {
+        format!("resources/images/{}", unique_file_name)
+    } else {
+        format!("resources/files/{}", unique_file_name)
+    };
+
+    Ok(relative_path)
+}

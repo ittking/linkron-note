@@ -27,6 +27,7 @@ declare module 'vue' {
     AMenuItem: typeof import('ant-design-vue/es')['MenuItem']
     ARow: typeof import('ant-design-vue/es')['Row']
     ATextarea: typeof import('ant-design-vue/es')['Textarea']
+    Index: typeof import('./components/NoteCard/Index.vue')['default']
     ModelSetting: typeof import('./components/ModelSetting.vue')['default']
     NoteCard: typeof import('./components/NoteCard.vue')['default']
     NoteEditor: typeof import('./components/NoteEditor.vue')['default']

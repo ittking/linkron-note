@@ -178,6 +178,7 @@ export function useNoteStore() {
   }
 
   return {
+    getWorkDirectory,
     initDatabase,
     getNotes,
     getNotesCount,

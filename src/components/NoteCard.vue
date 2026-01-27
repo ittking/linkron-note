@@ -1,8 +1,8 @@
 <script setup>
 import { computed, ref, onMounted, onBeforeUnmount, watch, nextTick } from 'vue'
-import { MoreHorizontal, ExternalLink, Edit, Trash2, ChevronDown, ChevronUp } from 'lucide-vue-next'
+import { MoreHorizontal, ExternalLink, Edit, Trash2, ChevronDown, ChevronUp, Image as ImageIcon, FileText, Link as LinkIcon } from 'lucide-vue-next'
 import { useEditor, EditorContent } from '@tiptap/vue-3'
-import { invoke } from '@tauri-apps/api/core'
+import { getResourceUrl } from '@/utils/fileUpload'
 import StarterKit from '@tiptap/starter-kit'
 import Highlight from '@tiptap/extension-highlight'
 import Image from '@tiptap/extension-image'
@@ -31,52 +31,70 @@ const isExpanded = ref(false)
 const contentRef = ref(null)
 const isOverflowing = ref(false)
 const MAX_HEIGHT = 120 // 最大高度，超过这个高度显示展开按钮
+const currentMaxHeight = ref('none')
 
-// 从内容中提取图片列表
+// 笔记类型判断
+const noteType = computed(() => props.note.note_type || 'text')
+const isImageNote = computed(() => noteType.value === 'image')
+const isTextNote = computed(() => noteType.value === 'text')
+const isLinkNote = computed(() => noteType.value === 'link')
+
+// 图片笔记：从 note.images 数组获取
+const imageUrls = ref([])
+
+// 图文笔记：从内容中提取图片
 const extractedImages = computed(() => {
-  if (!props.note.content) return []
+  if (!props.note.content || isImageNote.value) return []
   const imgRegex = /<img[^>]*src=["']([^"']+)["'][^>]*>/gi
   const images = []
   let match
   while ((match = imgRegex.exec(props.note.content)) !== null) {
-    // 解码 HTML 实体（如 &amp; -> &）
     images.push(decodeHtmlEntities(match[1]))
   }
   return images
 })
 
-// 解析图片路径（异步）
+// 所有需要显示的图片（根据笔记类型）
+const displayImages = computed(() => {
+  if (isImageNote.value) {
+    return imageUrls.value
+  } else {
+    return extractedImages.value
+  }
+})
+
+// 是否有图片
+const hasImages = computed(() => {
+  return displayImages.value.length > 0
+})
+
+// 是否有附件（文件）
+const hasAttachments = computed(() => {
+  return props.note.images && props.note.images.length > 0
+})
+
+// 解析图片路径
 async function resolveImagePath(src) {
-  // 如果是相对路径（以 resources/ 开头），使用 iterm:// 协议
   if (src.startsWith('resources/')) {
     try {
-      const resourceUrl = await invoke('get_resource_url', {
-        relativePath: src
-      })
+      const resourceUrl = await getResourceUrl(src)
       return resourceUrl
     } catch (error) {
       console.error('Failed to resolve image path:', error)
       return src
     }
   }
-  // 如果是 file:// 协议或其他格式，直接返回
   return src
 }
 
-// 解析后的图片路径列表
-const resolvedImages = ref([])
-
-// 监听 extractedImages 变化，解析图片路径
-watch(extractedImages, async (newImages) => {
-  resolvedImages.value = await Promise.all(newImages.map(resolveImagePath))
+// 监听图片变化，解析路径
+watch(() => props.note.images, async (newImages) => {
+  if (isImageNote.value && newImages) {
+    imageUrls.value = await Promise.all(newImages.map(resolveImagePath))
+  }
 }, { immediate: true })
 
-// 计算内容是否包含图片
-const hasImages = computed(() => {
-  return extractedImages.value.length > 0
-})
-
-// 创建只读编辑器实例来渲染内容
+// 创建只读编辑器实例（仅用于图文笔记）
 const editor = useEditor({
   content: props.note.content || '',
   extensions: [
@@ -89,7 +107,7 @@ const editor = useEditor({
         keepMarks: true,
         keepAttributes: false,
       },
-      codeBlock: false, // 禁用默认的 CodeBlock，使用 CodeBlockLowlight 代替
+      codeBlock: false,
     }),
     Highlight.configure({
       multicolor: true,
@@ -101,7 +119,7 @@ const editor = useEditor({
     TagExtension,
     Image,
   ],
-  editable: false, // 只读模式
+  editable: false,
   editorProps: {
     attributes: {
       class: 'prose prose-sm max-w-none text-[14px]',
@@ -109,38 +127,32 @@ const editor = useEditor({
   },
 })
 
-// 计算编辑器的 class，根据展开/收起状态决定是否隐藏图片
+// 编辑器 class
 const editorClass = computed(() => {
   const baseClass = 'prose prose-sm max-w-none text-[14px]'
   return !isExpanded.value ? `${baseClass} editor-collapsed` : baseClass
 })
 
-// 更新编辑器 class
 function updateEditorClass() {
   if (editor.value) {
     editor.value.view.dom.className = editorClass.value
   }
 }
 
-// 监听展开状态变化
 watch(isExpanded, () => {
   updateEditorClass()
 })
 
-// 监听编辑器创建
 watch(editor, (newEditor) => {
   if (newEditor) {
     updateEditorClass()
-    // 延迟检查溢出
     setTimeout(checkOverflow, 200)
   }
 })
 
-// 监听 content 变化
 watch(() => props.note.content, (newValue) => {
   if (editor.value && newValue !== editor.value.getHTML()) {
     editor.value.commands.setContent(newValue, false)
-    // 延迟检查溢出
     setTimeout(checkOverflow, 200)
   }
 })
@@ -158,7 +170,7 @@ function decodeHtmlEntities(str) {
   return textarea.value
 }
 
-// 从内容中提取标签列表
+// 提取标签
 const extractedTags = computed(() => {
   if (!props.note.content) return []
   const tagRegex = /<span data-type="tag"[^>]*data-name="([^"]+)"[^>]*data-id="([^"]+)"[^>]*>(?:<[^>]*>)*([^<]+)(?:<[^>]*>)*<\/span>/g
@@ -174,44 +186,33 @@ const extractedTags = computed(() => {
   return tags
 })
 
-// 处理标签点击
 function handleTagClick(tag) {
   emit('tag-click', tag)
 }
 
 // 检查内容是否溢出
 function checkOverflow() {
-  if (!contentRef.value || !editor.value) return
+  if (!contentRef.value || !editor.value || isImageNote.value) return
 
-  // 保存当前编辑器的 class
   const originalEditorClass = editor.value.view.dom.className
-
-  // 临时移除 editor-collapsed class，确保显示所有内容（包括图片）
   editor.value.view.dom.className = editor.value.view.dom.className.replace(' editor-collapsed', '')
 
-  // 使用 nextTick 确保 DOM 已完全更新
   nextTick(() => {
     if (!contentRef.value || !editor.value) return
 
-    // 保存当前样式
     const originalMaxHeight = contentRef.value.style.maxHeight
     const originalOverflow = contentRef.value.style.overflow
 
-    // 临时移除高度限制
     contentRef.value.style.maxHeight = 'none'
     contentRef.value.style.overflow = 'visible'
 
-    // 获取实际内容高度
     const scrollHeight = contentRef.value.scrollHeight
 
-    // 恢复原始样式
     contentRef.value.style.maxHeight = originalMaxHeight
     contentRef.value.style.overflow = originalOverflow
 
-    // 恢复编辑器的 class
     editor.value.view.dom.className = originalEditorClass
 
-    // 判断是否溢出
     isOverflowing.value = scrollHeight > MAX_HEIGHT
   })
 }
@@ -219,8 +220,55 @@ function checkOverflow() {
 // 切换展开/收起
 function toggleExpand(event) {
   event.stopPropagation()
-  isExpanded.value = !isExpanded.value
+
+  if (isExpanded.value) {
+    if (contentRef.value) {
+      const originalMaxHeight = contentRef.value.style.maxHeight
+      const originalOverflow = contentRef.value.style.overflow
+
+      contentRef.value.style.maxHeight = 'none'
+      contentRef.value.style.overflow = 'visible'
+
+      const realHeight = contentRef.value.scrollHeight
+
+      contentRef.value.style.maxHeight = originalMaxHeight
+      contentRef.value.style.overflow = originalOverflow
+
+      currentMaxHeight.value = realHeight + 'px'
+      contentRef.value.offsetHeight
+      currentMaxHeight.value = '120px'
+    }
+    isExpanded.value = false
+  } else {
+    if (contentRef.value) {
+      const originalMaxHeight = contentRef.value.style.maxHeight
+      const originalOverflow = contentRef.value.style.overflow
+
+      contentRef.value.style.maxHeight = 'none'
+      contentRef.value.style.overflow = 'visible'
+
+      const realHeight = contentRef.value.scrollHeight
+
+      contentRef.value.style.maxHeight = originalMaxHeight
+      contentRef.value.style.overflow = originalOverflow
+
+      currentMaxHeight.value = realHeight + 'px'
+    }
+    isExpanded.value = true
+  }
 }
+
+// 内容区域样式
+const contentStyle = computed(() => {
+  if (!isOverflowing.value) {
+    return {}
+  }
+
+  return {
+    maxHeight: isExpanded.value ? currentMaxHeight.value : '120px',
+    opacity: 1
+  }
+})
 
 // 菜单项点击处理
 function handleMenuClick(action) {
@@ -246,7 +294,6 @@ function handleClickOutside(event) {
   }
 }
 
-// 生命周期钩子
 onMounted(() => {
   document.addEventListener('click', handleClickOutside)
 })
@@ -257,19 +304,103 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
-/* 收缩状态下隐藏编辑器内的图片 */
 :deep(.editor-collapsed img) {
   display: none;
+}
+
+.image-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 8px;
+}
+
+.image-item {
+  width: 100%;
+  height: 120px;
+  object-fit: cover;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.image-item:hover {
+  opacity: 0.8;
+}
+
+.link-preview {
+  padding: 12px;
+  background-color: hsl(var(--b1));
+  border-radius: 8px;
+}
+
+.link-title {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 8px;
+  color: hsl(var(--bc));
+}
+
+.link-description {
+  font-size: 14px;
+  color: hsl(var(--bc) / 0.7);
+  margin-bottom: 12px;
+  line-height: 1.5;
+}
+
+.link-url {
+  font-size: 12px;
+  color: hsl(var(--p));
+  text-decoration: none;
+  word-break: break-all;
+}
+
+.link-url:hover {
+  text-decoration: underline;
+}
+
+.note-footer {
+  margin-top: 12px;
+  padding-top: 8px;
+  border-top: 1px solid hsl(var(--bc) / 0.1);
+  font-size: 12px;
+  color: hsl(var(--bc) / 0.5);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+}
+
+.source-info,
+.attachment-info {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.tag-info {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-left: auto;
 }
 </style>
 
 <template>
   <div
     class="note-card bg-base-100 border border-base-200 rounded-lg p-4 mb-3 cursor-pointer transition-all duration-200 hover:shadow-md"
+    :class="{ 'image-card': isImageNote, 'link-card': isLinkNote }"
     @click="handleCardClick">
-    <!-- 顶部：日期 + 菜单 -->
+    <!-- 顶部：类型图标 + 日期 + 菜单 -->
     <div class="flex items-center justify-between mb-3">
-      <span class="text-xs text-base-content/50">{{ formattedDate }}</span>
+      <div class="flex items-center gap-2">
+        <!-- 类型图标 -->
+        <component 
+          :is="isImageNote ? ImageIcon : isLinkNote ? LinkIcon : FileText" 
+          :size="16" 
+          class="text-base-content/50"
+        />
+        <span class="text-xs text-base-content/50">{{ formattedDate }}</span>
+      </div>
       <div class="relative">
         <button @click.stop="menuVisible = !menuVisible"
           class="w-6 h-6 rounded flex items-center justify-center text-base-content/40 hover:text-base-content hover:bg-base-200 transition-colors">
@@ -299,46 +430,68 @@ onBeforeUnmount(() => {
       </div>
     </div>
 
-    <!-- 内容 -->
-    <div v-if="note.content">
-      <div ref="contentRef" class="text-base-content leading-relaxed break-words" :class="{
-        'line-clamp-5': !isExpanded && isOverflowing,
-        'max-h-[120px] overflow-hidden': !isExpanded && isOverflowing
-      }">
+    <!-- 图片笔记：网格缩略图展示 -->
+    <div v-if="isImageNote && hasImages" class="image-grid mb-3">
+      <img 
+        v-for="(img, index) in displayImages" 
+        :key="index" 
+        :src="img"
+        class="image-item"
+        alt="Note image"
+        @click.stop
+      />
+    </div>
+
+    <!-- 图文笔记：TipTap 编辑器渲染 -->
+    <div v-else-if="isTextNote && note.content">
+      <div
+        ref="contentRef"
+        class="text-base-content leading-relaxed break-words overflow-hidden transition-all duration-300 ease-in-out"
+        :class="{ 'line-clamp-5': !isExpanded && isOverflowing }"
+        :style="contentStyle">
         <EditorContent class="ProseMirror" :editor="editor" />
       </div>
 
       <!-- 展开/收起按钮 -->
       <button v-if="isOverflowing" @click="toggleExpand"
-        class="mt-2 text-xs text-primary hover:text-primary/80 flex items-center gap-1 transition-colors">
+        class="mt-2 text-xs text-primary hover:text-primary/80 flex items-center gap-1 transition-all duration-200">
         <template v-if="!isExpanded">
           展开全文
-          <ChevronDown :size="14" />
+          <ChevronDown :size="14" class="transition-transform duration-300" />
         </template>
         <template v-else>
           收起
-          <ChevronUp :size="14" />
+          <ChevronUp :size="14" class="transition-transform duration-300" />
         </template>
       </button>
     </div>
 
-    <!-- 图片列表 - 仅在收缩状态且内容中有图片时显示缩略图 -->
-    <div v-if="hasImages && !isExpanded && isOverflowing" class="flex flex-wrap gap-2 mt-3">
-      <img v-for="(img, index) in resolvedImages" :key="index" :src="img"
-        class="w-20 h-20 rounded-lg object-cover border border-base-200 cursor-pointer hover:opacity-80 transition-opacity"
-        alt="Note image" @click.stop />
+    <!-- 链接笔记：链接预览卡片 -->
+    <div v-else-if="isLinkNote" class="link-preview">
+      <p v-if="note.content" class="link-description">{{ note.content }}</p>
+      <a v-if="note.sourceUrl" :href="note.sourceUrl" target="_blank" class="link-url" @click.stop>
+        {{ note.sourceUrl }}
+      </a>
     </div>
 
-    <!-- 标签列表 -->
-    <div v-if="extractedTags.length > 0" class="flex flex-wrap gap-2 mt-3">
-      <span v-for="tag in extractedTags" :key="tag.id" @click.stop="handleTagClick(tag)"
-        class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-primary/10 text-primary text-xs font-medium cursor-pointer hover:bg-primary/20 transition-colors">
-        <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-          <path fill-rule="evenodd"
-            d="M17.707 9.293a1 1 0 010 1.414l-7 7a1 1 0 01-1.414 0l-7-7A.997.997 0 012 10V5a3 3 0 013-3h5c.256 0.512.098.707.293l7 7zM5 6a1 1 0 100-2 1 1 0 000 2z"
-            clip-rule="evenodd" />
-        </svg>
-        {{ tag.displayName }}
+    <!-- 底部信息 -->
+    <div class="note-footer">
+      <span v-if="note.sourceUrl" class="source-info">
+        来源：{{ note.sourceUrl }}
+      </span>
+      <span v-if="hasAttachments && !isImageNote" class="attachment-info">
+        附件：{{ note.images.length }} 个文件
+      </span>
+      <span v-if="extractedTags.length > 0" class="tag-info">
+        <span v-for="tag in extractedTags" :key="tag.id" @click.stop="handleTagClick(tag)"
+          class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-primary/10 text-primary text-xs font-medium cursor-pointer hover:bg-primary/20 transition-colors">
+          <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd"
+              d="M17.707 9.293a1 1 0 010 1.414l-7 7a1 1 0 01-1.414 0l-7-7A.997.997 0 012 10V5a3 3 0 013-3h5c.256 0.512.098.707.293l7 7zM5 6a1 1 0 100-2 1 1 0 000 2z"
+              clip-rule="evenodd" />
+          </svg>
+          {{ tag.displayName }}
+        </span>
       </span>
     </div>
   </div>

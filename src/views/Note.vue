@@ -1,10 +1,14 @@
 <script setup>
 import { ref, onMounted, onActivated, nextTick } from 'vue'
 import { onBeforeRouteLeave } from 'vue-router'
+import { invoke } from '@tauri-apps/api/core'
 import { Download } from 'lucide-vue-next'
 import NoteCard from '@/components/NoteCard.vue'
 import NoteEditor from '@/components/NoteEditor.vue'
 import { useNoteStore } from '@/store/noteStore'
+import { saveFile, getResourceUrl } from '@/utils/fileUpload'
+import { extractTextFromFile, isSupportedFileType, getFileTypeDescription } from '@/utils/textExtraction'
+import { scrapeWebPage, isValidUrl, formatWebPageToNote } from '@/utils/webScraper'
 
 const noteStore = useNoteStore()
 
@@ -199,21 +203,11 @@ async function handleEditorSubmit() {
     }
 }
 
-// 图片上传处理
+// 图片上传处理 - 已废弃，图片现在通过编辑器插入，不单独创建笔记
 async function handleImageUpload(imagePath) {
-    try {
-        const newNote = await noteStore.addNote({
-            type: 'image',
-            content: '图片笔记',
-            images: [imagePath]
-        })
-        // 直接在数组开头添加新笔记
-        notes.value.unshift(newNote)
-        showToast('图片笔记创建成功', 'success')
-    } catch (error) {
-        console.error('Failed to create image note:', error)
-        showToast('图片笔记创建失败', 'error')
-    }
+    // 这个函数不再使用，因为图片现在是通过编辑器插入的
+    // 用户提交编辑器内容时会一并提交图片
+    console.log('handleImageUpload 已废弃，图片应通过编辑器提交')
 }
 
 // 拖拽事件处理
@@ -238,23 +232,24 @@ function handleDragOver(e) {
 
 function handleDrop(e) {
     e.preventDefault()
+    e.stopPropagation() // 阻止事件冒泡，防止触发多次
     isDragging.value = false
     dragCounter.value = 0
 
-    // 优先处理 URL/文本数据
-    const textData = e.dataTransfer.getData('text/uri-list') || e.dataTransfer.getData('text/plain')
-
-    if (textData) {
-        handleDroppedData(textData)
-        return
-    }
-
-    // 处理文件
+    // 优先处理文件
     const files = e.dataTransfer.files
     if (files && files.length > 0) {
         for (let i = 0; i < files.length; i++) {
             handleDroppedFile(files[i])
         }
+        return
+    }
+
+    // 处理 URL/文本数据（只有在没有文件时才处理）
+    const textData = e.dataTransfer.getData('text/uri-list') || e.dataTransfer.getData('text/plain')
+
+    if (textData) {
+        handleDroppedData(textData)
     }
 }
 
@@ -273,74 +268,87 @@ function handleDroppedData(data) {
 
 // 处理拖拽文件
 async function handleDroppedFile(file) {
+    const workDirectory = await noteStore.getWorkDirectory()
+
+    // 图片文件
     if (file.type.startsWith('image/')) {
         try {
-            // 读取文件为 ArrayBuffer
-            const arrayBuffer = await file.arrayBuffer()
-            const uint8Array = new Uint8Array(arrayBuffer)
+            const imagePath = await saveFile(file, 'image', workDirectory)
             
-            // 调用后端命令保存图片
-            const workDirectory = await noteStore.getWorkDirectory()
-            const imagePath = await invoke('save_image', {
-                fileData: Array.from(uint8Array),
-                fileName: file.name,
-                workDirectory
+            // 创建图片笔记
+            const newNote = await noteStore.addNote({
+                type: 'image',
+                content: file.name,
+                images: [imagePath]
             })
-            
-            // 使用 iterm:// 协议
-            const resourceUrl = await invoke('get_resource_url', { relativePath: imagePath })
-            
-            // 插入图片到编辑器
-            editorContent.value += `<img src="${resourceUrl}" alt="${file.name}" />`
+            notes.value.unshift(newNote)
+            showToast('图片笔记创建成功', 'success')
         } catch (error) {
-            console.error('Failed to save image:', error)
+            console.error('图片保存失败:', error)
             showToast('图片保存失败', 'error')
         }
-    } else {
-        showToast('不支持的文件类型', 'error')
+    }
+    // 文档文件（txt、md、pdf、docx）
+    else if (isSupportedFileType(file.name)) {
+        try {
+            showToast(`正在读取${getFileTypeDescription(file.name)}...`, 'info')
+            
+            // 保存文件
+            const filePath = await saveFile(file, 'file', workDirectory)
+            
+            // 提取文本内容
+            const content = await extractTextFromFile(file, filePath, workDirectory)
+            
+            // 创建图文笔记
+            const htmlContent = `<h3>${file.name}</h3><p>${content.replace(/\n/g, '<br>')}</p>`
+            
+            const newNote = await noteStore.addNote({
+                type: 'text',
+                content: htmlContent,
+                images: [filePath]
+            })
+            notes.value.unshift(newNote)
+            showToast(`${getFileTypeDescription(file.name)}笔记创建成功`, 'success')
+        } catch (error) {
+            console.error('文档处理失败:', error)
+            showToast('文档处理失败: ' + error.message, 'error')
+        }
+    }
+    // 不支持的文件类型
+    else {
+        showToast(`不支持的文件类型: ${file.name}`, 'error')
     }
 }
 
 // 创建链接笔记
 async function createLinkNote(url) {
+    if (!isValidUrl(url)) {
+        showToast('无效的 URL 格式', 'error')
+        return
+    }
+
     try {
-        const note = await noteStore.addNote({
+        showToast('正在抓取网页信息...', 'info')
+        
+        // 抓取网页信息
+        const pageInfo = await scrapeWebPage(url)
+        
+        // 格式化为笔记内容
+        const content = formatWebPageToNote(pageInfo)
+        
+        // 创建链接笔记
+        const newNote = await noteStore.addNote({
             type: 'link',
-            content: url,
+            content: content,
             sourceUrl: url,
-            images: []
+            images: pageInfo.ogImage ? [pageInfo.ogImage] : []
         })
-
-        // 直接在数组开头添加新笔记
-        notes.value.unshift(note)
-
-        showToast('正在解析链接...', 'info')
-
-        // 模拟链接解析
-        setTimeout(async () => {
-            await noteStore.updateNote(note.id, {
-                content: '这是从链接抓取的内容摘要。在实际应用中，这里会显示网页的正文内容...',
-                images: [
-                    'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgZmlsbD0iIzJhMmEzMiIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBkb21pbmFudC1iYXNlbGluZT0ibWlkZGxlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LXNpemU9IjI0IiBmaWxsPSIjNmI2Yjc2Ij5JbWFnZSAxPC90ZXh0Pjwvc3ZnPg==',
-                    'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgZmlsbD0iIzJhMmEzMiIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBkb21pbmFudC1iYXNlbGluZT0ibWlkZGxlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LXNpemU9IjI0IiBmaWxsPSIjNmI2Yjc2Ij5JbWFnZSAyPC90ZXh0Pjwvc3ZnPg=='
-                ]
-            })
-            // 直接在数组中更新笔记
-            const index = notes.value.findIndex(n => n.id === note.id)
-            if (index !== -1) {
-                notes.value[index] = {
-                    ...notes.value[index],
-                    content: '这是从链接抓取的内容摘要。在实际应用中，这里会显示网页的正文内容...',
-                    images: [
-                        'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgZmlsbD0iIzJhMmEzMiIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBkb21pbmFudC1iYXNlbGluZT0ibWlkZGxlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LXNpemU9IjI0IiBmaWxsPSIjNmI2Yjc2Ij5JbWFnZSAxPC90ZXh0Pjwvc3ZnPg==',
-                        'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgZmlsbD0iIzJhMmEzMiIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBkb21pbmFudC1iYXNlbGluZT0ibWlkZGxlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LXNpemU9IjI0IiBmaWxsPSIjNmI2Yjc2Ij5JbWFnZSAyPC90ZXh0Pjwvc3ZnPg=='
-                    ]
-                }
-            }
-            showToast('笔记创建成功', 'success')
-        }, 1000)
+        
+        notes.value.unshift(newNote)
+        showToast('链接笔记创建成功', 'success')
     } catch (error) {
-        showToast('创建笔记失败', 'error')
+        console.error('链接抓取失败:', error)
+        showToast('链接抓取失败: ' + error.message, 'error')
     }
 }
 
@@ -454,8 +462,7 @@ function handleCancelEdit() {
         <!-- 编辑器区域 -->
         <div class="px-4 py-3">
             <NoteEditor v-model="editorContent" :placeholder="isEditing ? '编辑笔记...' : '现在的想法是...'"
-                :is-scrolled-to-top="isNoteListScrolledToTop" :is-editing="isEditing" @submit="handleEditorSubmit"
-                @image-upload="handleImageUpload">
+                :is-scrolled-to-top="isNoteListScrolledToTop" :is-editing="isEditing" @submit="handleEditorSubmit">
                 <template #actions>
                     <button v-if="isEditing" @click="handleCancelEdit"
                         class="px-3 h-7 rounded-md flex items-center justify-center transition-all duration-200 bg-base-300 text-base-content/60 hover:bg-base-200 hover:text-base-content text-xs"
