@@ -42,10 +42,6 @@ const contentRef = ref(null)
 const isOverflowing = ref(false)
 const MAX_HEIGHT = 120 // 最大高度，超过这个高度显示展开按钮
 
-// 图片预览
-const imageViewerVisible = ref(false)
-const currentImageUrl = ref('')
-
 // 笔记类型判断
 const noteType = computed(() => {
   // 优先使用 note_type 字段
@@ -214,17 +210,6 @@ function handleClickOutside(event) {
   }
 }
 
-// 打开图片预览
-function openImageViewer(imageUrl) {
-  currentImageUrl.value = imageUrl
-  imageViewerVisible.value = true
-}
-
-// 关闭图片预览
-function closeImageViewer() {
-  imageViewerVisible.value = false
-}
-
 onMounted(() => {
   document.addEventListener('click', handleClickOutside)
 })
@@ -299,15 +284,13 @@ onBeforeUnmount(() => {
     <!-- 图片列表 -->
     <div v-if="note.images && note.images.length > 0"
       class="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-7 xl:grid-cols-8 gap-2 mt-3">
-      <div v-for="(imageUrl, index) in note.images" :key="index"
-        class="relative aspect-square rounded-md overflow-hidden border border-base-200 bg-base-200 cursor-pointer hover:border-primary/50 transition-colors"
-        @click="openImageViewer(imageUrl)">
-        <img :src="imageUrl" class="w-full h-full object-cover" alt="笔记图片" loading="lazy" />
-      </div>
+      <ImageViewer 
+        v-for="(imageUrl, index) in note.images" 
+        :key="index"
+        :src="imageUrl" 
+        :alt="`笔记图片 ${index + 1}`"
+      />
     </div>
-
-    <!-- 图片预览 -->
-    <ImageViewer :visible="imageViewerVisible" :src="currentImageUrl" alt="预览图片" @close="closeImageViewer" />
 
     <!-- 底部信息 -->
     <div v-if="note.sourceUrl" class="mt-3 pt-2 border-t border-base-content/10 text-xs text-base-content/50">
