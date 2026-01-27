@@ -122,29 +122,29 @@ const editor = useEditor({
                   // 替换当前正在输入的标签名称
                   const editor = currentProps.editor
                   const { from } = currentProps.range
-                  
+
                   // 先聚焦编辑器
                   editor.view.focus()
-                  
+
                   // 删除当前标签输入（从 # 开始）
                   const tr = editor.view.state.tr.delete(from, currentProps.range.to)
-                  
+
                   // 插入选中的标签名称
                   tr.insertText('#' + item.name, from)
-                  
+
                   // 设置光标位置到插入的文本后面
                   const newTo = from + item.name.length + 1
                   tr.setSelection(editor.view.state.tr.selection.constructor.near(tr.doc.resolve(newTo)))
-                  
+
                   // 应用 transaction
                   editor.view.dispatch(tr)
-                  
+
                   // 更新 range，让建议继续工作
                   currentProps.range = { from, to: newTo }
-                  
+
                   // 重置选中索引
                   selectedIndex = 0
-                  
+
                   // 重新渲染
                   renderItems()
                 })
@@ -191,15 +191,15 @@ const editor = useEditor({
                 })
               }
               selectedIndex = 0
-              
+
               // 重新渲染标签列表
               items = await props.items
-              
+
               // 如果有匹配的标签，确保显示虚拟列表
               if (items && items.length > 0 && popup) {
                 popup.show()
               }
-              
+
               renderItems()
             },
             onKeyDown: (props) => {
@@ -228,29 +228,29 @@ const editor = useEditor({
                   const selectedTag = items[selectedIndex]
                   const editor = currentProps.editor
                   const { from } = currentProps.range
-                  
+
                   // 先聚焦编辑器
                   editor.view.focus()
-                  
+
                   // 删除当前标签输入（从 # 开始）
                   const tr = editor.view.state.tr.delete(from, currentProps.range.to)
-                  
+
                   // 插入选中的标签名称
                   tr.insertText('#' + selectedTag.name, from)
-                  
+
                   // 设置光标位置到插入的文本后面
                   const newTo = from + selectedTag.name.length + 1
                   tr.setSelection(editor.view.state.tr.selection.constructor.near(tr.doc.resolve(newTo)))
-                  
+
                   // 应用 transaction
                   editor.view.dispatch(tr)
-                  
+
                   // 更新 range，让建议继续工作
                   currentProps.range = { from, to: newTo }
-                  
+
                   // 重置选中索引
                   selectedIndex = 0
-                  
+
                   // 重新渲染
                   renderItems()
                   return true
@@ -418,7 +418,7 @@ async function handleImageUpload(event) {
       // 读取文件为 ArrayBuffer
       const arrayBuffer = await file.arrayBuffer()
       const uint8Array = new Uint8Array(arrayBuffer)
-      
+
       // 调用后端命令保存图片
       const workDirectory = await getWorkDirectory()
       const imagePath = await invoke('save_image', {
@@ -426,10 +426,10 @@ async function handleImageUpload(event) {
         fileName: file.name,
         workDirectory
       })
-      
+
       // 使用 iterm:// 协议
       const resourceUrl = await invoke('get_resource_url', { relativePath: imagePath })
-      
+
       // 插入图片到编辑器
       editor.value?.chain().focus().insertContent({
         type: 'resizableImage',
@@ -457,73 +457,52 @@ function handleSubmit() {
 </script>
 
 <template>
-  <div class="note-editor relative bg-base-100 border border-primary rounded-xl shadow-sm transition-all duration-200 focus-within:shadow-md focus-within:border-primary/80">
+  <div
+    class="note-editor relative bg-base-100 border border-primary rounded-xl shadow-sm transition-all duration-200 focus-within:shadow-md focus-within:border-primary/80">
     <!-- 编辑器内容区域 -->
-    <EditorContent 
-      :editor="editor" 
-      class="mb-3 p-4 transition-all duration-200 overflow-y-auto max-h-[400px] no-scrollbar"
-      :class="{ 
+    <EditorContent class="mb-3 p-4 transition-all duration-200 overflow-y-auto max-h-[400px] no-scrollbar"
+      :editor="editor" :class="{
         'min-h-[80px]': props.isScrolledToTop,
         'min-h-[40px]': !props.isScrolledToTop
-      }"
-    />
+      }" />
 
     <!-- 底部工具栏 -->
     <div class="flex items-center justify-between p-4">
       <!-- 左侧工具栏 -->
       <div class="flex items-center gap-3">
         <!-- 标签 # -->
-        <button
-          @click="insertTag"
+        <button @click="insertTag"
           class="w-6 h-6 rounded-md flex items-center justify-center text-base-content/50 hover:text-base-content hover:bg-base-200 transition-all duration-200"
-          title="插入标签"
-        >
+          title="插入标签">
           <Hash :size="14" />
         </button>
 
         <!-- 图片 -->
-        <button
-          @click="triggerImageUpload"
+        <button @click="triggerImageUpload"
           class="w-6 h-6 rounded-md flex items-center justify-center text-base-content/50 hover:text-base-content hover:bg-base-200 transition-all duration-200"
-          title="插入图片"
-        >
+          title="插入图片">
           <ImageIcon :size="14" />
-          <input
-            ref="imageInputRef"
-            type="file"
-            accept="image/*"
-            class="hidden"
-            @change="handleImageUpload"
-          />
+          <input ref="imageInputRef" type="file" accept="image/*" class="hidden" @change="handleImageUpload" />
         </button>
 
         <!-- 有序列表 -->
-        <button
-          @click="toggleOrderedList"
+        <button @click="toggleOrderedList"
           class="w-6 h-6 rounded-md flex items-center justify-center text-base-content/50 hover:text-base-content hover:bg-base-200 transition-all duration-200"
-          :class="{ 'text-primary bg-primary/10': editor?.isActive('orderedList') }"
-          title="有序列表"
-        >
+          :class="{ 'text-primary bg-primary/10': editor?.isActive('orderedList') }" title="有序列表">
           <ListOrdered :size="14" />
         </button>
 
         <!-- 无序列表 -->
-        <button
-          @click="toggleBulletList"
+        <button @click="toggleBulletList"
           class="w-6 h-6 rounded-md flex items-center justify-center text-base-content/50 hover:text-base-content hover:bg-base-200 transition-all duration-200"
-          :class="{ 'text-primary bg-primary/10': editor?.isActive('bulletList') }"
-          title="无序列表"
-        >
+          :class="{ 'text-primary bg-primary/10': editor?.isActive('bulletList') }" title="无序列表">
           <List :size="14" />
         </button>
 
         <!-- 代码块 -->
-        <button
-          @click="insertCodeBlock"
+        <button @click="insertCodeBlock"
           class="w-6 h-6 rounded-md flex items-center justify-center text-base-content/50 hover:text-base-content hover:bg-base-200 transition-all duration-200"
-          :class="{ 'text-primary bg-primary/10': editor?.isActive('codeBlock') }"
-          title="代码块"
-        >
+          :class="{ 'text-primary bg-primary/10': editor?.isActive('codeBlock') }" title="代码块">
           <Code :size="14" />
         </button>
       </div>
@@ -534,17 +513,12 @@ function handleSubmit() {
         <slot name="actions"></slot>
 
         <!-- 发送按钮 -->
-        <button
-          @click="handleSubmit"
-          class="w-6 h-6 rounded-md flex items-center justify-center transition-all duration-200"
-          :class="[
+        <button @click="handleSubmit"
+          class="w-6 h-6 rounded-md flex items-center justify-center transition-all duration-200" :class="[
             hasContent
               ? 'bg-primary text-primary-content hover:bg-primary/90'
               : 'bg-base-300 text-base-content/40 cursor-not-allowed'
-          ]"
-          :disabled="!hasContent"
-          :title="props.isEditing ? '保存' : '发送'"
-        >
+          ]" :disabled="!hasContent" :title="props.isEditing ? '保存' : '发送'">
           <Send :size="13" />
         </button>
       </div>
