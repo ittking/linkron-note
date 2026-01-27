@@ -457,11 +457,11 @@ function handleSubmit() {
 </script>
 
 <template>
-  <div class="note-editor relative bg-base-100 border border-primary rounded-xl p-4 shadow-sm transition-all duration-200 focus-within:shadow-md focus-within:border-primary/80">
+  <div class="note-editor relative bg-base-100 border border-primary rounded-xl shadow-sm transition-all duration-200 focus-within:shadow-md focus-within:border-primary/80">
     <!-- 编辑器内容区域 -->
     <EditorContent 
       :editor="editor" 
-      class="mb-3 transition-all duration-200 overflow-y-auto max-h-[400px] no-scrollbar"
+      class="mb-3 p-4 transition-all duration-200 overflow-y-auto max-h-[400px] no-scrollbar"
       :class="{ 
         'min-h-[80px]': props.isScrolledToTop,
         'min-h-[40px]': !props.isScrolledToTop
@@ -469,7 +469,7 @@ function handleSubmit() {
     />
 
     <!-- 底部工具栏 -->
-    <div class="flex items-center justify-between">
+    <div class="flex items-center justify-between p-4">
       <!-- 左侧工具栏 -->
       <div class="flex items-center gap-3">
         <!-- 标签 # -->
