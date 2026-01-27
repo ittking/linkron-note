@@ -291,7 +291,7 @@ onBeforeUnmount(() => {
     </div>
 
     <!-- 图片列表 -->
-    <div v-if="note.images && note.images.length > 0" class="grid grid-cols-4 gap-2 mb-3">
+    <div v-if="note.images && note.images.length > 0" class="grid grid-cols-4 gap-2 mt-3">
       <div
         v-for="(imageUrl, index) in note.images.slice(0, 4)"
         :key="index"
