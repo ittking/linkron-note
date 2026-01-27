@@ -121,24 +121,6 @@ onUnmounted(() => {
 })
 </script>
 
-<style scoped>
-/* 页面过渡动画 */
-.page-fade-enter-active,
-.page-fade-leave-active {
-  transition: opacity 0.2s ease, transform 0.2s ease;
-}
-
-.page-fade-enter-from {
-  opacity: 0;
-  transform: translateY(10px);
-}
-
-.page-fade-leave-to {
-  opacity: 0;
-  transform: translateY(-10px);
-}
-</style>
-
 <template>
   <main class="h-full bg-base-100 flex flex-col overflow-hidden border border-base-300">
     <!-- 顶部控制栏 -->
@@ -184,3 +166,21 @@ onUnmounted(() => {
     </div>
   </main>
 </template>
+
+<style scoped>
+/* 页面过渡动画 */
+.page-fade-enter-active,
+.page-fade-leave-active {
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.page-fade-enter-from {
+  opacity: 0;
+  transform: translateY(10px);
+}
+
+.page-fade-leave-to {
+  opacity: 0;
+  transform: translateY(-10px);
+}
+</style>
