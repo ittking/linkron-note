@@ -507,7 +507,7 @@ function handleCancelEdit() {
         @dragover="handleDragOver" @drop="handleDrop">
         <!-- 编辑器区域 -->
         <div class="px-4 py-3">
-            <NoteEditor v-model="editorContent" :placeholder="isEditing ? '编辑笔记...' : '现在的想法是...'"
+            <NoteEditor v-model="editorContent" placeholder="现在的想法是..."
                 :is-scrolled-to-top="isNoteListScrolledToTop" :is-editing="isEditing" @submit="handleEditorSubmit">
                 <template #actions>
                     <button v-if="isEditing" @click="handleCancelEdit"
