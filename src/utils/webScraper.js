@@ -191,12 +191,5 @@ export function formatWebPageToNote(pageInfo) {
   if (pageInfo.bodyText) {
     parts.push(`<p>${pageInfo.bodyText}</p>`)
   }
-
-  // 分隔线
-  parts.push('<hr>')
-
-  // 来源链接
-  parts.push(`<p><small>来源：${pageInfo.title}</small></p>`)
-
   return parts.join('')
 }
