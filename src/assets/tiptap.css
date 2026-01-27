@@ -88,3 +88,15 @@
   padding: 0.1em 0.2em !important;
   border-radius: 0.2em !important;
 }
+
+.ProseMirror a {
+  color: var(--color-primary);
+  text-decoration: underline;
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.ProseMirror a:hover {
+  color: var(--color-primary, #6366f1);
+  opacity: 0.8;
+}
