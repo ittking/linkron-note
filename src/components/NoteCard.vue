@@ -94,6 +94,21 @@ const editor = useEditor({
   },
 })
 
+// 更新编辑器的 class 属性，根据展开/收起状态决定是否隐藏图片
+function updateEditorClass() {
+  if (editor.value) {
+    const baseClass = 'prose prose-sm max-w-none text-[14px]'
+    const newClass = !isExpanded.value ? `${baseClass} editor-collapsed` : baseClass
+    editor.value.options.editorProps.attributes.class = newClass
+    editor.value.view.dom.className = newClass
+  }
+}
+
+// 监听展开状态变化，更新编辑器 class
+watch(isExpanded, () => {
+  updateEditorClass()
+})
+
 // 监听 content 变化，更新编辑器内容
 watch(() => props.note.content, (newValue) => {
   if (editor.value && newValue !== editor.value.getHTML()) {
@@ -103,9 +118,10 @@ watch(() => props.note.content, (newValue) => {
   }
 })
 
-// 监听编辑器创建，创建后检查溢出
+// 监听编辑器创建，创建后检查溢出并初始化 class
 watch(editor, (newEditor) => {
   if (newEditor) {
+    updateEditorClass()
     checkOverflow()
   }
 })
@@ -146,12 +162,17 @@ function handleTagClick(tag) {
 
 // 检查内容是否溢出
 function checkOverflow() {
-  if (contentRef.value) {
+  if (contentRef.value && editor.value) {
     // 使用 requestAnimationFrame 确保 DOM 已渲染
     requestAnimationFrame(() => {
-      if (contentRef.value) {
+      if (contentRef.value && editor.value) {
+        // 保存原始样式
+        const originalEditorClass = editor.value.view.dom.className
+
+        // 临时移除图片隐藏的 class
+        editor.value.view.dom.className = editor.value.view.dom.className.replace(' editor-collapsed', '')
+
         // 临时移除高度限制来测量实际内容高度
-        const originalClasses = contentRef.value.className
         contentRef.value.style.maxHeight = 'none'
         contentRef.value.style.overflow = 'visible'
 
@@ -160,6 +181,7 @@ function checkOverflow() {
         // 恢复原始样式
         contentRef.value.style.maxHeight = ''
         contentRef.value.style.overflow = ''
+        editor.value.view.dom.className = originalEditorClass
 
         // 只有当实际内容高度超过最大高度时才显示展开按钮
         isOverflowing.value = scrollHeight > MAX_HEIGHT
@@ -210,6 +232,13 @@ onBeforeUnmount(() => {
   document.removeEventListener('click', handleClickOutside)
 })
 </script>
+
+<style scoped>
+/* 收缩状态下隐藏编辑器内的图片 */
+:deep(.editor-collapsed img) {
+  display: none;
+}
+</style>
 
 <template>
   <div
@@ -270,7 +299,7 @@ onBeforeUnmount(() => {
       </button>
     </div>
 
-    <!-- 图片列表 -->
+    <!-- 图片列表 - 仅在收缩状态且内容中有图片时显示 -->
     <div v-if="resolvedImages.length > 0 && !isExpanded" class="flex flex-wrap gap-2 mt-3">
       <img v-for="(img, index) in resolvedImages" :key="index" :src="img"
         class="w-20 h-20 rounded-lg object-cover border border-base-200 cursor-pointer hover:opacity-80 transition-opacity"
