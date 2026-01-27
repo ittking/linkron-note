@@ -191,7 +191,7 @@ impl Database {
         Ok(())
     }
 
-    /// 获取所有笔记（分页）
+/// 获取所有笔记（分页）
     pub fn get_all_notes(&self, page: u32, page_size: u32) -> SqliteResult<Vec<Note>> {
         let offset = (page - 1) * page_size;
         let mut stmt = self.conn.prepare(

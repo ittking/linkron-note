@@ -42,9 +42,52 @@ const isOverflowing = ref(false)
 const MAX_HEIGHT = 120 // 最大高度，超过这个高度显示展开按钮
 
 // 笔记类型判断
-const noteType = computed(() => props.note.note_type || 'text')
+const noteType = computed(() => {
+  // 优先使用 note_type 字段
+  if (props.note.note_type) {
+    return props.note.note_type
+  }
+  // 如果 note_type 不存在，使用 type 字段
+  if (props.note.type) {
+    return props.note.type
+  }
+  // 如果都没有，根据 sourceUrl 推断
+  if (props.note.sourceUrl) {
+    // 如果 sourceUrl 是 http/https 链接，则是 link 类型
+    if (props.note.sourceUrl.startsWith('http://') || props.note.sourceUrl.startsWith('https://')) {
+      return 'link'
+    }
+    // 否则是 file 类型
+    return 'file'
+  }
+  // 默认返回 text
+  return 'text'
+})
 const isTextNote = computed(() => noteType.value === 'text')
 const isLinkNote = computed(() => noteType.value === 'link')
+const isFileNote = computed(() => noteType.value === 'file')
+
+// 是否有附件（文件笔记）
+const hasAttachment = computed(() => {
+  return isFileNote.value && props.note.sourceUrl
+})
+
+// 附件 URL
+const attachmentUrl = ref('')
+
+// 监听附件路径变化，更新 URL
+watch(() => props.note.sourceUrl, async (newSourceUrl) => {
+  if (isFileNote.value && newSourceUrl) {
+    try {
+      attachmentUrl.value = await getResourceUrl(newSourceUrl)
+    } catch (error) {
+      console.error('获取附件 URL 失败:', error)
+      attachmentUrl.value = ''
+    }
+  } else {
+    attachmentUrl.value = ''
+  }
+}, { immediate: true })
 
 // 是否有图片
 const hasImages = computed(() => {
@@ -149,6 +192,16 @@ async function openLink() {
   }
 }
 
+// 在文件夹中显示文件
+async function revealFile() {
+  if (!props.note.sourceUrl) return
+  try {
+    await revealItemInDir(props.note.sourceUrl)
+  } catch (error) {
+    console.error('显示文件失败:', error)
+  }
+}
+
 // 卡片点击
 function handleCardClick() {
   emit('click', props.note)
@@ -209,8 +262,8 @@ onBeforeUnmount(() => {
       </div>
     </div>
 
-    <!-- 图文笔记：TipTap 编辑器渲染 -->
-    <div v-if="isTextNote && note.content">
+    <!-- 笔记内容：TipTap 编辑器渲染（所有类型统一） -->
+    <div v-if="note.content">
       <div
         ref="contentRef"
         class="text-base-content leading-relaxed break-words"
@@ -256,20 +309,18 @@ onBeforeUnmount(() => {
       </div>
     </div>
 
-    <!-- 链接笔记：链接预览卡片 -->
-    <div v-else-if="isLinkNote" class="p-3 bg-base-200 rounded-lg">
-      <p v-if="note.content" class="text-sm text-base-content/70 mb-3 leading-relaxed">{{ note.content }}</p>
-      <a v-if="note.sourceUrl" :href="note.sourceUrl" target="_blank" class="text-xs text-primary break-all hover:underline" @click.stop>
-        {{ note.sourceUrl }}
-      </a>
-    </div>
-
     <!-- 底部信息 -->
     <div v-if="note.sourceUrl" class="mt-3 pt-2 border-t border-base-content/10 text-xs text-base-content/50">
-      <span class="inline-flex items-center gap-1 max-w-[200px] overflow-hidden text-ellipsis whitespace-nowrap">
+      <span v-if="isLinkNote" class="inline-flex items-center gap-1 max-w-[200px] overflow-hidden text-ellipsis whitespace-nowrap">
         来源：
         <a href="#" @click.prevent.stop="openLink" class="text-primary break-all hover:underline cursor-pointer overflow-hidden text-ellipsis whitespace-nowrap">
           {{ note.sourceUrl }}
+        </a>
+      </span>
+      <span v-else-if="isFileNote" class="inline-flex items-center gap-1">
+        附件：
+        <a :href="attachmentUrl" @click.stop target="_blank" class="text-primary hover:underline cursor-pointer">
+          {{ note.sourceUrl.split('/').pop() }}
         </a>
       </span>
     </div>

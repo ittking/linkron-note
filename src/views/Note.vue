@@ -286,17 +286,18 @@ async function handleDroppedFile(file) {
             showToast(`正在读取${getFileTypeDescription(file.name)}...`, 'info')
 
             // 保存文件到工作目录
-            const savedPath = await saveFile(file, 'text', workDirectory)
+            const savedPath = await saveFile(file, 'file', workDirectory)
 
             // 提取文本内容
             const content = await extractTextFromFile(file, savedPath, workDirectory)
 
-            // 创建文字笔记（不包含文件名）
+            // 创建文件笔记，type='file'，source_url 存储文件路径
             const htmlContent = `<p>${content.replace(/\n/g, '<br>')}</p>`
 
             const newNote = await noteStore.addNote({
-                type: 'text',
-                content: htmlContent
+                type: 'file',
+                content: htmlContent,
+                sourceUrl: savedPath
             })
             notes.value.unshift(newNote)
             showToast(`${getFileTypeDescription(file.name)}笔记创建成功`, 'success')
