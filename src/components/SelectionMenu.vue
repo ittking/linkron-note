@@ -23,6 +23,20 @@ const shouldShow = ({ view, state }) => {
   const { empty } = selection
   const isTextSelected = !empty && state.doc.textBetween(selection.from, selection.to).trim().length > 0
 
+  // 检查选中文本是否在代码块中
+  if (isTextSelected) {
+    const { $from } = state.selection
+    // 检查父节点是否是代码块
+    let node = $from.node($from.depth)
+    if (node && node.type.name === 'codeBlock') {
+      return false
+    }
+    // 检查标记中是否包含代码标记
+    if ($from.marks().some(mark => mark.type.name === 'code')) {
+      return false
+    }
+  }
+
   return isTextSelected
 }
 
