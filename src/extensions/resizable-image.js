@@ -3,9 +3,7 @@ import { Node } from '@tiptap/core'
 export const ResizableImage = Node.create({
   name: 'resizableImage',
 
-  group: 'inline',
-
-  inline: true,
+  group: 'block',
 
   atom: true,
 
@@ -84,6 +82,10 @@ export const ResizableImage = Node.create({
 
       dom.appendChild(img)
       dom.appendChild(handle)
+
+      // 设置容器为 block 级别，但内容保持 inline-block
+      dom.style.display = 'block'
+      dom.style.margin = '8px 0'
 
       // 鼠标悬停时显示手柄
       dom.addEventListener('mouseenter', () => {
