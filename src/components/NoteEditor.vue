@@ -505,16 +505,16 @@ function handleSubmit() {
 
 <template>
   <div
-    class="note-editor relative bg-base-100 border border-primary rounded-xl shadow-sm transition-all duration-200 focus-within:shadow-md focus-within:border-primary/80">
+    class="note-editor relative bg-base-100 border border-primary rounded-xl p-4 shadow-sm transition-all duration-200 focus-within:shadow-md focus-within:border-primary/80">
     <!-- 编辑器内容区域 -->
-    <EditorContent class="p-4 pb-0 transition-all duration-200 overflow-y-auto max-h-[400px] no-scrollbar"
+    <EditorContent class="transition-all duration-200 overflow-y-auto max-h-[400px] no-scrollbar"
       :editor="editor" :class="{
         'min-h-[80px]': props.isScrolledToTop,
         'min-h-[40px]': !props.isScrolledToTop
       }" />
 
       <!-- 图片列表 -->
-      <div v-if="images.length > 0" class="px-4 py-2">
+      <div v-if="images.length > 0" class="mt-2">
         <div class="flex flex-wrap gap-2">
           <div
             v-for="(imageUrl, index) in images"
@@ -541,7 +541,7 @@ function handleSubmit() {
       </div>
 
     <!-- 底部工具栏 -->
-    <div class="flex items-center justify-between p-4 pt-0">
+    <div class="flex items-center justify-between mt-2">
       <!-- 左侧工具栏 -->
       <div class="flex items-center gap-3">
         <!-- 标签 # -->

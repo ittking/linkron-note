@@ -31,7 +31,7 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['click', 'open', 'edit', 'delete', 'tag-click', 'expand', 'collapse'])
+const emit = defineEmits(['click', 'open', 'edit', 'delete', 'expand', 'collapse'])
 
 const noteStore = useNoteStore()
 
@@ -107,26 +107,6 @@ const formattedDate = computed(() => {
 
 
 
-// 提取标签
-const extractedTags = computed(() => {
-  if (!props.note.content) return []
-  const tagRegex = /<span data-type="tag"[^>]*data-name="([^"]+)"[^>]*data-id="([^"]+)"[^>]*>(?:<[^>]*>)*([^<]+)(?:<[^>]*>)*<\/span>/g
-  const tags = []
-  let match
-  while ((match = tagRegex.exec(props.note.content)) !== null) {
-    tags.push({
-      name: match[1],
-      id: match[2],
-      displayName: match[3],
-    })
-  }
-  return tags
-})
-
-function handleTagClick(tag) {
-  emit('tag-click', tag)
-}
-
 // 检查内容是否溢出
 function checkOverflow() {
   if (!contentRef.value || !editor.value) return
@@ -156,8 +136,6 @@ function handleMenuClick(action) {
     emit('edit', props.note)
   } else if (action === 'delete') {
     emit('delete', props.note)
-  } else if (action === 'open') {
-    openLink()
   }
 }
 
@@ -217,11 +195,6 @@ onBeforeUnmount(() => {
         <div v-if="menuVisible"
           class="absolute right-0 top-8 z-10 bg-base-100 border border-base-200 rounded-lg shadow-xl min-w-[120px] py-1"
           @click.stop>
-          <button v-if="note.sourceUrl" @click="handleMenuClick('open')"
-            class="w-full px-3 py-2 text-left text-xs text-base-content hover:bg-base-200 flex items-center gap-2 transition-colors">
-            <ExternalLink :size="14" />
-            打开链接
-          </button>
           <button @click="handleMenuClick('edit')"
             class="w-full px-3 py-2 text-left text-xs text-base-content hover:bg-base-200 flex items-center gap-2 transition-colors">
             <Edit :size="14" />
@@ -292,23 +265,12 @@ onBeforeUnmount(() => {
     </div>
 
     <!-- 底部信息 -->
-    <div v-if="note.sourceUrl || extractedTags.length > 0" class="mt-3 pt-2 border-t border-base-content/10 text-xs text-base-content/50 flex flex-wrap gap-3 items-center">
-      <span v-if="note.sourceUrl" class="inline-flex items-center gap-1 max-w-[200px] overflow-hidden text-ellipsis whitespace-nowrap">
+    <div v-if="note.sourceUrl" class="mt-3 pt-2 border-t border-base-content/10 text-xs text-base-content/50">
+      <span class="inline-flex items-center gap-1 max-w-[200px] overflow-hidden text-ellipsis whitespace-nowrap">
         来源：
         <a href="#" @click.prevent.stop="openLink" class="text-primary break-all hover:underline cursor-pointer overflow-hidden text-ellipsis whitespace-nowrap">
           {{ note.sourceUrl }}
         </a>
-      </span>
-      <span v-if="extractedTags.length > 0" class="flex flex-wrap gap-1.5 ml-auto">
-        <span v-for="tag in extractedTags" :key="tag.id" @click.stop="handleTagClick(tag)"
-          class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-primary/10 text-primary text-xs font-medium cursor-pointer hover:bg-primary/20 transition-colors">
-          <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-            <path fill-rule="evenodd"
-              d="M17.707 9.293a1 1 0 010 1.414l-7 7a1 1 0 01-1.414 0l-7-7A.997.997 0 012 10V5a3 3 0 013-3h5c.256 0.512.098.707.293l7 7zM5 6a1 1 0 100-2 1 1 0 000 2z"
-              clip-rule="evenodd" />
-          </svg>
-          {{ tag.displayName }}
-        </span>
       </span>
     </div>
   </div>
