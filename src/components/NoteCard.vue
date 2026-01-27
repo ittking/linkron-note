@@ -268,9 +268,9 @@ onBeforeUnmount(() => {
     </div>
 
     <!-- 图片列表 -->
-    <div v-if="note.images && note.images.length > 0" class="grid grid-cols-4 gap-2 mt-3">
+    <div v-if="note.images && note.images.length > 0" class="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-7 xl:grid-cols-8 gap-2 mt-3">
       <div
-        v-for="(imageUrl, index) in note.images.slice(0, 4)"
+        v-for="(imageUrl, index) in note.images"
         :key="index"
         class="relative aspect-square rounded-md overflow-hidden border border-base-200 bg-base-200"
       >
@@ -280,12 +280,6 @@ onBeforeUnmount(() => {
           alt="笔记图片"
           loading="lazy"
         />
-      </div>
-      <div
-        v-if="note.images.length > 4"
-        class="aspect-square rounded-md overflow-hidden border border-base-200 bg-base-200 flex items-center justify-center text-xs text-base-content/50"
-      >
-        +{{ note.images.length - 4 }}
       </div>
     </div>
 

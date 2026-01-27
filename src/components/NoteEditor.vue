@@ -496,10 +496,9 @@ function handleSubmit() {
       images: images.value
     })
 
-    if (!props.isEditing) {
-      editor.value?.commands.clearContent()
-      images.value = []
-    }
+    // 无论编辑模式还是创建模式，提交后都清空编辑器和图片
+    editor.value?.commands.clearContent()
+    images.value = []
   }
 }
 </script>
