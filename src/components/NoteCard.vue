@@ -196,7 +196,16 @@ async function openLink() {
 async function revealFile() {
   if (!props.note.sourceUrl) return
   try {
-    await revealItemInDir(props.note.sourceUrl)
+    // 先将相对路径转换为协议 URL
+    const protocolUrl = await getResourceUrl(props.note.sourceUrl)
+    // 再将协议 URL 转换为本地文件路径
+    const workDirectory = await noteStore.getWorkDirectory()
+    const localPath = await invoke('get_local_path_from_protocol', { 
+      protocolUrl, 
+      workDirectory 
+    })
+    // 使用本地路径打开文件夹
+    await revealItemInDir(localPath)
   } catch (error) {
     console.error('显示文件失败:', error)
   }
@@ -319,7 +328,7 @@ onBeforeUnmount(() => {
       </span>
       <span v-else-if="isFileNote" class="inline-flex items-center gap-1">
         附件：
-        <a :href="attachmentUrl" @click.stop target="_blank" class="text-primary hover:underline cursor-pointer">
+        <a :href="attachmentUrl" @click.stop="revealFile" target="_blank" class="text-primary hover:underline cursor-pointer">
           {{ note.sourceUrl.split('/').pop() }}
         </a>
       </span>
