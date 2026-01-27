@@ -377,7 +377,22 @@ watch(() => props.modelValue, (newValue) => {
 
 // 计算是否有内容
 const hasContent = computed(() => {
-  return editor.value && editor.value.getText().trim().length > 0
+  if (!editor.value) return false
+  
+  // 检查是否有文本内容
+  const hasText = editor.value.getText().trim().length > 0
+  
+  // 检查是否有图片
+  let hasImage = false
+  editor.value.state.doc.descendants((node) => {
+    if (node.type.name === 'image' || node.type.name === 'resizableImage') {
+      hasImage = true
+      return false // 找到图片后停止遍历
+    }
+  })
+  
+  // 有文本或有图片都可以提交
+  return hasText || hasImage
 })
 
 // 工具栏操作
