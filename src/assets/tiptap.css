@@ -1,5 +1,5 @@
 /* 导入 highlight.js 主题样式 */
-@import 'highlight.js/styles/xcode.min.css';
+@import 'highlight.js/styles/vs.min.css';
 
 /* Tiptap 编辑器通用样式 */
 
