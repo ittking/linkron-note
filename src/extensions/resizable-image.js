@@ -58,6 +58,12 @@ export const ResizableImage = Node.create({
 
   addNodeView() {
     return ({ node, getPos, editor }) => {
+      // 最外层块级容器
+      const block = document.createElement('div')
+      block.className = 'resizable-image-block'
+      block.style.display = 'block'
+
+      // 内层包装容器
       const dom = document.createElement('div')
       dom.className = 'resizable-image-wrapper'
       dom.style.display = 'inline-block'
@@ -82,10 +88,7 @@ export const ResizableImage = Node.create({
 
       dom.appendChild(img)
       dom.appendChild(handle)
-
-      // 设置容器为 block 级别，但内容保持 inline-block
-      dom.style.display = 'block'
-      dom.style.margin = '8px 0'
+      block.appendChild(dom)
 
       // 鼠标悬停时显示手柄
       dom.addEventListener('mouseenter', () => {
@@ -137,7 +140,7 @@ export const ResizableImage = Node.create({
       })
 
       return {
-        dom,
+        dom: block,
         destroy: () => {
           // 清理事件监听器
         },
