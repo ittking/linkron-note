@@ -556,9 +556,16 @@ function handleCancelEdit() {
                     <div class="text-sm leading-relaxed max-w-[240px]">拖拽链接、文字或图片到这里创建笔记</div>
                 </div>
 
-                <NoteCard v-for="note in notes" :key="note.id" :note="note" @click="handleCardClick"
-                    @open="handleMenuOpen" @edit="handleMenuEdit" @delete="handleMenuDelete"
-                    @tag-click="handleTagClick" />
+                <NoteCard
+                    v-for="note in notes"
+                    :key="note.id"
+                    :note="note"
+                    @click="handleCardClick"
+                    @open="handleMenuOpen"
+                    @edit="handleMenuEdit"
+                    @delete="handleMenuDelete"
+                    @tag-click="handleTagClick"
+                />
 
                 <!-- Loading 组件 -->
                 <div v-if="isLoading" class="flex justify-center py-4">

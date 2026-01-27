@@ -24,10 +24,14 @@ const props = defineProps({
   note: {
     type: Object,
     required: true
+  },
+  isPinned: {
+    type: Boolean,
+    default: false
   }
 })
 
-const emit = defineEmits(['click', 'open', 'edit', 'delete', 'tag-click'])
+const emit = defineEmits(['click', 'open', 'edit', 'delete', 'tag-click', 'expand', 'collapse'])
 
 const noteStore = useNoteStore()
 
@@ -151,6 +155,14 @@ watch(() => props.note.content, (newValue) => {
   }
 })
 
+watch(isExpanded, (newVal) => {
+  if (newVal) {
+    // 展开状态
+  } else {
+    // 收起状态
+  }
+})
+
 // 格式化日期
 const formattedDate = computed(() => {
   const date = dayjs(props.note.createdAt)
@@ -195,7 +207,15 @@ function checkOverflow() {
 // 切换展开/收起
 function toggleExpand(event) {
   event.stopPropagation()
-  isExpanded.value = !isExpanded.value
+  if (isExpanded.value) {
+    // 收起
+    isExpanded.value = false
+    emit('collapse', props.note.id)
+  } else {
+    // 展开
+    isExpanded.value = true
+    emit('expand', props.note.id)
+  }
 }
 
 // 菜单项点击处理
@@ -264,8 +284,14 @@ onBeforeUnmount(() => {
 
 <template>
   <div
+    :data-note-id="note.id"
     class="note-card bg-base-100 border border-base-200 rounded-lg p-4 mb-3 cursor-pointer transition-all duration-200 hover:shadow-md"
-    :class="{ 'image-card': isImageNote, 'link-card': isLinkNote }"
+    :class="{ 
+      'image-card': isImageNote, 
+      'link-card': isLinkNote,
+      'expanded': isExpanded,
+      'overflowing': isOverflowing
+    }"
     @click="handleCardClick">
     <!-- 顶部：类型图标 + 日期 + 菜单 -->
     <div class="flex items-center justify-between mb-3">
@@ -332,8 +358,13 @@ onBeforeUnmount(() => {
       </div>
 
       <!-- 展开/收起按钮 -->
-      <button v-if="isOverflowing" @click="toggleExpand"
-        class="mt-2 text-xs text-primary hover:text-primary/80 flex items-center gap-1">
+      <button
+        v-if="isOverflowing"
+        @click="toggleExpand"
+        :class="[
+          'mt-2 text-xs text-primary hover:text-primary/80 flex items-center gap-1',
+          isPinned ? 'fixed bottom-4 left-1/2 -translate-x-1/2 z-50 bg-base-100 border border-base-200 shadow-lg px-4 py-2 rounded-lg' : ''
+        ]">
         <template v-if="!isExpanded">
           展开全文
           <ChevronDown :size="14" />
