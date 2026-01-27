@@ -43,24 +43,56 @@ function createSelectionMenu() {
   const highlightBtn = document.createElement('button')
   highlightBtn.className = 'w-7 h-7 rounded-md flex items-center justify-center text-base-content/50 hover:text-base-content hover:bg-base-200 transition-all duration-200'
   highlightBtn.title = '背景高亮'
+  highlightBtn.dataset.action = 'highlight'
   highlightBtn.addEventListener('click', (e) => {
     e.preventDefault()
     console.log('[SelectionMenu] Highlight button clicked')
     props.editor.chain().focus().toggleHighlight().run()
+    // 更新按钮状态
+    setTimeout(() => highlightBtn.updateState(), 10)
   })
 
   const underlineBtn = document.createElement('button')
   underlineBtn.className = 'w-7 h-7 rounded-md flex items-center justify-center text-base-content/50 hover:text-base-content hover:bg-base-200 transition-all duration-200'
   underlineBtn.title = '下划线'
+  underlineBtn.dataset.action = 'underline'
   underlineBtn.addEventListener('click', (e) => {
     e.preventDefault()
     console.log('[SelectionMenu] Underline button clicked')
     props.editor.chain().focus().toggleUnderline().run()
+    // 更新按钮状态
+    setTimeout(() => underlineBtn.updateState(), 10)
   })
 
   // 渲染图标
   render(h(Highlighter, { size: 14 }), highlightBtn)
   render(h(Underline, { size: 14 }), underlineBtn)
+
+  // 更新按钮选中状态的函数
+  const updateButtonStates = () => {
+    if (!props.editor) return
+
+    const isHighlightActive = props.editor.isActive('highlight')
+    const isUnderlineActive = props.editor.isActive('underline')
+
+    if (isHighlightActive) {
+      highlightBtn.className = 'w-7 h-7 rounded-md flex items-center justify-center text-primary bg-primary/10 transition-all duration-200'
+    } else {
+      highlightBtn.className = 'w-7 h-7 rounded-md flex items-center justify-center text-base-content/50 hover:text-base-content hover:bg-base-200 transition-all duration-200'
+    }
+
+    if (isUnderlineActive) {
+      underlineBtn.className = 'w-7 h-7 rounded-md flex items-center justify-center text-primary bg-primary/10 transition-all duration-200'
+    } else {
+      underlineBtn.className = 'w-7 h-7 rounded-md flex items-center justify-center text-base-content/50 hover:text-base-content hover:bg-base-200 transition-all duration-200'
+    }
+
+    console.log('[SelectionMenu] Button states updated:', { isHighlightActive, isUnderlineActive })
+  }
+
+  // 将更新函数存储到按钮上，以便后续调用
+  highlightBtn.updateState = updateButtonStates
+  underlineBtn.updateState = updateButtonStates
 
   menu.appendChild(highlightBtn)
   menu.appendChild(underlineBtn)
@@ -167,6 +199,18 @@ function setupEditorListeners(newEditor) {
           if (shouldShow({ view, state })) {
             console.log('[SelectionMenu] Showing menu from mouseup')
             tippyInstance.value.show()
+            // 更新按钮状态
+            if (tippyInstance.value.popper && tippyInstance.value.popper.firstElementChild) {
+              const menu = tippyInstance.value.popper.firstElementChild
+              const highlightBtn = menu.querySelector('button[data-action="highlight"]')
+              const underlineBtn = menu.querySelector('button[data-action="underline"]')
+              if (highlightBtn && highlightBtn.updateState) {
+                highlightBtn.updateState()
+              }
+              if (underlineBtn && underlineBtn.updateState) {
+                underlineBtn.updateState()
+              }
+            }
           } else {
             console.log('[SelectionMenu] Hiding menu from mouseup')
             tippyInstance.value.hide()
@@ -184,6 +228,18 @@ function setupEditorListeners(newEditor) {
             if (shouldShow({ view, state })) {
               console.log('[SelectionMenu] Showing menu from keyup')
               tippyInstance.value.show()
+              // 更新按钮状态
+              if (tippyInstance.value.popper && tippyInstance.value.popper.firstElementChild) {
+                const menu = tippyInstance.value.popper.firstElementChild
+                const highlightBtn = menu.querySelector('button[data-action="highlight"]')
+                const underlineBtn = menu.querySelector('button[data-action="underline"]')
+                if (highlightBtn && highlightBtn.updateState) {
+                  highlightBtn.updateState()
+                }
+                if (underlineBtn && underlineBtn.updateState) {
+                  underlineBtn.updateState()
+                }
+              }
             } else {
               console.log('[SelectionMenu] Hiding menu from keyup')
               tippyInstance.value.hide()
