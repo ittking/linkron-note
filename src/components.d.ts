@@ -31,6 +31,7 @@ declare module 'vue' {
     NoteEditor: typeof import('./components/NoteEditor.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
+    SelectionMenu: typeof import('./components/SelectionMenu.vue')['default']
     TerminalTab: typeof import('./components/TerminalTab.vue')['default']
     XTerm: typeof import('./components/XTerm.vue')['default']
   }

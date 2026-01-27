@@ -11,13 +11,12 @@ import { TagExtension } from '@/extensions/tag-extension'
 import { ResizableImage } from '@/extensions/resizable-image'
 import tippy from 'tippy.js'
 import { useSettingStore } from '@/store/settingStore'
+import SelectionMenu from './SelectionMenu.vue'
 import {
   Hash,
   Image as ImageIcon,
-  Highlighter,
   ListOrdered,
   List,
-  Underline,
   Send,
   Code
 } from 'lucide-vue-next'
@@ -435,26 +434,6 @@ function handleSubmit() {
           />
         </button>
 
-        <!-- 背景高亮 -->
-        <button
-          @click="toggleHighlight"
-          class="w-6 h-6 rounded-md flex items-center justify-center text-base-content/50 hover:text-base-content hover:bg-base-200 transition-all duration-200"
-          :class="{ 'text-primary bg-primary/10': editor?.isActive('highlight') }"
-          title="背景高亮"
-        >
-          <Highlighter :size="14" />
-        </button>
-
-        <!-- 下划线 -->
-        <button
-          @click="toggleUnderline"
-          class="w-6 h-6 rounded-md flex items-center justify-center text-base-content/50 hover:text-base-content hover:bg-base-200 transition-all duration-200"
-          :class="{ 'text-primary bg-primary/10': editor?.isActive('underline') }"
-          title="下划线"
-        >
-          <Underline :size="14" />
-        </button>
-
         <!-- 有序列表 -->
         <button
           @click="toggleOrderedList"
@@ -490,7 +469,7 @@ function handleSubmit() {
       <div class="flex items-center gap-2">
         <!-- 插槽：用于放置取消按钮等自定义按钮 -->
         <slot name="actions"></slot>
-        
+
         <!-- 发送按钮 -->
         <button
           @click="handleSubmit"
@@ -507,5 +486,8 @@ function handleSubmit() {
         </button>
       </div>
     </div>
+
+    <!-- 悬浮工具栏 -->
+    <SelectionMenu v-if="editor" :editor="editor" />
   </div>
 </template>
