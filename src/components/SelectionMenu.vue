@@ -12,6 +12,22 @@ const props = defineProps({
 
 const tippyInstance = ref(null)
 const referenceElement = ref(null)
+const globalMouseUpHandler = ref(null)
+
+// 检查选择是否在编辑器内
+const isSelectionInEditor = (view) => {
+  const selection = window.getSelection()
+  if (!selection || selection.rangeCount === 0) {
+    return false
+  }
+
+  const range = selection.getRangeAt(0)
+  const startNode = range.startContainer
+  const endNode = range.endContainer
+
+  // 检查选择范围的节点是否在编辑器 DOM 内
+  return view.dom.contains(startNode) || view.dom.contains(endNode)
+}
 
 // 检查是否有选中的文本
 const shouldShow = ({ view, state }) => {
@@ -38,6 +54,42 @@ const shouldShow = ({ view, state }) => {
   }
 
   return isTextSelected
+}
+
+// 更新按钮状态
+const updateButtonStates = () => {
+  if (!tippyInstance.value || !tippyInstance.value.popper) return
+
+  const menu = tippyInstance.value.popper.firstElementChild
+  if (!menu) return
+
+  const highlightBtn = menu.querySelector('button[data-action="highlight"]')
+  const underlineBtn = menu.querySelector('button[data-action="underline"]')
+
+  if (highlightBtn && highlightBtn.updateState) {
+    highlightBtn.updateState()
+  }
+  if (underlineBtn && underlineBtn.updateState) {
+    underlineBtn.updateState()
+  }
+}
+
+// 显示菜单
+const showMenu = () => {
+  if (tippyInstance.value && props.editor) {
+    const { view, state } = props.editor
+    if (view && state && shouldShow({ view, state })) {
+      tippyInstance.value.show()
+      updateButtonStates()
+    }
+  }
+}
+
+// 隐藏菜单
+const hideMenu = () => {
+  if (tippyInstance.value) {
+    tippyInstance.value.hide()
+  }
 }
 
 // 创建悬浮菜单
@@ -152,6 +204,8 @@ function setupEditorListeners(newEditor) {
   setTimeout(() => {
     createSelectionMenu()
 
+    const view = newEditor.view
+
     // 监听所有事务变化
     newEditor.on('update', ({ transaction }) => {
       if (tippyInstance.value) {
@@ -175,59 +229,37 @@ function setupEditorListeners(newEditor) {
       }
     })
 
-    // 监听视图的鼠标选择事件
-    const view = newEditor.view
+    // 监听视图的鼠标选择事件（编辑器内）
     view.dom.addEventListener('mouseup', () => {
       setTimeout(() => {
-        if (tippyInstance.value) {
-          const { view, state } = newEditor
-          if (shouldShow({ view, state })) {
-            tippyInstance.value.show()
-            // 更新按钮状态
-            if (tippyInstance.value.popper && tippyInstance.value.popper.firstElementChild) {
-              const menu = tippyInstance.value.popper.firstElementChild
-              const highlightBtn = menu.querySelector('button[data-action="highlight"]')
-              const underlineBtn = menu.querySelector('button[data-action="underline"]')
-              if (highlightBtn && highlightBtn.updateState) {
-                highlightBtn.updateState()
-              }
-              if (underlineBtn && underlineBtn.updateState) {
-                underlineBtn.updateState()
-              }
-            }
-          } else {
-            tippyInstance.value.hide()
-          }
-        }
+        showMenu()
       }, 10)
     })
 
+    // 监听键盘 Shift 键选择
     view.dom.addEventListener('keyup', (e) => {
       if (e.shiftKey) {
         setTimeout(() => {
-          if (tippyInstance.value) {
-            const { view, state } = newEditor
-            if (shouldShow({ view, state })) {
-              tippyInstance.value.show()
-              // 更新按钮状态
-              if (tippyInstance.value.popper && tippyInstance.value.popper.firstElementChild) {
-                const menu = tippyInstance.value.popper.firstElementChild
-                const highlightBtn = menu.querySelector('button[data-action="highlight"]')
-                const underlineBtn = menu.querySelector('button[data-action="underline"]')
-                if (highlightBtn && highlightBtn.updateState) {
-                  highlightBtn.updateState()
-                }
-                if (underlineBtn && underlineBtn.updateState) {
-                  underlineBtn.updateState()
-                }
-              }
-            } else {
-              tippyInstance.value.hide()
-            }
-          }
+          showMenu()
         }, 10)
       }
     })
+
+    // 添加全局 mouseup 监听器，捕获在编辑器外抬起鼠标的情况
+    globalMouseUpHandler.value = (e) => {
+      // 延迟检查，确保选择已经更新
+      setTimeout(() => {
+        // 检查选择是否在编辑器内
+        if (isSelectionInEditor(view)) {
+          showMenu()
+        } else {
+          hideMenu()
+        }
+      }, 10)
+    }
+
+    // 使用捕获模式监听，确保在其他处理之前捕获
+    document.addEventListener('mouseup', globalMouseUpHandler.value, { capture: true })
   }, 100)
 }
 
@@ -238,6 +270,12 @@ watch(() => props.editor, (newEditor) => {
 
 // 组件卸载时清理 tippy 实例
 onBeforeUnmount(() => {
+  // 移除全局 mouseup 监听器
+  if (globalMouseUpHandler.value) {
+    document.removeEventListener('mouseup', globalMouseUpHandler.value, { capture: true })
+    globalMouseUpHandler.value = null
+  }
+
   if (tippyInstance.value) {
     tippyInstance.value.destroy()
     tippyInstance.value = null
