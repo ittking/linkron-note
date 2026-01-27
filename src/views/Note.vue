@@ -6,7 +6,7 @@ import { Download } from 'lucide-vue-next'
 import NoteCard from '@/components/NoteCard.vue'
 import NoteEditor from '@/components/NoteEditor.vue'
 import { useNoteStore } from '@/store/noteStore'
-import { saveFile, getResourceUrl } from '@/utils/fileUpload'
+import { saveFile } from '@/utils/fileUpload'
 import { extractTextFromFile, isSupportedFileType, getFileTypeDescription } from '@/utils/textExtraction'
 import { scrapeWebPage, isValidUrl, formatWebPageToNote } from '@/utils/webScraper'
 import { extractUrlFromUrlFile } from '@/utils/urlFileParser'
@@ -61,10 +61,6 @@ const isLoading = ref(false)
 const editingNote = ref(null)
 const isEditing = ref(false)
 const shouldClearEditor = ref(false) // 添加标志位用于强制清空编辑器
-
-// 标签筛选相关状态
-const currentFilterTag = ref(null)
-const isFiltering = ref(false)
 
 // 笔记详情抽屉
 const drawerVisible = ref(false)
@@ -270,30 +266,8 @@ function handleDroppedData(data) {
 async function handleDroppedFile(file) {
     const workDirectory = await noteStore.getWorkDirectory()
 
-    // 图片文件
-    if (file.type.startsWith('image/')) {
-        try {
-            // 保存图片文件
-            const imagePath = await saveFile(file, 'image', workDirectory)
-            const resourceUrl = await getResourceUrl(imagePath)
-
-            // 创建带图片的 HTML 内容
-            const imageHtml = `<p><img src="${resourceUrl}" alt="${file.name}" style="max-width: 100%;"></p>`
-
-            // 创建图文笔记
-            const newNote = await noteStore.addNote({
-                type: 'text',
-                content: imageHtml
-            })
-            notes.value.unshift(newNote)
-            showToast('图片已添加到笔记', 'success')
-        } catch (error) {
-            console.error('图片保存失败:', error)
-            showToast('图片保存失败', 'error')
-        }
-    }
     // .url 文件 - 解析文件内容获取 URL
-    else if (file.name.endsWith('.url')) {
+    if (file.name.endsWith('.url')) {
         try {
             const url = await extractUrlFromUrlFile(file)
             if (url && isValidUrl(url)) {
@@ -311,10 +285,13 @@ async function handleDroppedFile(file) {
         try {
             showToast(`正在读取${getFileTypeDescription(file.name)}...`, 'info')
 
-            // 提取文本内容（直接从文件读取，不保存）
-            const content = await extractTextFromFile(file, null, workDirectory)
+            // 保存文件到工作目录
+            const savedPath = await saveFile(file, 'text', workDirectory)
 
-            // 创建图文笔记（不包含文件名）
+            // 提取文本内容
+            const content = await extractTextFromFile(file, savedPath, workDirectory)
+
+            // 创建文字笔记（不包含文件名）
             const htmlContent = `<p>${content.replace(/\n/g, '<br>')}</p>`
 
             const newNote = await noteStore.addNote({
@@ -418,32 +395,6 @@ function handleMenuDelete(note) {
     confirmVisible.value = true
 }
 
-// 标签点击事件
-function handleTagClick(tag) {
-    loadNotesByTag(tag.id)
-}
-
-// 按标签加载笔记
-async function loadNotesByTag(tagId) {
-    isFiltering.value = true
-    currentFilterTag.value = tagId
-
-    try {
-        const newNotes = await noteStore.getNotesByTag(tagId, 1, 20)
-        notes.value = newNotes
-    } catch (error) {
-        console.error('Failed to load notes by tag:', error)
-        showToast('加载笔记失败', 'error')
-    }
-}
-
-// 清除筛选
-function clearFilter() {
-    isFiltering.value = false
-    currentFilterTag.value = null
-    loadNotes(true)
-}
-
 // 确认对话框回调
 function handleConfirmOk() {
     if (confirmOnOk.value) {
@@ -482,29 +433,16 @@ function handleCancelEdit() {
 
         <!-- 笔记列表 -->
         <div class="flex-1 overflow-hidden">
-            <!-- 筛选状态显示 -->
-            <div v-if="isFiltering" class="px-4 py-2 bg-base-200 border-b border-base-300">
-                <div class="flex items-center gap-2 text-sm">
-                    <span class="text-base-content/60">筛选标签：</span>
-                    <span class="text-primary font-medium">#{{ currentFilterTag }}</span>
-                    <button @click="clearFilter"
-                        class="text-xs text-base-content/60 hover:text-base-content underline ml-2">
-                        清除筛选
-                    </button>
-                </div>
-            </div>
-
             <div ref="noteListRef" class="p-3 h-full overflow-y-auto no-scrollbar" @scroll="handleNoteListScroll">
                 <div v-if="notes.length === 0"
                     class="flex flex-col items-center justify-center h-full text-base-content/40 text-center p-5">
                     <div class="text-5xl mb-4 opacity-50">📝</div>
                     <div class="text-base font-medium mb-2 text-base-content/60">暂无笔记</div>
-                    <div class="text-sm leading-relaxed max-w-[240px]">拖拽链接、文字或图片到这里创建笔记</div>
+                    <div class="text-sm leading-relaxed max-w-[240px]">拖拽链接或文字到这里创建笔记</div>
                 </div>
 
                 <NoteCard v-for="note in notes" :key="note.id" :note="note" @click="handleCardClick"
-                    @open="handleMenuOpen" @edit="handleMenuEdit" @delete="handleMenuDelete"
-                    @tag-click="handleTagClick" />
+                    @open="handleMenuOpen" @edit="handleMenuEdit" @delete="handleMenuDelete" />
 
                 <!-- Loading 组件 -->
                 <div v-if="isLoading" class="flex justify-center py-4">
@@ -519,7 +457,7 @@ function handleCancelEdit() {
             @dragenter="handleDragEnter" @dragleave="handleDragLeave" @dragover="handleDragOver" @drop="handleDrop">
             <Download :size="48" class="text-primary mb-4 animate-bounce" />
             <div class="text-base font-medium text-primary mb-2">释放以创建笔记</div>
-            <div class="text-sm text-base-content/60">支持链接、文字、图片</div>
+            <div class="text-sm text-base-content/60">支持链接、文字</div>
         </div>
 
         <!-- Toast 提示 -->
