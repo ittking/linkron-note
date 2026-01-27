@@ -66,7 +66,6 @@ const noteType = computed(() => {
 const isTextNote = computed(() => noteType.value === 'text')
 const isLinkNote = computed(() => noteType.value === 'link')
 const isFileNote = computed(() => noteType.value === 'file')
-
 // 是否有附件（文件笔记）
 const hasAttachment = computed(() => {
   return isFileNote.value && props.note.sourceUrl
@@ -89,12 +88,7 @@ watch(() => props.note.sourceUrl, async (newSourceUrl) => {
   }
 }, { immediate: true })
 
-// 是否有图片
-const hasImages = computed(() => {
-  return props.note.images && props.note.images.length > 0
-})
-
-// 创建只读编辑器实例（仅用于图文笔记）
+// 创建只读编辑器实例
 const editor = useEditor({
   content: props.note.content || '',
   extensions: [
