@@ -21,7 +21,6 @@ import {
   Send,
   Code
 } from 'lucide-vue-next'
-import 'highlight.js/styles/github-dark.css'
 
 // 创建 lowlight 实例
 const lowlight = createLowlight(common)
@@ -394,32 +393,6 @@ function handleSubmit() {
   }
 }
 </script>
-
-<style>
-/* 代码块基础样式 */
-.ProseMirror pre {
-  padding: 0.75rem 1rem;
-  border-radius: 0.5rem;
-  margin: 0.5rem 0;
-  overflow-x: auto;
-}
-
-.ProseMirror pre code {
-  color: inherit;
-  padding: 0;
-  background: none;
-  font-size: 0.875rem;
-  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
-}
-
-.ProseMirror code {
-  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
-  background-color: rgba(110, 118, 129, 0.4);
-  padding: 0.2em 0.4em;
-  border-radius: 3px;
-  font-size: 0.85em;
-}
-</style>
 
 <template>
   <div class="note-editor relative bg-base-100 border border-primary rounded-xl p-4 shadow-sm transition-all duration-200 focus-within:shadow-md focus-within:border-primary/80">

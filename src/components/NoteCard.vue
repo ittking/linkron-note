@@ -11,7 +11,6 @@ import { common, createLowlight } from 'lowlight'
 import { TagExtension } from '@/extensions/tag-extension'
 import dayjs from 'dayjs'
 import 'dayjs/locale/zh-cn'
-import 'highlight.js/styles/github-dark.css'
 
 dayjs.locale('zh-cn')
 
@@ -261,32 +260,6 @@ onBeforeUnmount(() => {
 /* 收缩状态下隐藏编辑器内的图片 */
 :deep(.editor-collapsed img) {
   display: none;
-}
-</style>
-
-<style>
-/* 代码块基础样式 */
-.ProseMirror pre {
-  padding: 0.75rem 1rem;
-  border-radius: 0.5rem;
-  margin: 0.5rem 0;
-  overflow-x: auto;
-}
-
-.ProseMirror pre code {
-  color: inherit;
-  padding: 0;
-  background: none;
-  font-size: 0.875rem;
-  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
-}
-
-.ProseMirror code {
-  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
-  background-color: rgba(110, 118, 129, 0.4);
-  padding: 0.2em 0.4em;
-  border-radius: 3px;
-  font-size: 0.85em;
 }
 </style>
 
