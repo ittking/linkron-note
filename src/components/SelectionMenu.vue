@@ -29,11 +29,8 @@ const shouldShow = ({ view, state }) => {
 // 创建悬浮菜单
 function createSelectionMenu() {
   if (!props.editor) {
-    console.log('[SelectionMenu] Editor not available')
     return
   }
-
-  console.log('[SelectionMenu] Creating selection menu...')
 
   // 创建菜单容器
   const menu = document.createElement('div')
@@ -46,7 +43,6 @@ function createSelectionMenu() {
   highlightBtn.dataset.action = 'highlight'
   highlightBtn.addEventListener('click', (e) => {
     e.preventDefault()
-    console.log('[SelectionMenu] Highlight button clicked')
     props.editor.chain().focus().toggleHighlight().run()
     // 更新按钮状态
     setTimeout(() => highlightBtn.updateState(), 10)
@@ -58,7 +54,6 @@ function createSelectionMenu() {
   underlineBtn.dataset.action = 'underline'
   underlineBtn.addEventListener('click', (e) => {
     e.preventDefault()
-    console.log('[SelectionMenu] Underline button clicked')
     props.editor.chain().focus().toggleUnderline().run()
     // 更新按钮状态
     setTimeout(() => underlineBtn.updateState(), 10)
@@ -86,8 +81,6 @@ function createSelectionMenu() {
     } else {
       underlineBtn.className = 'w-7 h-7 rounded-md flex items-center justify-center text-base-content/50 hover:text-base-content hover:bg-base-200 transition-all duration-200'
     }
-
-    console.log('[SelectionMenu] Button states updated:', { isHighlightActive, isUnderlineActive })
   }
 
   // 将更新函数存储到按钮上，以便后续调用
@@ -130,22 +123,12 @@ function createSelectionMenu() {
       }
     },
     duration: [200, 100],
-    onShow: () => {
-      console.log('[SelectionMenu] Tippy menu shown')
-    },
-    onHide: () => {
-      console.log('[SelectionMenu] Tippy menu hidden')
-    }
   })
-
-  console.log('[SelectionMenu] Selection menu created successfully')
 }
 
 // 设置编辑器监听
 function setupEditorListeners(newEditor) {
   if (!newEditor) return
-
-  console.log('[SelectionMenu] Setting up editor listeners...')
 
   // 等待编辑器完全初始化
   setTimeout(() => {
@@ -153,18 +136,11 @@ function setupEditorListeners(newEditor) {
 
     // 监听所有事务变化
     newEditor.on('update', ({ transaction }) => {
-      console.log('[SelectionMenu] Transaction updated:', {
-        docChanged: transaction.docChanged,
-        selectionSet: transaction.selectionSet
-      })
-
       if (tippyInstance.value) {
         const { view, state } = newEditor
         if (view && state && shouldShow({ view, state })) {
-          console.log('[SelectionMenu] Showing menu')
           tippyInstance.value.show()
         } else {
-          console.log('[SelectionMenu] Hiding menu')
           tippyInstance.value.hide()
         }
       }
@@ -172,18 +148,10 @@ function setupEditorListeners(newEditor) {
 
     // 同时监听选择变化事件
     newEditor.on('selectionUpdate', ({ view, state }) => {
-      console.log('[SelectionMenu] Selection updated event:', {
-        hasState: !!state,
-        hasView: !!view,
-        state
-      })
-
       if (tippyInstance.value && view && state) {
         if (shouldShow({ view, state })) {
-          console.log('[SelectionMenu] Showing menu from selectionUpdate')
           tippyInstance.value.show()
         } else {
-          console.log('[SelectionMenu] Hiding menu from selectionUpdate')
           tippyInstance.value.hide()
         }
       }
@@ -192,12 +160,10 @@ function setupEditorListeners(newEditor) {
     // 监听视图的鼠标选择事件
     const view = newEditor.view
     view.dom.addEventListener('mouseup', () => {
-      console.log('[SelectionMenu] Mouse up detected')
       setTimeout(() => {
         if (tippyInstance.value) {
           const { view, state } = newEditor
           if (shouldShow({ view, state })) {
-            console.log('[SelectionMenu] Showing menu from mouseup')
             tippyInstance.value.show()
             // 更新按钮状态
             if (tippyInstance.value.popper && tippyInstance.value.popper.firstElementChild) {
@@ -212,7 +178,6 @@ function setupEditorListeners(newEditor) {
               }
             }
           } else {
-            console.log('[SelectionMenu] Hiding menu from mouseup')
             tippyInstance.value.hide()
           }
         }
@@ -221,12 +186,10 @@ function setupEditorListeners(newEditor) {
 
     view.dom.addEventListener('keyup', (e) => {
       if (e.shiftKey) {
-        console.log('[SelectionMenu] Key up with shift detected')
         setTimeout(() => {
           if (tippyInstance.value) {
             const { view, state } = newEditor
             if (shouldShow({ view, state })) {
-              console.log('[SelectionMenu] Showing menu from keyup')
               tippyInstance.value.show()
               // 更新按钮状态
               if (tippyInstance.value.popper && tippyInstance.value.popper.firstElementChild) {
@@ -241,7 +204,6 @@ function setupEditorListeners(newEditor) {
                 }
               }
             } else {
-              console.log('[SelectionMenu] Hiding menu from keyup')
               tippyInstance.value.hide()
             }
           }
@@ -253,13 +215,11 @@ function setupEditorListeners(newEditor) {
 
 // 监听编辑器选择变化
 watch(() => props.editor, (newEditor) => {
-  console.log('[SelectionMenu] Editor changed:', newEditor ? 'exists' : 'null')
   setupEditorListeners(newEditor)
 }, { immediate: true })
 
 // 组件卸载时清理 tippy 实例
 onBeforeUnmount(() => {
-  console.log('[SelectionMenu] Cleaning up...')
   if (tippyInstance.value) {
     tippyInstance.value.destroy()
     tippyInstance.value = null

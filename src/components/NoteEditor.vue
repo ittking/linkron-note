@@ -97,7 +97,6 @@ const editor = useEditor({
               level: tag.level,
             }))
           } catch (error) {
-            console.error('Failed to search tags:', error)
             return []
           }
         },
@@ -376,7 +375,7 @@ async function handleImageUpload(event) {
         },
       }).run()
     } catch (error) {
-      console.error('Failed to save image:', error)
+      // 图片保存失败，静默处理
     }
   }
   // 重置 input
