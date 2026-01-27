@@ -183,3 +183,50 @@ pub async fn save_file(
 
     Ok(relative_path)
 }
+
+/// 将 iterm:// 协议 URL 转换为本地文件路径
+/// 
+/// 参数:
+/// - protocol_url: iterm:// 协议 URL (如: http://iterm.localhost/resources/files/file.md)
+/// - work_directory: 工作目录（可选）
+/// 
+/// 返回:
+/// - Ok(String): 本地文件路径
+/// - Err(String): 错误信息
+#[tauri::command]
+pub fn get_local_path_from_protocol(protocol_url: String, work_directory: Option<String>) -> Result<String, String> {
+    use std::path::PathBuf;
+    
+    // 解析协议 URL
+    let path = if protocol_url.starts_with("http://iterm.localhost/") {
+        // Windows 格式: http://iterm.localhost/resources/files/file.md
+        protocol_url.replace("http://iterm.localhost/", "")
+    } else if protocol_url.starts_with("iterm://") {
+        // 其他平台格式: iterm://resources/files/file.md
+        protocol_url.replace("iterm://", "")
+    } else {
+        return Err(format!("无效的协议 URL: {}", protocol_url));
+    };
+    
+    // 确定基础目录
+    let base_dir = if let Some(work_dir) = work_directory {
+        PathBuf::from(&work_dir)
+    } else {
+        let mut path = dirs::data_local_dir().ok_or("Failed to get data directory")?;
+        path.push("iterm");
+        path
+    };
+    
+    // 构建完整路径
+    let full_path = base_dir.join(&path);
+    
+    // 检查文件是否存在
+    if !full_path.exists() {
+        return Err(format!("文件不存在: {}", full_path.display()));
+    }
+    
+    // 返回本地文件路径
+    full_path.to_str()
+        .map(|s| s.to_string())
+        .ok_or("Failed to convert path to string".to_string())
+}

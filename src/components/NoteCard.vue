@@ -1,8 +1,11 @@
 <script setup>
 import { computed, ref, onMounted, onBeforeUnmount, watch, nextTick } from 'vue'
-import { MoreHorizontal, ExternalLink, Edit, Trash2, ChevronDown, ChevronUp, Image as ImageIcon, FileText, Link as LinkIcon } from 'lucide-vue-next'
+import { MoreHorizontal, ExternalLink, Edit, Trash2, ChevronDown, ChevronUp, Image as ImageIcon, FileText, Link as LinkIcon, File } from 'lucide-vue-next'
 import { useEditor, EditorContent } from '@tiptap/vue-3'
 import { getResourceUrl } from '@/utils/fileUpload'
+import { openUrl, revealItemInDir } from '@tauri-apps/plugin-opener'
+import { invoke } from '@tauri-apps/api/core'
+import { useNoteStore } from '@/store/noteStore'
 import StarterKit from '@tiptap/starter-kit'
 import Highlight from '@tiptap/extension-highlight'
 import Image from '@tiptap/extension-image'
@@ -25,6 +28,8 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['click', 'open', 'edit', 'delete', 'tag-click'])
+
+const noteStore = useNoteStore()
 
 const menuVisible = ref(false)
 const isExpanded = ref(false)
@@ -72,6 +77,13 @@ const hasImages = computed(() => {
 const hasAttachments = computed(() => {
   return props.note.images && props.note.images.length > 0
 })
+
+// 获取文件名
+const getFileName = (filePath) => {
+  if (!filePath) return '未知文件'
+  const parts = filePath.split(/[/\\]/)
+  return parts[parts.length - 1] || filePath
+}
 
 // 解析图片路径
 async function resolveImagePath(src) {
@@ -274,7 +286,7 @@ const contentStyle = computed(() => {
 function handleMenuClick(action) {
   menuVisible.value = false
   if (action === 'open') {
-    emit('open', props.note)
+    openLink()
   } else if (action === 'edit') {
     emit('edit', props.note)
   } else if (action === 'delete') {
@@ -282,9 +294,40 @@ function handleMenuClick(action) {
   }
 }
 
+// 打开链接
+async function openLink() {
+  if (!props.note.sourceUrl) return
+  try {
+    await openUrl(props.note.sourceUrl)
+  } catch (error) {
+    console.error('打开链接失败:', error)
+  }
+}
+
 // 卡片点击
 function handleCardClick() {
   emit('click', props.note)
+}
+
+// 打开附件
+async function openAttachment() {
+  if (!hasAttachments.value || !props.note.images || props.note.images.length === 0) return
+  
+  const filePath = props.note.images[0]
+  try {
+    // 获取工作目录
+    const workDirectory = await noteStore.getWorkDirectory()
+    // 将协议 URL 转换为本地文件路径
+    const resourceUrl = await getResourceUrl(filePath)
+    const localPath = await invoke('get_local_path_from_protocol', { 
+      protocolUrl: resourceUrl,
+      workDirectory: workDirectory
+    })
+    // 使用 revealItemInDir 在文件资源管理器中显示文件
+    await revealItemInDir(localPath)
+  } catch (error) {
+    console.error('打开附件失败:', error)
+  }
 }
 
 // 点击外部关闭菜单
@@ -370,11 +413,43 @@ onBeforeUnmount(() => {
   align-items: center;
 }
 
-.source-info,
-.attachment-info {
-  display: flex;
+.source-url {
+  display: inline-flex;
   align-items: center;
   gap: 4px;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.source-link {
+  color: hsl(var(--p));
+  text-decoration: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.source-link:hover {
+  text-decoration: underline;
+}
+
+.attachment-file {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.attachment-file:hover {
+  color: hsl(var(--p));
 }
 
 .tag-info {
@@ -476,11 +551,15 @@ onBeforeUnmount(() => {
 
     <!-- 底部信息 -->
     <div class="note-footer">
-      <span v-if="note.sourceUrl" class="source-info">
-        来源：{{ note.sourceUrl }}
+      <span v-if="note.sourceUrl" class="source-url">
+        来源：
+        <a href="#" @click.prevent.stop="openLink" class="source-link">
+          {{ note.sourceUrl }}
+        </a>
       </span>
-      <span v-if="hasAttachments && !isImageNote" class="attachment-info">
-        附件：{{ note.images.length }} 个文件
+      <span v-if="hasAttachments && !isImageNote" class="attachment-file" @click="openAttachment">
+        <File :size="12" />
+        {{ getFileName(note.images[0]) }}
       </span>
       <span v-if="extractedTags.length > 0" class="tag-info">
         <span v-for="tag in extractedTags" :key="tag.id" @click.stop="handleTagClick(tag)"

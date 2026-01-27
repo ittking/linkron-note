@@ -48,6 +48,7 @@ pub fn run() {
             filesystem::save_file,
             filesystem::get_image_path,
             filesystem::get_resource_url,
+            filesystem::get_local_path_from_protocol,
             terminal::create_pty_session,
             terminal::write_to_pty,
             terminal::resize_pty,
