@@ -5,6 +5,8 @@ import { invoke } from '@tauri-apps/api/core'
 import StarterKit from '@tiptap/starter-kit'
 import Highlight from '@tiptap/extension-highlight'
 import Placeholder from '@tiptap/extension-placeholder'
+import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight'
+import { common, createLowlight } from 'lowlight'
 import { TagExtension } from '@/extensions/tag-extension'
 import { ResizableImage } from '@/extensions/resizable-image'
 import tippy from 'tippy.js'
@@ -16,8 +18,13 @@ import {
   ListOrdered,
   List,
   Underline,
-  Send
+  Send,
+  Code
 } from 'lucide-vue-next'
+import 'highlight.js/styles/github-dark.css'
+
+// 创建 lowlight 实例
+const lowlight = createLowlight(common)
 
 const props = defineProps({
   modelValue: {
@@ -64,10 +71,15 @@ const editor = useEditor({
         keepMarks: true,
         keepAttributes: false,
       },
+      codeBlock: false, // 禁用默认的 CodeBlock，使用 CodeBlockLowlight 代替
     }),
     ResizableImage,
     Highlight.configure({
       multicolor: true,
+    }),
+    CodeBlockLowlight.configure({
+      lowlight,
+      defaultLanguage: null,
     }),
     Placeholder.configure({
       placeholder: props.placeholder,
@@ -328,6 +340,11 @@ function insertTag() {
   editor.value?.chain().focus().insertContent('#').run()
 }
 
+// 插入代码块
+function insertCodeBlock() {
+  editor.value?.chain().focus().toggleCodeBlock().run()
+}
+
 // 触发图片上传
 function triggerImageUpload() {
   imageInputRef.value?.click()
@@ -377,6 +394,32 @@ function handleSubmit() {
   }
 }
 </script>
+
+<style>
+/* 代码块基础样式 */
+.ProseMirror pre {
+  padding: 0.75rem 1rem;
+  border-radius: 0.5rem;
+  margin: 0.5rem 0;
+  overflow-x: auto;
+}
+
+.ProseMirror pre code {
+  color: inherit;
+  padding: 0;
+  background: none;
+  font-size: 0.875rem;
+  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+}
+
+.ProseMirror code {
+  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+  background-color: rgba(110, 118, 129, 0.4);
+  padding: 0.2em 0.4em;
+  border-radius: 3px;
+  font-size: 0.85em;
+}
+</style>
 
 <template>
   <div class="note-editor relative bg-base-100 border border-primary rounded-xl p-4 shadow-sm transition-all duration-200 focus-within:shadow-md focus-within:border-primary/80">
@@ -457,6 +500,16 @@ function handleSubmit() {
           title="无序列表"
         >
           <List :size="14" />
+        </button>
+
+        <!-- 代码块 -->
+        <button
+          @click="insertCodeBlock"
+          class="w-6 h-6 rounded-md flex items-center justify-center text-base-content/50 hover:text-base-content hover:bg-base-200 transition-all duration-200"
+          :class="{ 'text-primary bg-primary/10': editor?.isActive('codeBlock') }"
+          title="代码块"
+        >
+          <Code :size="14" />
         </button>
       </div>
 

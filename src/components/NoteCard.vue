@@ -1,16 +1,22 @@
 <script setup>
-import { computed, ref, onMounted, onBeforeUnmount, watch } from 'vue'
+import { computed, ref, onMounted, onBeforeUnmount, watch, nextTick } from 'vue'
 import { MoreHorizontal, ExternalLink, Edit, Trash2, ChevronDown, ChevronUp } from 'lucide-vue-next'
 import { useEditor, EditorContent } from '@tiptap/vue-3'
 import { invoke } from '@tauri-apps/api/core'
 import StarterKit from '@tiptap/starter-kit'
 import Highlight from '@tiptap/extension-highlight'
 import Image from '@tiptap/extension-image'
+import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight'
+import { common, createLowlight } from 'lowlight'
 import { TagExtension } from '@/extensions/tag-extension'
 import dayjs from 'dayjs'
 import 'dayjs/locale/zh-cn'
+import 'highlight.js/styles/github-dark.css'
 
 dayjs.locale('zh-cn')
+
+// 创建 lowlight 实例
+const lowlight = createLowlight(common)
 
 const props = defineProps({
   note: {
@@ -66,6 +72,11 @@ watch(extractedImages, async (newImages) => {
   resolvedImages.value = await Promise.all(newImages.map(resolveImagePath))
 }, { immediate: true })
 
+// 计算内容是否包含图片
+const hasImages = computed(() => {
+  return extractedImages.value.length > 0
+})
+
 // 创建只读编辑器实例来渲染内容
 const editor = useEditor({
   content: props.note.content || '',
@@ -79,9 +90,14 @@ const editor = useEditor({
         keepMarks: true,
         keepAttributes: false,
       },
+      codeBlock: false, // 禁用默认的 CodeBlock，使用 CodeBlockLowlight 代替
     }),
     Highlight.configure({
       multicolor: true,
+    }),
+    CodeBlockLowlight.configure({
+      lowlight,
+      defaultLanguage: null,
     }),
     TagExtension,
     Image,
@@ -94,39 +110,43 @@ const editor = useEditor({
   },
 })
 
-// 更新编辑器的 class 属性，根据展开/收起状态决定是否隐藏图片
+// 计算编辑器的 class，根据展开/收起状态决定是否隐藏图片
+const editorClass = computed(() => {
+  const baseClass = 'prose prose-sm max-w-none text-[14px]'
+  return !isExpanded.value ? `${baseClass} editor-collapsed` : baseClass
+})
+
+// 更新编辑器 class
 function updateEditorClass() {
   if (editor.value) {
-    const baseClass = 'prose prose-sm max-w-none text-[14px]'
-    const newClass = !isExpanded.value ? `${baseClass} editor-collapsed` : baseClass
-    editor.value.options.editorProps.attributes.class = newClass
-    editor.value.view.dom.className = newClass
+    editor.value.view.dom.className = editorClass.value
   }
 }
 
-// 监听展开状态变化，更新编辑器 class
+// 监听展开状态变化
 watch(isExpanded, () => {
   updateEditorClass()
 })
 
-// 监听 content 变化，更新编辑器内容
-watch(() => props.note.content, (newValue) => {
-  if (editor.value && newValue !== editor.value.getHTML()) {
-    editor.value.commands.setContent(newValue, false)
-    // 内容更新后重新检查溢出
-    checkOverflow()
-  }
-})
-
-// 监听编辑器创建，创建后检查溢出并初始化 class
+// 监听编辑器创建
 watch(editor, (newEditor) => {
   if (newEditor) {
     updateEditorClass()
-    checkOverflow()
+    // 延迟检查溢出
+    setTimeout(checkOverflow, 200)
   }
 })
 
-// 格式化日期 - 精确到秒，不包含星期
+// 监听 content 变化
+watch(() => props.note.content, (newValue) => {
+  if (editor.value && newValue !== editor.value.getHTML()) {
+    editor.value.commands.setContent(newValue, false)
+    // 延迟检查溢出
+    setTimeout(checkOverflow, 200)
+  }
+})
+
+// 格式化日期
 const formattedDate = computed(() => {
   const date = dayjs(props.note.createdAt)
   return date.format('YYYY-MM-DD HH:mm:ss')
@@ -162,40 +182,45 @@ function handleTagClick(tag) {
 
 // 检查内容是否溢出
 function checkOverflow() {
-  if (contentRef.value && editor.value) {
-    // 使用 requestAnimationFrame 确保 DOM 已渲染
-    requestAnimationFrame(() => {
-      if (contentRef.value && editor.value) {
-        // 保存原始样式
-        const originalEditorClass = editor.value.view.dom.className
+  if (!contentRef.value || !editor.value) return
 
-        // 临时移除图片隐藏的 class
-        editor.value.view.dom.className = editor.value.view.dom.className.replace(' editor-collapsed', '')
+  // 保存当前编辑器的 class
+  const originalEditorClass = editor.value.view.dom.className
 
-        // 临时移除高度限制来测量实际内容高度
-        contentRef.value.style.maxHeight = 'none'
-        contentRef.value.style.overflow = 'visible'
+  // 临时移除 editor-collapsed class，确保显示所有内容（包括图片）
+  editor.value.view.dom.className = editor.value.view.dom.className.replace(' editor-collapsed', '')
 
-        const scrollHeight = contentRef.value.scrollHeight
+  // 使用 nextTick 确保 DOM 已完全更新
+  nextTick(() => {
+    if (!contentRef.value || !editor.value) return
 
-        // 恢复原始样式
-        contentRef.value.style.maxHeight = ''
-        contentRef.value.style.overflow = ''
-        editor.value.view.dom.className = originalEditorClass
+    // 保存当前样式
+    const originalMaxHeight = contentRef.value.style.maxHeight
+    const originalOverflow = contentRef.value.style.overflow
 
-        // 只有当实际内容高度超过最大高度时才显示展开按钮
-        isOverflowing.value = scrollHeight > MAX_HEIGHT
-      }
-    })
-  }
+    // 临时移除高度限制
+    contentRef.value.style.maxHeight = 'none'
+    contentRef.value.style.overflow = 'visible'
+
+    // 获取实际内容高度
+    const scrollHeight = contentRef.value.scrollHeight
+
+    // 恢复原始样式
+    contentRef.value.style.maxHeight = originalMaxHeight
+    contentRef.value.style.overflow = originalOverflow
+
+    // 恢复编辑器的 class
+    editor.value.view.dom.className = originalEditorClass
+
+    // 判断是否溢出
+    isOverflowing.value = scrollHeight > MAX_HEIGHT
+  })
 }
 
 // 切换展开/收起
 function toggleExpand(event) {
   event.stopPropagation()
   isExpanded.value = !isExpanded.value
-  // 展开状态改变后重新检查溢出
-  checkOverflow()
 }
 
 // 菜单项点击处理
@@ -225,7 +250,6 @@ function handleClickOutside(event) {
 // 生命周期钩子
 onMounted(() => {
   document.addEventListener('click', handleClickOutside)
-  checkOverflow()
 })
 
 onBeforeUnmount(() => {
@@ -237,6 +261,32 @@ onBeforeUnmount(() => {
 /* 收缩状态下隐藏编辑器内的图片 */
 :deep(.editor-collapsed img) {
   display: none;
+}
+</style>
+
+<style>
+/* 代码块基础样式 */
+.ProseMirror pre {
+  padding: 0.75rem 1rem;
+  border-radius: 0.5rem;
+  margin: 0.5rem 0;
+  overflow-x: auto;
+}
+
+.ProseMirror pre code {
+  color: inherit;
+  padding: 0;
+  background: none;
+  font-size: 0.875rem;
+  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+}
+
+.ProseMirror code {
+  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+  background-color: rgba(110, 118, 129, 0.4);
+  padding: 0.2em 0.4em;
+  border-radius: 3px;
+  font-size: 0.85em;
 }
 </style>
 
@@ -299,8 +349,8 @@ onBeforeUnmount(() => {
       </button>
     </div>
 
-    <!-- 图片列表 - 仅在收缩状态且内容中有图片时显示 -->
-    <div v-if="resolvedImages.length > 0 && !isExpanded" class="flex flex-wrap gap-2 mt-3">
+    <!-- 图片列表 - 仅在收缩状态且内容中有图片时显示缩略图 -->
+    <div v-if="hasImages && !isExpanded && isOverflowing" class="flex flex-wrap gap-2 mt-3">
       <img v-for="(img, index) in resolvedImages" :key="index" :src="img"
         class="w-20 h-20 rounded-lg object-cover border border-base-200 cursor-pointer hover:opacity-80 transition-opacity"
         alt="Note image" @click.stop />
@@ -312,7 +362,7 @@ onBeforeUnmount(() => {
         class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-primary/10 text-primary text-xs font-medium cursor-pointer hover:bg-primary/20 transition-colors">
         <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
           <path fill-rule="evenodd"
-            d="M17.707 9.293a1 1 0 010 1.414l-7 7a1 1 0 01-1.414 0l-7-7A.997.997 0 012 10V5a3 3 0 013-3h5c.256 0 .512.098.707.293l7 7zM5 6a1 1 0 100-2 1 1 0 000 2z"
+            d="M17.707 9.293a1 1 0 010 1.414l-7 7a1 1 0 01-1.414 0l-7-7A.997.997 0 012 10V5a3 3 0 013-3h5c.256 0.512.098.707.293l7 7zM5 6a1 1 0 100-2 1 1 0 000 2z"
             clip-rule="evenodd" />
         </svg>
         {{ tag.displayName }}
