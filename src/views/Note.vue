@@ -6,7 +6,7 @@ import { Download } from 'lucide-vue-next'
 import NoteCard from '@/components/NoteCard.vue'
 import NoteEditor from '@/components/NoteEditor.vue'
 import { useNoteStore } from '@/store/noteStore'
-import { saveFile, getResourceUrl } from '@/utils/fileUpload'
+import { saveFile } from '@/utils/fileUpload'
 import { extractTextFromFile, isSupportedFileType, getFileTypeDescription } from '@/utils/textExtraction'
 import { scrapeWebPage, isValidUrl, formatWebPageToNote } from '@/utils/webScraper'
 
