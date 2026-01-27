@@ -305,7 +305,7 @@ onBeforeUnmount(() => {
         'line-clamp-5': !isExpanded && isOverflowing,
         'max-h-[120px] overflow-hidden': !isExpanded && isOverflowing
       }">
-        <EditorContent :editor="editor" />
+        <EditorContent class="ProseMirror" :editor="editor" />
       </div>
 
       <!-- 展开/收起按钮 -->
