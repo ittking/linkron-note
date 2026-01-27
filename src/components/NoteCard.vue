@@ -46,21 +46,9 @@ const noteType = computed(() => props.note.note_type || 'text')
 const isTextNote = computed(() => noteType.value === 'text')
 const isLinkNote = computed(() => noteType.value === 'link')
 
-// 图文笔记：从内容中提取图片
-const extractedImages = computed(() => {
-  if (!props.note.content) return []
-  const imgRegex = /<img[^>]*src=["']([^"']+)["'][^>]*>/gi
-  const images = []
-  let match
-  while ((match = imgRegex.exec(props.note.content)) !== null) {
-    images.push(decodeHtmlEntities(match[1]))
-  }
-  return images
-})
-
 // 是否有图片
 const hasImages = computed(() => {
-  return extractedImages.value.length > 0
+  return props.note.images && props.note.images.length > 0
 })
 
 // 创建只读编辑器实例（仅用于图文笔记）
@@ -109,13 +97,7 @@ watch(() => props.note.content, (newValue) => {
   }
 })
 
-watch(isExpanded, (newVal) => {
-  if (newVal) {
-    // 展开状态
-  } else {
-    // 收起状态
-  }
-})
+
 
 // 格式化日期
 const formattedDate = computed(() => {
@@ -123,12 +105,7 @@ const formattedDate = computed(() => {
   return date.format('YYYY-MM-DD HH:mm:ss')
 })
 
-// 解码 HTML 实体
-function decodeHtmlEntities(str) {
-  const textarea = document.createElement('textarea')
-  textarea.innerHTML = str
-  return textarea.value
-}
+
 
 // 提取标签
 const extractedTags = computed(() => {
@@ -175,12 +152,12 @@ function toggleExpand(event) {
 // 菜单项点击处理
 function handleMenuClick(action) {
   menuVisible.value = false
-  if (action === 'open') {
-    openLink()
-  } else if (action === 'edit') {
+  if (action === 'edit') {
     emit('edit', props.note)
   } else if (action === 'delete') {
     emit('delete', props.note)
+  } else if (action === 'open') {
+    openLink()
   }
 }
 

@@ -9,6 +9,7 @@ import { useNoteStore } from '@/store/noteStore'
 import { saveFile, getResourceUrl } from '@/utils/fileUpload'
 import { extractTextFromFile, isSupportedFileType, getFileTypeDescription } from '@/utils/textExtraction'
 import { scrapeWebPage, isValidUrl, formatWebPageToNote } from '@/utils/webScraper'
+import { extractUrlFromUrlFile } from '@/utils/urlFileParser'
 
 const noteStore = useNoteStore()
 
@@ -44,8 +45,8 @@ function updateEditorHeight(scrollTop) {
 
 const notes = ref([])
 const editorContent = ref('')
-const isDragging = ref(false)
 const dragCounter = ref(0) // 拖拽计数器
+const isDragging = ref(false)
 const toastMessage = ref('')
 const toastVisible = ref(false)
 const toastType = ref('info')
@@ -210,13 +211,6 @@ async function handleEditorSubmit(noteData) {
     }
 }
 
-// 图片上传处理 - 已废弃，图片现在通过编辑器插入，不单独创建笔记
-async function handleImageUpload(imagePath) {
-    // 这个函数不再使用，因为图片现在是通过编辑器插入的
-    // 用户提交编辑器内容时会一并提交图片
-    console.log('handleImageUpload 已废弃，图片应通过编辑器提交')
-}
-
 // 拖拽事件处理
 function handleDragEnter(e) {
     e.preventDefault()
@@ -225,11 +219,9 @@ function handleDragEnter(e) {
 }
 
 function handleDragLeave(e) {
-    e.preventDefault()
-    dragCounter.value--
-    if (dragCounter.value <= 0) {
+    // 简化：如果鼠标离开容器且不是进入子元素，则隐藏
+    if (e.target === e.currentTarget) {
         isDragging.value = false
-        dragCounter.value = 0
     }
 }
 
@@ -239,9 +231,10 @@ function handleDragOver(e) {
 
 function handleDrop(e) {
     e.preventDefault()
-    e.stopPropagation() // 阻止事件冒泡，防止触发多次
+    e.stopPropagation()
+
+    // 简化：直接处理，不需要 dragCounter
     isDragging.value = false
-    dragCounter.value = 0
 
     // 优先处理文件
     const files = e.dataTransfer.files
@@ -252,7 +245,7 @@ function handleDrop(e) {
         return
     }
 
-    // 处理 URL/文本数据（只有在没有文件时才处理）
+    // 处理 URL/文本数据
     const textData = e.dataTransfer.getData('text/uri-list') || e.dataTransfer.getData('text/plain')
 
     if (textData) {
@@ -283,10 +276,10 @@ async function handleDroppedFile(file) {
             // 保存图片文件
             const imagePath = await saveFile(file, 'image', workDirectory)
             const resourceUrl = await getResourceUrl(imagePath)
-            
+
             // 创建带图片的 HTML 内容
             const imageHtml = `<p><img src="${resourceUrl}" alt="${file.name}" style="max-width: 100%;"></p>`
-            
+
             // 创建图文笔记
             const newNote = await noteStore.addNote({
                 type: 'text',
@@ -317,13 +310,13 @@ async function handleDroppedFile(file) {
     else if (isSupportedFileType(file.name)) {
         try {
             showToast(`正在读取${getFileTypeDescription(file.name)}...`, 'info')
-            
+
             // 提取文本内容（直接从文件读取，不保存）
             const content = await extractTextFromFile(file, null, workDirectory)
-            
+
             // 创建图文笔记（不包含文件名）
             const htmlContent = `<p>${content.replace(/\n/g, '<br>')}</p>`
-            
+
             const newNote = await noteStore.addNote({
                 type: 'text',
                 content: htmlContent
@@ -341,53 +334,6 @@ async function handleDroppedFile(file) {
     }
 }
 
-// 从 .url 文件中提取 URL
-async function extractUrlFromUrlFile(file) {
-    return new Promise((resolve, reject) => {
-        const reader = new FileReader()
-        
-        reader.onload = (e) => {
-            try {
-                const content = e.target.result
-                
-                // .url 文件格式通常是 INI 格式
-                // 查找 URL= 这一行
-                const urlMatch = content.match(/^URL=(.+)$/m)
-                
-                if (urlMatch && urlMatch[1]) {
-                    resolve(urlMatch[1].trim())
-                } else {
-                    // 尝试其他格式：InternetShortcut
-                    const internetShortcutMatch = content.match(/^\[InternetShortcut\]([\s\S]*?)^\[.*\]$/m)
-                    if (internetShortcutMatch) {
-                        const sectionContent = internetShortcutMatch[1]
-                        const urlLine = sectionContent.match(/^URL=(.+)$/m)
-                        if (urlLine && urlLine[1]) {
-                            resolve(urlLine[1].trim())
-                        }
-                    }
-                    
-                    // 如果都找不到，尝试查找任何包含 http/https 的行
-                    const httpMatch = content.match(/(https?:\/\/[^\s]+)/)
-                    if (httpMatch) {
-                        resolve(httpMatch[1].trim())
-                    } else {
-                        reject(new Error('未找到 URL'))
-                    }
-                }
-            } catch (error) {
-                reject(error)
-            }
-        }
-        
-        reader.onerror = () => {
-            reject(new Error('读取文件失败'))
-        }
-        
-        reader.readAsText(file)
-    })
-}
-
 // 创建链接笔记
 async function createLinkNote(url) {
     if (!isValidUrl(url)) {
@@ -397,13 +343,13 @@ async function createLinkNote(url) {
 
     try {
         showToast('正在抓取网页信息...', 'info')
-        
+
         // 抓取网页信息
         const pageInfo = await scrapeWebPage(url)
-        
+
         // 格式化为笔记内容
         const content = formatWebPageToNote(pageInfo)
-        
+
         // 创建链接笔记，包含爬取的图片
         const newNote = await noteStore.addNote({
             type: 'link',
@@ -411,7 +357,7 @@ async function createLinkNote(url) {
             sourceUrl: url,
             images: pageInfo.images || [] // 添加图片数组
         })
-        
+
         notes.value.unshift(newNote)
         showToast('链接笔记创建成功', 'success')
     } catch (error) {
@@ -435,11 +381,10 @@ async function createTextNote(text) {
     }
 }
 
-// 卡片点击事件
+// 卡片点击
 function handleCardClick(note) {
     // 暂时不做任何操作
 }
-
 // 菜单事件
 function handleMenuOpen(note) {
     if (note.sourceUrl) {
@@ -454,7 +399,7 @@ function handleMenuEdit(note) {
     shouldClearEditor.value = false // 重置清空标志
     // 延迟一帧设置 editorContent，确保 NoteEditor 组件已经挂载
     nextTick(() => {
-      editorContent.value = note.content
+        editorContent.value = note.content
     })
     isEditing.value = true
     // images 会通过 props 传递给 NoteEditor
@@ -482,7 +427,7 @@ function handleTagClick(tag) {
 async function loadNotesByTag(tagId) {
     isFiltering.value = true
     currentFilterTag.value = tagId
-    
+
     try {
         const newNotes = await noteStore.getNotesByTag(tagId, 1, 20)
         notes.value = newNotes
@@ -522,10 +467,8 @@ function handleCancelEdit() {
         @dragover="handleDragOver" @drop="handleDrop">
         <!-- 编辑器区域 -->
         <div class="px-4 py-3">
-            <NoteEditor v-model="editorContent" placeholder="现在的想法是..."
-                :is-scrolled-to-top="isNoteListScrolledToTop" :is-editing="isEditing"
-                :images="editingNote?.images || []"
-                :should-clear="shouldClearEditor"
+            <NoteEditor v-model="editorContent" placeholder="现在的想法是..." :is-scrolled-to-top="isNoteListScrolledToTop"
+                :is-editing="isEditing" :images="editingNote?.images || []" :should-clear="shouldClearEditor"
                 @submit="handleEditorSubmit">
                 <template #actions>
                     <button v-if="isEditing" @click="handleCancelEdit"
@@ -559,16 +502,9 @@ function handleCancelEdit() {
                     <div class="text-sm leading-relaxed max-w-[240px]">拖拽链接、文字或图片到这里创建笔记</div>
                 </div>
 
-                <NoteCard
-                    v-for="note in notes"
-                    :key="note.id"
-                    :note="note"
-                    @click="handleCardClick"
-                    @open="handleMenuOpen"
-                    @edit="handleMenuEdit"
-                    @delete="handleMenuDelete"
-                    @tag-click="handleTagClick"
-                />
+                <NoteCard v-for="note in notes" :key="note.id" :note="note" @click="handleCardClick"
+                    @open="handleMenuOpen" @edit="handleMenuEdit" @delete="handleMenuDelete"
+                    @tag-click="handleTagClick" />
 
                 <!-- Loading 组件 -->
                 <div v-if="isLoading" class="flex justify-center py-4">

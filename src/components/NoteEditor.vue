@@ -441,10 +441,6 @@ function toggleHighlight() {
   editor.value?.chain().focus().toggleHighlight().run()
 }
 
-function toggleUnderline() {
-  editor.value?.chain().focus().toggleUnderline().run()
-}
-
 function toggleBulletList() {
   editor.value?.chain().focus().toggleBulletList().run()
 }
@@ -492,29 +488,12 @@ function removeImage(index) {
   images.value.splice(index, 1)
 }
 
-// 从编辑器内容中提取图片 URL
-function extractImagesFromContent(htmlContent) {
-  const imgRegex = /<img[^>]+src="([^"]+)"/g
-  const extractedImages = []
-  let match
-  while ((match = imgRegex.exec(htmlContent)) !== null) {
-    extractedImages.push(match[1])
-  }
-  return extractedImages
-}
-
 function handleSubmit() {
   if (hasContent.value || images.value.length > 0) {
-    // 从编辑器内容中提取图片 URL（如果用户手动插入）
-    const editorImages = extractImagesFromContent(editor.value.getHTML())
-
-    // 合并图片列表（去重）
-    const allImages = [...new Set([...images.value, ...editorImages])]
-
     // 通过 emit 传递完整的笔记数据
     emit('submit', {
       content: editor.value.getHTML(),
-      images: allImages
+      images: images.value
     })
 
     if (!props.isEditing) {
@@ -536,7 +515,7 @@ function handleSubmit() {
       }" />
 
       <!-- 图片列表 -->
-      <div v-if="images.length > 0" class="px-4 pb-3">
+      <div v-if="images.length > 0" class="px-4 py-2">
         <div class="flex flex-wrap gap-2">
           <div
             v-for="(imageUrl, index) in images"
@@ -626,54 +605,4 @@ function handleSubmit() {
 </template>
 
 <style scoped>
-/* 图片列表样式 */
-.images-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  padding: 12px 16px 8px 16px;
-}
-
-.image-item {
-  position: relative;
-  width: 100px;
-  height: 100px;
-  border-radius: 8px;
-  overflow: hidden;
-  border: 1px solid #e5e7eb;
-  transition: all 0.2s;
-}
-
-.image-item:hover {
-  border-color: #d1d5db;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.image-item img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.image-item .delete-btn {
-  position: absolute;
-  top: 4px;
-  right: 4px;
-  width: 20px;
-  height: 20px;
-  background: rgba(0, 0, 0, 0.5);
-  border: none;
-  border-radius: 50%;
-  color: white;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: background 0.2s;
-  padding: 0;
-}
-
-.image-item .delete-btn:hover {
-  background: rgba(0, 0, 0, 0.7);
-}
 </style>
