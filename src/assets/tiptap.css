@@ -40,14 +40,14 @@
   max-width: 100%;
   height: auto;
   border-radius: 8px;
-  margin: 0.5rem 0;
+  margin: 0 0.5rem;
 }
 
 /* 可调整大小的图片样式 */
 .ProseMirror .resizable-image-wrapper {
   display: inline-block;
   position: relative;
-  margin: 0.5rem 0;
+  margin: 0 0.5rem;
 }
 
 .ProseMirror .resizable-image-wrapper img {
@@ -55,7 +55,7 @@
   max-width: 100%;
   height: auto;
   border-radius: 0;
-  margin: 8px;
+  margin: 0 8px;
 }
 
 .ProseMirror .resizable-image-wrapper:hover img {
@@ -65,13 +65,12 @@
 
 .ProseMirror .resize-handle {
   position: absolute;
-  width: 6px !important;
-  height: 6px !important;
+  width: 0.5em !important;
+  height: 0.5em !important;
   background: var(--color-primary) !important;
-  border-radius: 0;
   cursor: nwse-resize;
-  bottom: 6px !important;
-  right: 6px !important;
+  bottom: -0.1em !important;
+  right: 0.4em !important;
   border: none;
   z-index: 10;
   display: none;
