@@ -154,13 +154,13 @@ function checkOverflow() {
         const originalClasses = contentRef.value.className
         contentRef.value.style.maxHeight = 'none'
         contentRef.value.style.overflow = 'visible'
-        
+
         const scrollHeight = contentRef.value.scrollHeight
-        
+
         // 恢复原始样式
         contentRef.value.style.maxHeight = ''
         contentRef.value.style.overflow = ''
-        
+
         // 只有当实际内容高度超过最大高度时才显示展开按钮
         isOverflowing.value = scrollHeight > MAX_HEIGHT
       }
@@ -214,44 +214,32 @@ onBeforeUnmount(() => {
 <template>
   <div
     class="note-card bg-base-100 border border-base-200 rounded-lg p-4 mb-3 cursor-pointer transition-all duration-200 hover:shadow-md"
-    @click="handleCardClick"
-  >
+    @click="handleCardClick">
     <!-- 顶部：日期 + 菜单 -->
     <div class="flex items-center justify-between mb-3">
       <span class="text-xs text-base-content/50">{{ formattedDate }}</span>
       <div class="relative">
-        <button
-          @click.stop="menuVisible = !menuVisible"
-          class="w-6 h-6 rounded flex items-center justify-center text-base-content/40 hover:text-base-content hover:bg-base-200 transition-colors"
-        >
+        <button @click.stop="menuVisible = !menuVisible"
+          class="w-6 h-6 rounded flex items-center justify-center text-base-content/40 hover:text-base-content hover:bg-base-200 transition-colors">
           <MoreHorizontal :size="20" />
         </button>
-        
+
         <!-- 下拉菜单 -->
-        <div
-          v-if="menuVisible"
+        <div v-if="menuVisible"
           class="absolute right-0 top-8 z-10 bg-base-100 border border-base-200 rounded-lg shadow-xl min-w-[120px] py-1"
-          @click.stop
-        >
-          <button
-            v-if="note.sourceUrl"
-            @click="handleMenuClick('open')"
-            class="w-full px-3 py-2 text-left text-xs text-base-content hover:bg-base-200 flex items-center gap-2 transition-colors"
-          >
+          @click.stop>
+          <button v-if="note.sourceUrl" @click="handleMenuClick('open')"
+            class="w-full px-3 py-2 text-left text-xs text-base-content hover:bg-base-200 flex items-center gap-2 transition-colors">
             <ExternalLink :size="14" />
             打开链接
           </button>
-          <button
-            @click="handleMenuClick('edit')"
-            class="w-full px-3 py-2 text-left text-xs text-base-content hover:bg-base-200 flex items-center gap-2 transition-colors"
-          >
+          <button @click="handleMenuClick('edit')"
+            class="w-full px-3 py-2 text-left text-xs text-base-content hover:bg-base-200 flex items-center gap-2 transition-colors">
             <Edit :size="14" />
             编辑
           </button>
-          <button
-            @click="handleMenuClick('delete')"
-            class="w-full px-3 py-2 text-left text-xs text-error hover:bg-base-200 flex items-center gap-2 transition-colors"
-          >
+          <button @click="handleMenuClick('delete')"
+            class="w-full px-3 py-2 text-left text-xs text-error hover:bg-base-200 flex items-center gap-2 transition-colors">
             <Trash2 :size="14" />
             删除
           </button>
@@ -261,23 +249,16 @@ onBeforeUnmount(() => {
 
     <!-- 内容 -->
     <div v-if="note.content">
-      <div
-        ref="contentRef"
-        class="text-base-content leading-relaxed break-words"
-        :class="{
-          'line-clamp-5': !isExpanded && isOverflowing,
-          'max-h-[120px] overflow-hidden': !isExpanded && isOverflowing
-        }"
-      >
+      <div ref="contentRef" class="text-base-content leading-relaxed break-words" :class="{
+        'line-clamp-5': !isExpanded && isOverflowing,
+        'max-h-[120px] overflow-hidden': !isExpanded && isOverflowing
+      }">
         <EditorContent :editor="editor" />
       </div>
-      
+
       <!-- 展开/收起按钮 -->
-      <button
-        v-if="isOverflowing"
-        @click="toggleExpand"
-        class="mt-2 text-xs text-primary hover:text-primary/80 flex items-center gap-1 transition-colors"
-      >
+      <button v-if="isOverflowing" @click="toggleExpand"
+        class="mt-2 text-xs text-primary hover:text-primary/80 flex items-center gap-1 transition-colors">
         <template v-if="!isExpanded">
           展开全文
           <ChevronDown :size="14" />
@@ -291,26 +272,19 @@ onBeforeUnmount(() => {
 
     <!-- 图片列表 -->
     <div v-if="resolvedImages.length > 0 && !isExpanded" class="flex flex-wrap gap-2 mt-3">
-      <img
-        v-for="(img, index) in resolvedImages"
-        :key="index"
-        :src="img"
+      <img v-for="(img, index) in resolvedImages" :key="index" :src="img"
         class="w-20 h-20 rounded-lg object-cover border border-base-200 cursor-pointer hover:opacity-80 transition-opacity"
-        alt="Note image"
-        @click.stop
-      />
+        alt="Note image" @click.stop />
     </div>
 
     <!-- 标签列表 -->
     <div v-if="extractedTags.length > 0" class="flex flex-wrap gap-2 mt-3">
-      <span
-        v-for="tag in extractedTags"
-        :key="tag.id"
-        @click.stop="handleTagClick(tag)"
-        class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-primary/10 text-primary text-xs font-medium cursor-pointer hover:bg-primary/20 transition-colors"
-      >
+      <span v-for="tag in extractedTags" :key="tag.id" @click.stop="handleTagClick(tag)"
+        class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-primary/10 text-primary text-xs font-medium cursor-pointer hover:bg-primary/20 transition-colors">
         <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-          <path fill-rule="evenodd" d="M17.707 9.293a1 1 0 010 1.414l-7 7a1 1 0 01-1.414 0l-7-7A.997.997 0 012 10V5a3 3 0 013-3h5c.256 0 .512.098.707.293l7 7zM5 6a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd"/>
+          <path fill-rule="evenodd"
+            d="M17.707 9.293a1 1 0 010 1.414l-7 7a1 1 0 01-1.414 0l-7-7A.997.997 0 012 10V5a3 3 0 013-3h5c.256 0 .512.098.707.293l7 7zM5 6a1 1 0 100-2 1 1 0 000 2z"
+            clip-rule="evenodd" />
         </svg>
         {{ tag.displayName }}
       </span>
