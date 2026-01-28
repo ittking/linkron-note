@@ -92,6 +92,13 @@ onMounted(() => {
   }
 })
 
+// 组件卸载时销毁编辑器实例，避免内存泄漏
+onBeforeUnmount(() => {
+  if (editor.value) {
+    editor.value.destroy()
+  }
+})
+
 const editor = useEditor({
   content: '', // 初始为空，在 onMounted 中设置
   extensions: [
@@ -488,7 +495,7 @@ async function handleImageUpload(event) {
       // 添加到图片列表（不再插入到编辑器）
       images.value.push(imageUrl)
     } catch (error) {
-      console.error('图片上传失败:', error)
+      // 图片上传失败，静默处理
     }
   }
   // 重置 input
@@ -509,14 +516,13 @@ async function removeImage(index) {
   } else {
     // 创建模式：立即删除文件
     try {
-      const workDirectory = await getWorkDirectory()
-      await deleteResource(removedImage, workDirectory)
-    } catch (error) {
-      console.error('删除图片文件失败:', error)
+            const workDirectory = await getWorkDirectory()
+            await deleteResource(removedImage, workDirectory)
+          } catch (error) {
+            // 删除图片文件失败，静默处理
+          }
+        }
     }
-  }
-}
-
 // 清理函数：取消编辑时调用，清空被删除的图片列表
 function clearDeletedImages() {
   deletedImages.value = []
@@ -541,7 +547,7 @@ async function handleSubmit() {
         }
         deletedImages.value = [] // 清空已删除列表
       } catch (error) {
-        console.error('删除图片文件失败:', error)
+        // 删除图片文件失败，静默处理
       }
     }
     

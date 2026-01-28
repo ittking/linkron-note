@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, onActivated, nextTick } from 'vue'
+import { ref, onMounted, onActivated, nextTick, computed } from 'vue'
 import { onBeforeRouteLeave } from 'vue-router'
 import { invoke } from '@tauri-apps/api/core'
 import { Download, FileText, ChevronUp } from 'lucide-vue-next'
@@ -294,17 +294,14 @@ function handleDrop(e) {
 
     // 判断放置位置
     const dropInEditor = isDropInEditor(e.clientX, e.clientY)
-    console.log('Drop position:', { clientX: e.clientX, clientY: e.clientY, dropInEditor })
 
     // 优先处理文件
     const files = e.dataTransfer.files
     if (files && files.length > 0) {
         for (let i = 0; i < files.length; i++) {
             if (dropInEditor) {
-                console.log('Handle file to editor')
                 handleFileToEditor(files[i])
             } else {
-                console.log('Handle file to create note')
                 handleDroppedFile(files[i])
             }
         }
@@ -316,10 +313,8 @@ function handleDrop(e) {
 
     if (textData) {
         if (dropInEditor) {
-            console.log('Handle data to editor')
             handleDataToEditor(textData)
         } else {
-            console.log('Handle data to create note')
             handleDroppedData(textData)
         }
     }
@@ -421,7 +416,6 @@ async function handleDroppedFile(file) {
                 showToast('无法从 .url 文件中提取有效的 URL', 'error')
             }
         } catch (error) {
-            console.error('解析 .url 文件失败:', error)
             showToast('解析 .url 文件失败: ' + error.message, 'error')
         } finally {
             isProcessing.value = false
@@ -515,7 +509,6 @@ function handleCardClick(note) {
 // NoteCard 展开/收起事件处理
 function handleNoteExpand(noteId) {
     expandedNoteIds.value.set(noteId, true)
-    console.log('笔记展开:', noteId)
     // 展开后等待 DOM 更新，再检测被切割的笔记
     nextTick(() => {
         detectCroppedNote()
@@ -524,7 +517,6 @@ function handleNoteExpand(noteId) {
 
 function handleNoteCollapse(noteId) {
     expandedNoteIds.value.set(noteId, false)
-    console.log('笔记收起:', noteId)
     // 收起后等待 DOM 更新，再检测被切割的笔记
     nextTick(() => {
         detectCroppedNote()
@@ -556,9 +548,6 @@ function detectCroppedNote() {
     })
 
     croppedNoteId.value = croppedId
-    if (croppedId) {
-        console.log('被底部边缘切割的笔记ID:', croppedId)
-    }
 }
 
 // 判断是否显示浮动收起按钮

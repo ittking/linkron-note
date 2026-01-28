@@ -176,7 +176,7 @@ async function openLink() {
   try {
     await openUrl(props.note.sourceUrl)
   } catch (error) {
-    console.error('打开链接失败:', error)
+    // 静默处理错误，用户无感知
   }
 }
 
@@ -187,7 +187,7 @@ async function handleRevealFile() {
     const workDirectory = await noteStore.getWorkDirectory()
     await revealFile(props.note.extractUrl, workDirectory)
   } catch (error) {
-    console.error('显示文件失败:', error)
+    // 静默处理错误，用户无感知
   }
 }
 
@@ -209,6 +209,10 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   document.removeEventListener('click', handleClickOutside)
+  // 销毁编辑器实例，避免内存泄漏
+  if (editor.value) {
+    editor.value.destroy()
+  }
 })
 
 // 暴露方法给父组件
