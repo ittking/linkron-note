@@ -331,6 +331,12 @@ async function handleDataToEditor(data) {
             
             // 将内容添加到编辑器
             editorContent.value += (editorContent.value ? '<br>' : '') + content
+            
+            // 将图片添加到编辑器
+            if (images && images.length > 0 && noteEditorRef.value?.addImages) {
+                noteEditorRef.value.addImages(images)
+            }
+            
             showToast('网页内容已添加到编辑器', 'success')
         } catch (error) {
             showToast('网页抓取失败: ' + error.message, 'error')

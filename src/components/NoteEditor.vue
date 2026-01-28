@@ -557,9 +557,17 @@ async function handleSubmit() {
   }
 }
 
+// 添加图片到图片列表
+function addImages(newImages) {
+  if (newImages && newImages.length > 0) {
+    images.value = [...images.value, ...newImages]
+  }
+}
+
 // 暴露方法给父组件
 defineExpose({
-  clearDeletedImages
+  clearDeletedImages,
+  addImages
 })
 </script>
 
