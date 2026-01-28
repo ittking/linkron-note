@@ -13,6 +13,9 @@ import { extractUrlFromUrlFile } from '@/utils/urlFileParser'
 
 const noteStore = useNoteStore()
 
+// 编辑器引用
+const noteEditorRef = ref(null)
+
 // 滚动位置保存
 const noteListRef = ref(null)
 let savedScrollTop = 0
@@ -407,6 +410,10 @@ function handleConfirmOk() {
 // 取消编辑
 function handleCancelEdit() {
     shouldClearEditor.value = true // 设置清空标志
+    // 清理被删除的图片列表（取消编辑时不需要实际删除文件）
+    if (noteEditorRef.value?.clearDeletedImages) {
+        noteEditorRef.value.clearDeletedImages()
+    }
     editingNote.value = null
     isEditing.value = false
     editorContent.value = ''
@@ -419,7 +426,7 @@ function handleCancelEdit() {
         @dragover="handleDragOver" @drop="handleDrop">
         <!-- 编辑器区域 -->
         <div class="px-4 py-3">
-            <NoteEditor v-model="editorContent" placeholder="现在的想法是..." :is-scrolled-to-top="isNoteListScrolledToTop"
+            <NoteEditor ref="noteEditorRef" v-model="editorContent" placeholder="现在的想法是..." :is-scrolled-to-top="isNoteListScrolledToTop"
                 :is-editing="isEditing" :images="editingNote?.images || []" :should-clear="shouldClearEditor"
                 @submit="handleEditorSubmit">
                 <template #actions>

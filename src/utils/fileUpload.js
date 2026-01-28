@@ -72,3 +72,32 @@ export async function saveFiles(files, type = 'file', workDirectory) {
   const promises = files.map(file => saveFile(file, type, workDirectory))
   return Promise.all(promises)
 }
+
+/**
+ * 删除资源文件
+ * @param {string} url - 资源 URL (如: http://iterm.localhost/resources/images/1234567890-1234.png)
+ * @param {string} workDirectory - 工作目录路径
+ * @returns {Promise<void>}
+ */
+export async function deleteResource(url, workDirectory) {
+  try {
+    await invoke('delete_resource_by_url', {
+      url,
+      workDirectory
+    })
+  } catch (error) {
+    console.error('文件删除失败:', error)
+    throw new Error(`文件删除失败: ${error.message}`)
+  }
+}
+
+/**
+ * 批量删除资源文件
+ * @param {string[]} urls - 资源 URL 数组
+ * @param {string} workDirectory - 工作目录路径
+ * @returns {Promise<void>}
+ */
+export async function deleteResources(urls, workDirectory) {
+  const promises = urls.map(url => deleteResource(url, workDirectory))
+  await Promise.all(promises)
+}

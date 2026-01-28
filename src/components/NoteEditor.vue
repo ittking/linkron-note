@@ -10,7 +10,7 @@ import { common, createLowlight } from 'lowlight'
 import { TagExtension } from '@/extensions/tag-extension'
 import tippy from 'tippy.js'
 import { useSettingStore } from '@/store/settingStore'
-import { saveImage, getResourceUrl } from '@/utils/fileUpload'
+import { saveImage, getResourceUrl, deleteResource } from '@/utils/fileUpload'
 import SelectionMenu from './SelectionMenu.vue'
 import {
   Hash,
@@ -60,6 +60,7 @@ const emit = defineEmits(['update:modelValue', 'submit', 'image-upload'])
 const settingStore = useSettingStore()
 const imageInputRef = ref(null)
 const images = ref([])
+const deletedImages = ref([]) // 追踪编辑模式下被删除的图片
 
 // 监听 props.images 变化，同步到本地状态
 watch(() => props.images, (newImages) => {
@@ -484,12 +485,47 @@ async function handleImageUpload(event) {
 }
 
 // 删除图片
-function removeImage(index) {
+async function removeImage(index) {
+  const removedImage = images.value[index]
+  
+  // 从当前图片列表中移除
   images.value.splice(index, 1)
+  
+  // 根据模式处理文件删除
+  if (props.isEditing) {
+    // 编辑模式：记录被删除的图片，在保存时统一删除
+    deletedImages.value.push(removedImage)
+  } else {
+    // 创建模式：立即删除文件
+    try {
+      const workDirectory = await getWorkDirectory()
+      await deleteResource(removedImage, workDirectory)
+    } catch (error) {
+      console.error('删除图片文件失败:', error)
+    }
+  }
 }
 
-function handleSubmit() {
+// 清理函数：取消编辑时调用，清空被删除的图片列表
+function clearDeletedImages() {
+  deletedImages.value = []
+}
+
+async function handleSubmit() {
   if (hasContent.value || images.value.length > 0) {
+    // 如果是编辑模式，先删除被移除的图片文件
+    if (props.isEditing && deletedImages.value.length > 0) {
+      try {
+        const workDirectory = await getWorkDirectory()
+        for (const imageUrl of deletedImages.value) {
+          await deleteResource(imageUrl, workDirectory)
+        }
+        deletedImages.value = [] // 清空已删除列表
+      } catch (error) {
+        console.error('删除图片文件失败:', error)
+      }
+    }
+    
     // 通过 emit 传递完整的笔记数据
     emit('submit', {
       content: editor.value.getHTML(),
@@ -499,8 +535,14 @@ function handleSubmit() {
     // 无论编辑模式还是创建模式，提交后都清空编辑器和图片
     editor.value?.commands.clearContent()
     images.value = []
+    deletedImages.value = []
   }
 }
+
+// 暴露方法给父组件
+defineExpose({
+  clearDeletedImages
+})
 </script>
 
 <template>
