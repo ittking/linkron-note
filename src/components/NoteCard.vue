@@ -265,7 +265,7 @@ defineExpose({
     </div>
 
     <!-- 笔记内容：TipTap 编辑器渲染（所有类型统一） -->
-    <div v-if="note.content">
+    <div v-if="note.content" class="relative">
       <div ref="contentRef" class="text-base-content leading-relaxed break-words" :class="{
         'line-clamp-5': !isExpanded && isOverflowing,
         'max-h-[120px] overflow-hidden': !isExpanded && isOverflowing
@@ -274,35 +274,36 @@ defineExpose({
       </div>
 
       <!-- 展开/收起按钮 -->
-      <button v-if="isOverflowing" @click="toggleExpand" :class="[
-        'mt-2 text-xs text-primary hover:text-primary/80 flex items-center gap-1',
-        isPinned ? 'fixed bottom-4 left-1/2 -translate-x-1/2 z-50 bg-base-100 border border-base-200 shadow-lg px-4 py-2 rounded-lg' : ''
-      ]">
-        <template v-if="!isExpanded">
-          展开全文
-          <ChevronDown :size="14" />
-        </template>
-        <template v-else>
-          收起
-          <ChevronUp :size="14" />
-        </template>
-      </button>
+      <div class="relative">
+        <div v-if="!isExpanded && isOverflowing"
+          class="absolute -top-15 left-0 right-0 h-15 bg-gradient-to-b from-transparent to-base-100 pointer-events-none">
+        </div>
+        <button v-if="isOverflowing" @click="toggleExpand" :class="[
+          'mt-2 text-xs text-primary hover:text-primary/80 flex items-center gap-1',
+          isPinned ? 'fixed bottom-4 left-1/2 -translate-x-1/2 z-50 bg-base-100 border border-base-200 shadow-lg px-4 py-2 rounded-lg' : ''
+        ]">
+          <template v-if="!isExpanded">
+            展开全文
+            <ChevronDown :size="14" />
+          </template>
+          <template v-else>
+            收起
+            <ChevronUp :size="14" />
+          </template>
+        </button>
+      </div>
     </div>
 
     <!-- 图片列表 -->
     <div v-if="note.images && note.images.length > 0"
       class="grid mn:grid-cols-5 xs:grid-cols-6 sm:grid-cols-7 sm:grid-cols-8 md:grid-cols-10 gap-2 mt-3">
-      <ImageViewer 
-        v-for="(imageUrl, index) in note.images" 
-        :key="index"
-        :src="imageUrl" 
-        :alt="`笔记图片 ${index + 1}`"
-        :images="note.images"
-      />
+      <ImageViewer v-for="(imageUrl, index) in note.images" :key="index" :src="imageUrl" :alt="`笔记图片 ${index + 1}`"
+        :images="note.images" />
     </div>
 
     <!-- 底部信息 -->
-    <div v-if="note.sourceUrl || note.extractUrl" class="mt-3 pt-2 border-t border-base-content/10 text-xs text-base-content/50">
+    <div v-if="note.sourceUrl || note.extractUrl"
+      class="mt-3 pt-2 border-t border-base-content/10 text-xs text-base-content/50">
       <span v-if="isLinkNote && note.sourceUrl"
         class="inline-flex items-center gap-1 max-w-[200px] overflow-hidden text-ellipsis whitespace-nowrap">
         来源：
