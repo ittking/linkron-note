@@ -1,6 +1,6 @@
 <script setup>
-import { ref, onMounted, onBeforeUnmount, watch } from 'vue'
-import { X, ZoomIn, ZoomOut, RotateCw, FolderOpen } from 'lucide-vue-next'
+import { ref, onMounted, onBeforeUnmount, watch, computed } from 'vue'
+import { X, ZoomIn, ZoomOut, RotateCw, FolderOpen, ChevronLeft, ChevronRight } from 'lucide-vue-next'
 import { useSettingStore } from '@/store/settingStore'
 import { revealFile } from '@/utils/fileUpload'
 
@@ -21,6 +21,11 @@ const props = defineProps({
   className: {
     type: String,
     default: ''
+  },
+  // 图片列表（用于切换）
+  images: {
+    type: Array,
+    default: () => []
   }
 })
 
@@ -34,15 +39,48 @@ const imageRef = ref(null)
 const scale = ref(1)
 const rotation = ref(0)
 const isDragging = ref(false)
+const hasMoved = ref(false) // 标记是否发生了移动（用于区分点击和拖拽）
 const dragStart = ref({ x: 0, y: 0 })
 const startPosition = ref({ x: 0, y: 0 })
+const currentImageIndex = ref(0)
+
+// 计算当前显示的图片
+const currentImage = computed(() => {
+  if (props.images && props.images.length > 0) {
+    return props.images[currentImageIndex.value] || props.images[0]
+  }
+  return props.src
+})
+
+// 初始化时根据 src 查找索引
+function initCurrentIndex() {
+  if (props.images && props.images.length > 0) {
+    const index = props.images.findIndex(img => img === props.src)
+    currentImageIndex.value = index >= 0 ? index : 0
+  }
+}
+
+// 是否有多个图片
+const hasMultipleImages = computed(() => {
+  return props.images && props.images.length > 1
+})
+
+// 当前图片编号
+const imageNumber = computed(() => {
+  if (hasMultipleImages.value) {
+    return `${currentImageIndex.value + 1} / ${props.images.length}`
+  }
+  return ''
+})
 
 const MIN_SCALE = 0.5
 const MAX_SCALE = 5
 
 // 打开预览
 function openPreview() {
+  initCurrentIndex()
   previewVisible.value = true
+  reset()
 }
 
 // 关闭预览
@@ -56,6 +94,49 @@ function reset() {
   scale.value = 1
   rotation.value = 0
   startPosition.value = { x: 0, y: 0 }
+}
+
+// 切换到上一张图片
+function handlePrevious() {
+  if (!hasMultipleImages.value) return
+  currentImageIndex.value = (currentImageIndex.value - 1 + props.images.length) % props.images.length
+  reset()
+}
+
+// 切换到下一张图片
+function handleNext() {
+  if (!hasMultipleImages.value) return
+  currentImageIndex.value = (currentImageIndex.value + 1) % props.images.length
+  reset()
+}
+
+// 处理图片点击（左半边上一张，右半边下一张）
+function handleImageClick(e) {
+  // 如果发生了移动（拖拽），不处理点击
+  if (hasMoved.value) return
+  
+  // 如果按下了 Ctrl 键，不处理点击
+  if (e.ctrlKey || e.metaKey) return
+  
+  // 如果没有多个图片，不处理
+  if (!hasMultipleImages.value) return
+  
+  // 获取图片容器
+  const container = imageRef.value
+  if (!container) return
+  
+  // 计算点击位置在图片容器的水平位置比例
+  const rect = container.getBoundingClientRect()
+  const clickX = e.clientX - rect.left
+  const relativeX = clickX / rect.width
+  
+  // 点击左半边：上一张
+  // 点击右半边：下一张
+  if (relativeX < 0.5) {
+    handlePrevious()
+  } else {
+    handleNext()
+  }
 }
 
 // 缩放
@@ -104,6 +185,7 @@ function handleMouseDown(e) {
   e.preventDefault()
 
   isDragging.value = true
+  hasMoved.value = false
   dragStart.value = {
     x: e.clientX,
     y: e.clientY
@@ -120,6 +202,11 @@ function handleMouseMove(e) {
 
   const deltaX = e.clientX - dragStart.value.x
   const deltaY = e.clientY - dragStart.value.y
+
+  // 如果移动超过阈值，标记为发生了移动
+  if (Math.abs(deltaX) > 5 || Math.abs(deltaY) > 5) {
+    hasMoved.value = true
+  }
 
   startPosition.value = {
     x: startPosition.value.x + deltaX,
@@ -143,6 +230,10 @@ function handleMouseUp(e) {
 function handleKeyDown(e) {
   if (e.key === 'Escape') {
     closePreview()
+  } else if (e.key === 'ArrowLeft' && !e.ctrlKey && hasMultipleImages.value) {
+    handlePrevious()
+  } else if (e.key === 'ArrowRight' && !e.ctrlKey && hasMultipleImages.value) {
+    handleNext()
   }
 }
 
@@ -178,39 +269,51 @@ onBeforeUnmount(() => {
 
         <!-- 关闭按钮 -->
         <button @click="closePreview"
-          class="absolute top-4 right-4 w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors z-10">
-          <X :size="24" />
+          class="absolute top-4 right-4 w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors z-10">
+          <X :size="18" />
         </button>
 
         <!-- 工具栏 -->
         <div
-          class="absolute bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-3 bg-black/60 backdrop-blur-sm rounded-full px-6 py-3 z-10">
+          class="absolute bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-black/60 backdrop-blur-sm rounded-full px-4 py-2 z-10">
+          <!-- 上一张图片按钮 -->
+          <button v-if="hasMultipleImages" @click="handlePrevious"
+            class="w-6 h-6 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors"
+            title="上一张">
+            <ChevronLeft :size="14" />
+          </button>
+          
           <button @click="handleZoom(-0.2)" :disabled="scale <= MIN_SCALE"
-            class="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors disabled:opacity-30 disabled:cursor-not-allowed">
-            <ZoomOut :size="18" />
+            class="w-6 h-6 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors disabled:opacity-30 disabled:cursor-not-allowed">
+            <ZoomOut :size="14" />
           </button>
-          <span class="text-white text-sm font-medium min-w-[60px] text-center">{{ Math.round(scale * 100) }}%</span>
+          <span class="text-white text-xs font-medium min-w-[50px] text-center">{{ Math.round(scale * 100) }}%</span>
           <button @click="handleZoom(0.2)" :disabled="scale >= MAX_SCALE"
-            class="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors disabled:opacity-30 disabled:cursor-not-allowed">
-            <ZoomIn :size="18" />
+            class="w-6 h-6 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors disabled:opacity-30 disabled:cursor-not-allowed">
+            <ZoomIn :size="14" />
           </button>
-          <div class="w-px h-6 bg-white/30"></div>
           <button @click="handleRotate"
-            class="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors">
-            <RotateCw :size="18" />
+            class="w-6 h-6 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors">
+            <RotateCw :size="14" />
           </button>
-          <div class="w-px h-6 bg-white/30"></div>
           <button @click="revealImageFile"
-            class="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors"
+            class="w-6 h-6 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors"
             title="在文件夹中显示">
-            <FolderOpen :size="18" />
+            <FolderOpen :size="14" />
+          </button>
+          
+          <!-- 下一张图片按钮 -->
+          <button v-if="hasMultipleImages" @click="handleNext"
+            class="w-6 h-6 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors"
+            title="下一张">
+            <ChevronRight :size="14" />
           </button>
         </div>
 
         <!-- 预览图片容器 -->
         <div class="relative overflow-hidden cursor-grab active:cursor-grabbing"
           :style="{ width: '80vw', height: '80vh' }">
-          <img ref="imageRef" :src="src" :alt="alt"
+          <img ref="imageRef" :src="currentImage" :alt="alt"
             class="absolute top-1/2 left-1/2 transition-transform duration-75 ease-out select-none" :style="{
               transform: `translate(calc(-50% + ${startPosition.x}px), calc(-50% + ${startPosition.y}px)) scale(${scale}) rotate(${rotation}deg)`,
               maxWidth: '100%',
@@ -223,12 +326,12 @@ onBeforeUnmount(() => {
               MozUserDrag: 'none',
               OUserDrag: 'none',
               userDrag: 'none'
-            }" @mousedown="handleMouseDown" @dragstart="handleDragStart" />
+            }" @mousedown="handleMouseDown" @dragstart="handleDragStart" @click="handleImageClick" />
         </div>
 
         <!-- 提示 -->
-        <div class="absolute top-4 left-4 text-white/60 text-xs">
-          Ctrl + 滚轮缩放 • 拖拽移动
+        <div class="absolute top-4 left-4 text-white/60 text-xs flex flex-col gap-1">
+          <span>Ctrl + 滚轮缩放 • 拖拽移动{{ imageNumber ? ` (${imageNumber})` : '' }}</span>
         </div>
       </div>
     </Transition>

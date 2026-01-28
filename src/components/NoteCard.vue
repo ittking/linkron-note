@@ -282,6 +282,7 @@ onBeforeUnmount(() => {
         :key="index"
         :src="imageUrl" 
         :alt="`笔记图片 ${index + 1}`"
+        :images="note.images"
       />
     </div>
 
