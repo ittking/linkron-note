@@ -337,6 +337,75 @@ impl Database {
         Ok(())
     }
 
+    /// 删除笔记关联的资源文件
+    /// 包括 images 数组中的图片、content 中的图片引用，以及文件笔记的附件
+    fn delete_note_resources(note: &Note, work_directory: &Option<String>) {
+        use std::fs;
+        use std::path::PathBuf;
+
+        // 确定基础目录
+        let base_dir = if let Some(work_dir) = work_directory {
+            PathBuf::from(work_dir)
+        } else {
+            let mut path = dirs::data_local_dir().unwrap_or_else(|| PathBuf::from("."));
+            path.push("iterm");
+            path
+        };
+
+        // 收集所有需要删除的资源路径
+        let mut resources_to_delete: Vec<PathBuf> = Vec::new();
+
+        // 1. 从 images 数组中提取资源路径
+        for image_url in &note.images {
+            if let Some(resource_path) = Self::extract_resource_path_from_url(image_url) {
+                resources_to_delete.push(base_dir.join(&resource_path));
+            }
+        }
+
+        // 2. 从 content 中提取图片标签的 src 路径
+        let img_regex = Regex::new(r#"<img[^>]+src="([^"]+)""#).unwrap();
+        for caps in img_regex.captures_iter(&note.content) {
+            if let Some(image_url) = caps.get(1) {
+                if let Some(resource_path) = Self::extract_resource_path_from_url(image_url.as_str()) {
+                    resources_to_delete.push(base_dir.join(&resource_path));
+                }
+            }
+        }
+
+        // 3. 如果是文件笔记，删除 sourceUrl 指向的文件
+        if note.note_type == "file" {
+            if let Some(source_url) = &note.source_url {
+                if let Some(resource_path) = Self::extract_resource_path_from_url(source_url) {
+                    resources_to_delete.push(base_dir.join(&resource_path));
+                }
+            }
+        }
+
+        // 删除所有资源文件
+        for resource_path in &resources_to_delete {
+            if resource_path.exists() {
+                if let Err(e) = fs::remove_file(resource_path) {
+                    eprintln!("Failed to delete resource file {}: {}", resource_path.display(), e);
+                }
+            }
+        }
+    }
+
+    /// 从 URL 中提取资源路径
+    /// 支持 http://iterm.localhost/、iterm:// 格式，以及相对路径（如 resources/files/xxx.bin）
+    fn extract_resource_path_from_url(url: &str) -> Option<String> {
+        if url.starts_with("http://iterm.localhost/") {
+            Some(url.replace("http://iterm.localhost/", ""))
+        } else if url.starts_with("iterm://") {
+            Some(url.replace("iterm://", ""))
+        } else if url.starts_with("resources/") {
+            // 直接是相对路径，原样返回
+            Some(url.to_string())
+        } else {
+            None
+        }
+    }
+
     /// 搜索笔记
     pub fn search_notes(&self, keyword: &str) -> SqliteResult<Vec<Note>> {
         let search_pattern = format!("%{}%", keyword);
@@ -456,8 +525,18 @@ pub async fn update_note(id: String, updates: NoteUpdate, work_directory: Option
 /// Tauri 命令：删除笔记
 #[tauri::command]
 pub async fn delete_note(id: String, work_directory: Option<String>) -> Result<(), String> {
-    let db_path = get_database_path(work_directory)?;
+    let db_path = get_database_path(work_directory.clone())?;
     let db = Database::new(&db_path).map_err(|e| format!("Failed to open database: {}", e))?;
+
+    // 先获取笔记信息，用于清理资源
+    let note = db.get_note(&id)
+        .map_err(|e| format!("Failed to get note: {}", e))?
+        .ok_or_else(|| format!("Note not found: {}", id))?;
+
+    // 删除笔记关联的资源文件
+    Database::delete_note_resources(&note, &work_directory);
+
+    // 删除笔记记录
     db.delete_note(&id).map_err(|e| format!("Failed to delete note: {}", e))
 }
 
