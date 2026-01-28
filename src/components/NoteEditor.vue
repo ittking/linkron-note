@@ -18,7 +18,8 @@ import {
   ListOrdered,
   List,
   Send,
-  Code
+  Code,
+  X
 } from 'lucide-vue-next'
 
 // 创建 lowlight 实例
@@ -520,6 +521,14 @@ function clearDeletedImages() {
   deletedImages.value = []
 }
 
+// 清空编辑器内容和图片
+function clearEditor() {
+  if (editor.value) {
+    editor.value.commands.clearContent()
+    images.value = []
+  }
+}
+
 async function handleSubmit() {
   if (hasContent.value || images.value.length > 0) {
     // 如果是编辑模式，先删除被移除的图片文件
@@ -636,6 +645,13 @@ defineExpose({
       <div class="flex items-center gap-2">
         <!-- 插槽：用于放置取消按钮等自定义按钮 -->
         <slot name="actions"></slot>
+
+        <!-- 清空按钮：只在新建笔记模式且有内容时显示 -->
+        <button v-if="!props.isEditing && (hasContent || images.length > 0)" @click="clearEditor"
+          class="px-2 h-6 rounded-md flex items-center justify-center text-xs text-base-content/50 hover:text-base-content hover:bg-base-200 transition-all duration-200"
+          title="清空内容">
+          清空
+        </button>
 
         <!-- 发送按钮 -->
         <button @click="handleSubmit"
