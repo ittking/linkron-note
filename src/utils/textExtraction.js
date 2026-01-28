@@ -61,15 +61,22 @@ export async function getFileMetadata(filePath) {
  * @param {string} workDirectory - 工作目录
  * @returns {string} 完整路径
  */
-function getFullPath(relativePath, workDirectory) {
-  // 如果是绝对路径，直接返回
-  if (relativePath.startsWith('/') || relativePath.match(/^[A-Za-z]:\\/)) {
-    return relativePath
+function getFullPath(filePath, workDirectory) {
+  // 如果是完整 URL (http://iterm.localhost/resources/...)，提取相对路径
+  if (filePath.startsWith('http://iterm.localhost/resources/')) {
+    const relativePath = filePath.replace('http://iterm.localhost/resources/', '')
+    const separator = workDirectory.endsWith('/') || workDirectory.endsWith('\\') ? '' : '/'
+    return `${workDirectory}${separator}resources/${relativePath}`
   }
   
-  // 否则拼接工作目录
+  // 如果是绝对路径，直接返回
+  if (filePath.startsWith('/') || filePath.match(/^[A-Za-z]:\\/)) {
+    return filePath
+  }
+  
+  // 否则拼接工作目录（相对路径格式）
   const separator = workDirectory.endsWith('/') || workDirectory.endsWith('\\') ? '' : '/'
-  return `${workDirectory}${separator}${relativePath}`
+  return `${workDirectory}${separator}${filePath}`
 }
 
 /**

@@ -81,6 +81,12 @@ watch(() => props.note.extractUrl, async (newExtractUrl) => {
   }
 }, { immediate: true })
 
+// 提取文件名
+const extractFileName = computed(() => {
+  if (!props.note.extractUrl) return ''
+  return props.note.extractUrl.split('/').pop()
+})
+
 // 创建只读编辑器实例
 const editor = useEditor({
   content: props.note.content || '',
@@ -289,8 +295,8 @@ onBeforeUnmount(() => {
     </div>
 
     <!-- 底部信息 -->
-    <div v-if="note.sourceUrl" class="mt-3 pt-2 border-t border-base-content/10 text-xs text-base-content/50">
-      <span v-if="isLinkNote"
+    <div v-if="note.sourceUrl || note.extractUrl" class="mt-3 pt-2 border-t border-base-content/10 text-xs text-base-content/50">
+      <span v-if="isLinkNote && note.sourceUrl"
         class="inline-flex items-center gap-1 max-w-[200px] overflow-hidden text-ellipsis whitespace-nowrap">
         来源：
         <a href="#" @click.prevent.stop="openLink"
@@ -298,11 +304,11 @@ onBeforeUnmount(() => {
           {{ note.sourceUrl }}
         </a>
       </span>
-      <span v-else-if="isFileNote" class="inline-flex items-center gap-1">
+      <span v-else-if="isFileNote && note.extractUrl" class="inline-flex items-center gap-1">
         附件：
         <a :href="attachmentUrl" @click.stop="revealFile" target="_blank"
           class="text-primary hover:underline cursor-pointer">
-          {{ note.sourceUrl.split('/').pop() }}
+          {{ extractFileName }}
         </a>
       </span>
     </div>
