@@ -229,14 +229,14 @@ defineExpose({
 
 <template>
   <div :data-note-id="note.id"
-    class="note-card bg-base-100 border border-base-200 rounded-lg p-4 mb-3 cursor-pointer transition-all duration-200 hover:shadow-md"
+    class="note-card bg-base-100 border border-base-200 rounded-lg p-4 mb-3 transition-all duration-200 hover:shadow-md"
     :class="{
       'link-card': isLinkNote,
       'expanded': isExpanded,
       'overflowing': isOverflowing
     }" @click="handleCardClick">
     <!-- 顶部：日期 + 菜单 -->
-    <div class="flex items-center justify-between mb-3">
+    <div class="flex items-center justify-between mb-3 select-none">
       <div class="flex items-center gap-2">
         <span class="text-xs text-base-content/50">{{ formattedDate }}</span>
       </div>
