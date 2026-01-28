@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import { useEditor, EditorContent } from '@tiptap/vue-3'
 import { invoke } from '@tauri-apps/api/core'
 import StarterKit from '@tiptap/starter-kit'
@@ -63,25 +63,28 @@ const settingStore = useSettingStore()
 const imageInputRef = ref(null)
 const images = ref([])
 const deletedImages = ref([]) // 追踪编辑模式下被删除的图片
+const workDirectoryCache = ref(null) // 工作目录缓存
 const isSettingContent = ref(false) // 标志：是否正在从外部设置内容
 
 // 监听 props.images 变化，同步到本地状态
 watch(() => props.images, (newImages) => {
   // 只在编辑模式下才同步外部 images 变化
   // 避免在新建笔记模式下被意外重置
-  if (props.isEditing && newImages) {
-    // 比较新旧数组，避免不必要的更新
-    const currentImagesStr = JSON.stringify(images.value)
-    const newImagesStr = JSON.stringify(newImages)
-    if (currentImagesStr !== newImagesStr) {
-      images.value = [...newImages]
-    }
+  if (!props.isEditing || !newImages) return
+  
+  // 只比较引用，如果引用变化则更新
+  if (newImages !== images.value) {
+    images.value = [...newImages]
   }
-}, { deep: true })
+})
 
-// 获取工作目录
+// 获取工作目录（带缓存）
 async function getWorkDirectory() {
-  return await settingStore.get('workDirectory', '')
+  if (workDirectoryCache.value) {
+    return workDirectoryCache.value
+  }
+  workDirectoryCache.value = await settingStore.get('workDirectory', '')
+  return workDirectoryCache.value
 }
 
 // 组件挂载时初始化编辑器内容
@@ -422,6 +425,11 @@ watch(() => props.shouldClear, (shouldClear) => {
   }
 })
 
+// 监听 settingStore 变化，清空工作目录缓存
+watch(() => settingStore.$state, () => {
+  workDirectoryCache.value = null
+}, { deep: true })
+
 // 监听 modelValue 变化
 watch(() => props.modelValue, (newValue) => {
   // 如果编辑器已初始化且内容不同，则更新
@@ -516,13 +524,13 @@ async function removeImage(index) {
   } else {
     // 创建模式：立即删除文件
     try {
-            const workDirectory = await getWorkDirectory()
-            await deleteResource(removedImage, workDirectory)
-          } catch (error) {
-            // 删除图片文件失败，静默处理
-          }
-        }
+      const workDirectory = await getWorkDirectory()
+      await deleteResource(removedImage, workDirectory)
+    } catch (error) {
+      // 删除图片文件失败，静默处理
     }
+  }
+}
 // 清理函数：取消编辑时调用，清空被删除的图片列表
 function clearDeletedImages() {
   deletedImages.value = []

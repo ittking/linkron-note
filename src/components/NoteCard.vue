@@ -35,6 +35,7 @@ const emit = defineEmits(['click', 'edit', 'delete', 'expand', 'collapse'])
 
 const noteStore = useNoteStore()
 
+const workDirectoryCache = ref(null) // 工作目录缓存
 const menuVisible = ref(false)
 const isExpanded = ref(false)
 const contentRef = ref(null)
@@ -69,6 +70,20 @@ const isFileNote = computed(() => noteType.value === 'file')
 
 // 附件 URL
 const attachmentUrl = ref('')
+
+// 获取工作目录（带缓存）
+async function getWorkDirectory() {
+  if (workDirectoryCache.value) {
+    return workDirectoryCache.value
+  }
+  workDirectoryCache.value = await noteStore.getWorkDirectory()
+  return workDirectoryCache.value
+}
+
+// 监听 noteStore 变化，清空工作目录缓存
+watch(() => noteStore.$state, () => {
+  workDirectoryCache.value = null
+}, { deep: true })
 
 // 监听附件路径变化，更新 URL
 watch(() => props.note.extractUrl, async (newExtractUrl) => {
@@ -119,15 +134,11 @@ const editor = useEditor({
   },
 })
 
-watch(editor, (newEditor) => {
-  if (newEditor) {
-    setTimeout(checkOverflow, 200)
+watch([editor, () => props.note.content], ([newEditor, newContent]) => {
+  if (newEditor && newContent && newContent !== newEditor.getHTML()) {
+    newEditor.commands.setContent(newContent, false)
   }
-})
-
-watch(() => props.note.content, (newValue) => {
-  if (editor.value && newValue !== editor.value.getHTML()) {
-    editor.value.commands.setContent(newValue, false)
+  if (newEditor) {
     setTimeout(checkOverflow, 200)
   }
 })

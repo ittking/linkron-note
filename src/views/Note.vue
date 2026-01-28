@@ -14,6 +14,23 @@ import { isUrlFile } from '@/utils/validator'
 
 const noteStore = useNoteStore()
 
+// 工作目录缓存
+const workDirectoryCache = ref(null)
+
+// 获取工作目录（带缓存）
+async function getWorkDirectory() {
+  if (workDirectoryCache.value) {
+    return workDirectoryCache.value
+  }
+  workDirectoryCache.value = await noteStore.getWorkDirectory()
+  return workDirectoryCache.value
+}
+
+// 监听 noteStore 变化，清空工作目录缓存
+watch(() => noteStore.$state, () => {
+  workDirectoryCache.value = null
+}, { deep: true })
+
 // 编辑器引用
 const noteEditorRef = ref(null)
 const editorContainerRef = ref(null)
@@ -283,32 +300,64 @@ function handleDrop(e) {
     }
 }
 
-// 将文件添加到编辑器
-async function handleFileToEditor(file) {
+// 处理文件的公共逻辑
+async function processFile(file, target = 'note') {
+    const workDirectory = await getWorkDirectory()
+
     if (isUrlFile(file.name)) {
-        showToast('请将 .url 文件拖拽到笔记列表创建笔记', 'info')
-        return
-    }
-
-    const workDirectory = await noteStore.getWorkDirectory()
-
-    if (isSupportedFileType(file.name)) {
-        showToast(`正在读取${getFileTypeDescription(file.name)}...`, 'info')
-        isProcessing.value = true
+        if (target === 'editor') {
+            showToast('请将 .url 文件拖拽到笔记列表创建笔记', 'info')
+            return null
+        }
+        // 处理 .url 文件
         try {
-            const savedPath = await saveFile(file, 'file', workDirectory)
-            const content = await extractTextFromFile(file, savedPath, workDirectory)
-            const htmlContent = content.replace(/\n/g, '<br>')
-            editorContent.value += (editorContent.value ? '<br>' : '') + `<p>${htmlContent}</p>`
-            showToast(`${getFileTypeDescription(file.name)}内容已添加到编辑器`, 'success')
+            isProcessing.value = true
+            const url = await extractUrlFromUrlFile(file)
+            if (url && isValidUrl(url)) {
+                return { type: 'url', url: url }
+            } else {
+                showToast('无法从 .url 文件中提取有效的 URL', 'error')
+                return null
+            }
         } catch (error) {
-            showToast(`读取${getFileTypeDescription(file.name)}失败: ${error.message}`, 'error')
+            showToast('解析 .url 文件失败: ' + error.message, 'error')
+            return null
         } finally {
             isProcessing.value = false
         }
-    } else {
-        showToast(`不支持的文件类型，请拖拽到笔记列表创建笔记`, 'info')
     }
+
+    if (!isSupportedFileType(file.name)) {
+        showToast(`不支持的文件类型: ${file.name}`, 'error')
+        return null
+    }
+
+    isProcessing.value = true
+    try {
+        const savedPath = await saveFile(file, 'file', workDirectory)
+        const content = await extractTextFromFile(file, savedPath, workDirectory)
+        return { content, savedPath }
+    } catch (error) {
+        showToast(`读取${getFileTypeDescription(file.name)}失败: ${error.message}`, 'error')
+        return null
+    } finally {
+        isProcessing.value = false
+    }
+}
+
+// 将文件添加到编辑器
+async function handleFileToEditor(file) {
+    const result = await processFile(file, 'editor')
+    if (!result) return
+
+    if (result.type === 'url') {
+        await createLinkNote(result.url)
+        return
+    }
+
+    const htmlContent = result.content.replace(/\n/g, '<br>')
+    editorContent.value += (editorContent.value ? '<br>' : '') + `<p>${htmlContent}</p>`
+    showToast(`${getFileTypeDescription(file.name)}内容已添加到编辑器`, 'success')
 }
 
 // 将数据添加到编辑器
@@ -348,46 +397,23 @@ async function handleDroppedData(data) {
 
 // 处理拖拽文件（创建笔记）
 async function handleDroppedFile(file) {
-    const workDirectory = await noteStore.getWorkDirectory()
+    const result = await processFile(file, 'note')
+    if (!result) return
 
-    if (isUrlFile(file.name)) {
-        isProcessing.value = true
-        try {
-            const url = await extractUrlFromUrlFile(file)
-            if (url && isValidUrl(url)) {
-                await createLinkNote(url)
-            } else {
-                showToast('无法从 .url 文件中提取有效的 URL', 'error')
-            }
-        } catch (error) {
-            showToast('解析 .url 文件失败: ' + error.message, 'error')
-        } finally {
-            isProcessing.value = false
-        }
+    if (result.type === 'url') {
+        await createLinkNote(result.url)
+        return
     }
-    else if (isSupportedFileType(file.name)) {
-        try {
-            isProcessing.value = true
-            const savedPath = await saveFile(file, 'file', workDirectory)
-            const content = await extractTextFromFile(file, savedPath, workDirectory)
-            const htmlContent = `<p>${content.replace(/\n/g, '<br>')}</p>`
 
-            const newNote = await noteStore.addNote({
-                type: 'file',
-                content: htmlContent,
-                extractUrl: savedPath
-            })
-            notes.value.unshift(newNote)
-            showToast(`${getFileTypeDescription(file.name)}笔记创建成功`, 'success')
-        } catch (error) {
-            showToast('文档处理失败: ' + error.message, 'error')
-        } finally {
-            isProcessing.value = false
-        }
-    }
-    else {
-        showToast(`不支持的文件类型: ${file.name}`, 'error')
-    }
+    const htmlContent = `<p>${result.content.replace(/\n/g, '<br>')}</p>`
+
+    const newNote = await noteStore.addNote({
+        type: 'file',
+        content: htmlContent,
+        extractUrl: result.savedPath
+    })
+    notes.value.unshift(newNote)
+    showToast(`${getFileTypeDescription(file.name)}笔记创建成功`, 'success')
 }
 
 // 创建链接笔记
@@ -488,14 +514,6 @@ function handleCollapseCroppedNote() {
 }
 
 // 菜单事件
-function handleMenuOpen(note) {
-    if (note.sourceUrl) {
-        window.open(note.sourceUrl, '_blank')
-    } else {
-        showToast('此笔记没有链接', 'info')
-    }
-}
-
 function handleMenuEdit(note) {
     editingNote.value = note
     shouldClearEditor.value = false
@@ -583,7 +601,7 @@ function handleCancelEdit() {
                 </div>
 
                 <NoteCard v-for="note in notes" :key="note.id" :ref="(ref) => setNoteCardRef(note.id, ref)" :note="note"
-                    @click="handleCardClick" @open="handleMenuOpen" @edit="handleMenuEdit" @delete="handleMenuDelete"
+                    @click="handleCardClick" @edit="handleMenuEdit" @delete="handleMenuDelete"
                     @expand="handleNoteExpand" @collapse="handleNoteCollapse" />
 
                 <!-- Loading 组件 -->
