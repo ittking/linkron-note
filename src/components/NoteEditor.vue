@@ -61,6 +61,7 @@ const settingStore = useSettingStore()
 const imageInputRef = ref(null)
 const images = ref([])
 const deletedImages = ref([]) // 追踪编辑模式下被删除的图片
+const isSettingContent = ref(false) // 标志：是否正在从外部设置内容
 
 // 监听 props.images 变化，同步到本地状态
 watch(() => props.images, (newImages) => {
@@ -394,7 +395,10 @@ const editor = useEditor({
     },
   },
   onUpdate: ({ editor }) => {
-    emit('update:modelValue', editor.getHTML())
+    // 如果正在从外部设置内容，不触发 update:modelValue
+    if (!isSettingContent.value) {
+      emit('update:modelValue', editor.getHTML())
+    }
   },
 })
 
@@ -409,11 +413,16 @@ watch(() => props.shouldClear, (shouldClear) => {
   }
 })
 
-// 监听 modelValue 变化（仅用于编辑模式初始化内容）
+// 监听 modelValue 变化
 watch(() => props.modelValue, (newValue) => {
-  // 只在编辑模式下，且编辑器已初始化，且内容真正不同时才更新
-  if (props.isEditing && editor.value && newValue && newValue !== editor.value.getHTML()) {
+  // 如果编辑器已初始化且内容不同，则更新
+  if (editor.value && newValue && newValue !== editor.value.getHTML()) {
+    isSettingContent.value = true
     editor.value.commands.setContent(newValue, false)
+    // 稍后重置标志
+    setTimeout(() => {
+      isSettingContent.value = false
+    }, 0)
   }
 })
 

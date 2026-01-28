@@ -15,6 +15,7 @@ const noteStore = useNoteStore()
 
 // 编辑器引用
 const noteEditorRef = ref(null)
+const editorContainerRef = ref(null)
 
 // 滚动位置保存
 const noteListRef = ref(null)
@@ -210,6 +211,15 @@ async function handleEditorSubmit(noteData) {
     }
 }
 
+// 判断放置位置是否在编辑器范围内
+function isDropInEditor(clientX, clientY) {
+    if (!editorContainerRef.value) return false
+    
+    const rect = editorContainerRef.value.getBoundingClientRect()
+    return clientX >= rect.left && clientX <= rect.right &&
+           clientY >= rect.top && clientY <= rect.bottom
+}
+
 // 拖拽事件处理
 function handleDragEnter(e) {
     e.preventDefault()
@@ -235,11 +245,21 @@ function handleDrop(e) {
     // 简化：直接处理，不需要 dragCounter
     isDragging.value = false
 
+    // 判断放置位置
+    const dropInEditor = isDropInEditor(e.clientX, e.clientY)
+    console.log('Drop position:', { clientX: e.clientX, clientY: e.clientY, dropInEditor })
+
     // 优先处理文件
     const files = e.dataTransfer.files
     if (files && files.length > 0) {
         for (let i = 0; i < files.length; i++) {
-            handleDroppedFile(files[i])
+            if (dropInEditor) {
+                console.log('Handle file to editor')
+                handleFileToEditor(files[i])
+            } else {
+                console.log('Handle file to create note')
+                handleDroppedFile(files[i])
+            }
         }
         return
     }
@@ -248,11 +268,73 @@ function handleDrop(e) {
     const textData = e.dataTransfer.getData('text/uri-list') || e.dataTransfer.getData('text/plain')
 
     if (textData) {
-        handleDroppedData(textData)
+        if (dropInEditor) {
+            console.log('Handle data to editor')
+            handleDataToEditor(textData)
+        } else {
+            console.log('Handle data to create note')
+            handleDroppedData(textData)
+        }
     }
 }
 
-// 处理拖拽数据
+// 将文件添加到编辑器
+async function handleFileToEditor(file) {
+    if (file.name.endsWith('.url')) {
+        showToast('请将 .url 文件拖拽到笔记列表创建笔记', 'info')
+        return
+    }
+
+    const workDirectory = await noteStore.getWorkDirectory()
+
+    // 检查是否是支持的文档文件
+    if (isSupportedFileType(file.name)) {
+        showToast(`正在读取${getFileTypeDescription(file.name)}...`, 'info')
+        try {
+            // 保存文件到工作目录
+            const savedPath = await saveFile(file, 'file', workDirectory)
+            
+            // 提取文本内容
+            const content = await extractTextFromFile(file, savedPath, workDirectory)
+            
+            // 将内容添加到编辑器
+            const htmlContent = content.replace(/\n/g, '<br>')
+            editorContent.value += (editorContent.value ? '<br>' : '') + `<p>${htmlContent}</p>`
+            showToast(`${getFileTypeDescription(file.name)}内容已添加到编辑器`, 'success')
+        } catch (error) {
+            showToast(`读取${getFileTypeDescription(file.name)}失败: ${error.message}`, 'error')
+        }
+    } else {
+        showToast(`不支持的文件类型，请拖拽到笔记列表创建笔记`, 'info')
+    }
+}
+
+// 将数据添加到编辑器
+async function handleDataToEditor(data) {
+    // 更宽松的 URL 正则表达式，支持查询参数
+    const urlRegex = /^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.\-?=&%]*)*\/?$/
+    const isUrl = urlRegex.test(data)
+
+    if (isUrl) {
+        showToast('正在抓取网页信息...', 'info')
+        try {
+            // 抓取网页信息和图片
+            const { content, images } = await scrapeWebPage(data)
+            
+            // 将内容添加到编辑器
+            editorContent.value += (editorContent.value ? '<br>' : '') + content
+            showToast('网页内容已添加到编辑器', 'success')
+        } catch (error) {
+            showToast('网页抓取失败: ' + error.message, 'error')
+        }
+    } else {
+        // 普通文本
+        editorContent.value += (editorContent.value ? '<br>' : '') + data
+        showToast('文本已添加到编辑器', 'success')
+    }
+}
+
+// 处理拖拽数据（创建笔记）
 function handleDroppedData(data) {
     // 更宽松的 URL 正则表达式，支持查询参数
     const urlRegex = /^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.\-?=&%]*)*\/?$/
@@ -265,7 +347,7 @@ function handleDroppedData(data) {
     }
 }
 
-// 处理拖拽文件
+// 处理拖拽文件（创建笔记）
 async function handleDroppedFile(file) {
     const workDirectory = await noteStore.getWorkDirectory()
 
@@ -422,7 +504,7 @@ function handleCancelEdit() {
     <div class="h-full flex flex-col max-w-200 mx-auto" @dragenter="handleDragEnter" @dragleave="handleDragLeave"
         @dragover="handleDragOver" @drop="handleDrop">
         <!-- 编辑器区域 -->
-        <div class="px-4 py-3">
+        <div ref="editorContainerRef" class="px-4 py-3">
             <NoteEditor ref="noteEditorRef" v-model="editorContent" placeholder="现在的想法是..." :is-scrolled-to-top="isNoteListScrolledToTop"
                 :is-editing="isEditing" :images="editingNote?.images || []" :should-clear="shouldClearEditor"
                 @submit="handleEditorSubmit">
