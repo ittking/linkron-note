@@ -1,6 +1,6 @@
 /**
  * 网页抓取工具
- * 使用后端 Rust 抓取网页 HTML 内容，前端负责解析
+ * 使用 iframe 加载动态网页，提取渲染后的 HTML 内容
  */
 
 import { invoke } from '@tauri-apps/api/core'
@@ -16,12 +16,104 @@ export async function scrapeWebPage(url) {
   }
 
   try {
-    // 使用后端 Rust 抓取网页 HTML
-    const html = await invoke('fetch_webpage_html', { url })
+    // 使用 iframe 方式获取动态渲染的 HTML
+    const html = await fetchHtmlWithIframe(url)
     return parseWebPage(html)
   } catch (error) {
     console.error('网页抓取失败:', error)
     throw new Error(`网页抓取失败: ${error.message}`)
+  }
+}
+
+/**
+ * 使用 iframe 获取动态渲染的 HTML
+ * @param {string} url - 网页 URL
+ * @returns {Promise<string>} 渲染后的 HTML 内容
+ */
+async function fetchHtmlWithIframe(url) {
+  return new Promise((resolve, reject) => {
+    // 创建隐藏的 iframe
+    const iframe = document.createElement('iframe')
+    iframe.style.position = 'fixed'
+    iframe.style.top = '-9999px'
+    iframe.style.left = '-9999px'
+    iframe.style.width = '1px'
+    iframe.style.height = '1px'
+    iframe.style.visibility = 'hidden'
+    
+    // 设置加载超时（15秒）
+    const timeout = setTimeout(() => {
+      cleanup()
+      reject(new Error('网页加载超时'))
+    }, 15000)
+
+    // 清理函数
+    function cleanup() {
+      clearTimeout(timeout)
+      if (iframe.parentNode) {
+        iframe.parentNode.removeChild(iframe)
+      }
+    }
+
+    // iframe 加载完成事件
+    iframe.onload = function() {
+      // 等待 3 秒让 JavaScript 执行完成
+      setTimeout(() => {
+        try {
+          // 尝试获取 iframe 内的 HTML
+          let html = ''
+          
+          try {
+            // 尝试访问 iframe 的 document（可能会因跨域限制失败）
+            const iframeDoc = iframe.contentWindow?.document
+            if (iframeDoc) {
+              html = iframeDoc.documentElement.outerHTML
+            } else {
+              throw new Error('无法访问 iframe 内容（跨域限制）')
+            }
+          } catch (crossOriginError) {
+            // 跨域限制，无法直接访问 iframe 内容
+            console.warn('因跨域限制无法直接获取 iframe 内容，尝试使用 HTTP 请求')
+            cleanup()
+            // 回退到 HTTP 请求
+            fetchHtmlWithHttp(url).then(resolve).catch(reject)
+            return
+          }
+
+          cleanup()
+          resolve(html)
+        } catch (error) {
+          cleanup()
+          reject(error)
+        }
+      }, 3000)
+    }
+
+    // iframe 加载失败事件
+    iframe.onerror = function() {
+      cleanup()
+      reject(new Error('iframe 加载失败'))
+    }
+
+    // 设置 iframe 的 src
+    iframe.src = url
+
+    // 将 iframe 添加到文档中
+    document.body.appendChild(iframe)
+  })
+}
+
+/**
+ * 使用 HTTP 请求获取网页 HTML（静态页面）
+ * @param {string} url - 网页 URL
+ * @returns {Promise<string>} HTML 内容
+ */
+async function fetchHtmlWithHttp(url) {
+  try {
+    const html = await invoke('fetch_webpage_html', { url })
+    return html
+  } catch (error) {
+    throw new Error(`HTTP 请求失败: ${error.message}`)
   }
 }
 
