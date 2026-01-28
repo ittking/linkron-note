@@ -210,6 +210,16 @@ onMounted(() => {
 onBeforeUnmount(() => {
   document.removeEventListener('click', handleClickOutside)
 })
+
+// 暴露方法给父组件
+defineExpose({
+  collapse: () => {
+    if (isExpanded.value) {
+      isExpanded.value = false
+      emit('collapse', props.note.id)
+    }
+  }
+})
 </script>
 
 <template>

@@ -2,7 +2,7 @@
 import { ref, onMounted, onActivated, nextTick } from 'vue'
 import { onBeforeRouteLeave } from 'vue-router'
 import { invoke } from '@tauri-apps/api/core'
-import { Download, FileText } from 'lucide-vue-next'
+import { Download, FileText, ChevronUp } from 'lucide-vue-next'
 import NoteCard from '@/components/NoteCard.vue'
 import NoteEditor from '@/components/NoteEditor.vue'
 import { useNoteStore } from '@/store/noteStore'
@@ -21,6 +21,40 @@ const editorContainerRef = ref(null)
 const noteListRef = ref(null)
 let savedScrollTop = 0
 const isNoteListScrolledToTop = ref(true)
+
+// 笔记展开状态管理和被切割笔记检测
+const expandedNoteIds = ref(new Map()) // 存储格式: { noteId: true/false }
+const croppedNoteId = ref(null) // 被底部边缘切割的笔记ID
+
+// NoteCard 组件引用管理
+const noteCardRefs = ref(new Map())
+
+function setNoteCardRef(noteId, ref) {
+    if (ref) {
+        noteCardRefs.value.set(noteId, ref)
+    } else {
+        noteCardRefs.value.delete(noteId)
+    }
+}
+
+function collapseNote(noteId) {
+    const noteCardRef = noteCardRefs.value.get(noteId)
+    if (noteCardRef && noteCardRef.collapse) {
+        noteCardRef.collapse()
+    }
+}
+
+// 自定义防抖函数
+function debounce(func, wait) {
+    let timeout
+    return function (...args) {
+        clearTimeout(timeout)
+        timeout = setTimeout(() => func.apply(this, args), wait)
+    }
+}
+
+// 创建防抖版本的检测函数
+const debouncedDetectCroppedNote = debounce(detectCroppedNote, 100)
 
 // 编辑器高度控制状态
 const EDITOR_THRESHOLD = 150 // 切换编辑器高度的滚动阈值
@@ -111,12 +145,17 @@ function handleNoteListScroll() {
 
         // 使用优化的编辑器高度更新逻辑
         updateEditorHeight(scrollTop)
+
+        // 使用防抖版本的检测函数
+        debouncedDetectCroppedNote()
     }
 }
 
 // 初始化
 onMounted(async () => {
     await loadNotes()
+    await nextTick()
+    detectCroppedNote()
 })
 
 // 显示提示
@@ -157,6 +196,10 @@ async function loadNotes(reset = false) {
         }
 
         currentPage.value++
+
+        // 加载完成后重新检测被切割的笔记
+        await nextTick()
+        detectCroppedNote()
     } catch (error) {
         console.error('Failed to load notes:', error)
         showToast('加载笔记失败', 'error')
@@ -468,6 +511,68 @@ async function createTextNote(text) {
 function handleCardClick(note) {
     // 暂时不做任何操作
 }
+
+// NoteCard 展开/收起事件处理
+function handleNoteExpand(noteId) {
+    expandedNoteIds.value.set(noteId, true)
+    console.log('笔记展开:', noteId)
+    // 展开后等待 DOM 更新，再检测被切割的笔记
+    nextTick(() => {
+        detectCroppedNote()
+    })
+}
+
+function handleNoteCollapse(noteId) {
+    expandedNoteIds.value.set(noteId, false)
+    console.log('笔记收起:', noteId)
+    // 收起后等待 DOM 更新，再检测被切割的笔记
+    nextTick(() => {
+        detectCroppedNote()
+    })
+}
+
+// 检测被底部边缘切割的笔记
+function detectCroppedNote() {
+    if (!noteListRef.value) return
+
+    const containerRect = noteListRef.value.getBoundingClientRect()
+    const containerBottom = containerRect.bottom
+
+    // 遍历所有笔记元素
+    const noteElements = noteListRef.value.querySelectorAll('[data-note-id]')
+    let croppedId = null
+
+    noteElements.forEach(element => {
+        const noteId = element.getAttribute('data-note-id')
+        const elementRect = element.getBoundingClientRect()
+        const elementTop = elementRect.top
+        const elementBottom = elementRect.bottom
+
+        // 检测是否被底部边缘切割：元素顶部在容器内，但底部超出容器
+        // 或者在容器边缘（任意部分被切割）
+        if (elementTop < containerBottom && elementBottom > containerBottom) {
+            croppedId = noteId
+        }
+    })
+
+    croppedNoteId.value = croppedId
+    if (croppedId) {
+        console.log('被底部边缘切割的笔记ID:', croppedId)
+    }
+}
+
+// 判断是否显示浮动收起按钮
+const shouldShowCollapseButton = computed(() => {
+    return croppedNoteId.value && expandedNoteIds.value.get(croppedNoteId.value) === true
+})
+
+// 处理浮动收起按钮点击
+function handleCollapseCroppedNote() {
+    if (croppedNoteId.value) {
+        collapseNote(croppedNoteId.value)
+    }
+}
+
 // 菜单事件
 function handleMenuOpen(note) {
     if (note.sourceUrl) {
@@ -559,7 +664,7 @@ function handleCancelEdit() {
                 <div class="text-sm text-base-content/60">支持链接、文档（md、txt）、文字</div>
             </div>
 
-            <div ref="noteListRef" class="p-3 h-full overflow-y-auto no-scrollbar" @scroll="handleNoteListScroll">
+            <div ref="noteListRef" class="p-3 h-full overflow-y-auto no-scrollbar relative" @scroll="handleNoteListScroll">
                 <div v-if="notes.length === 0"
                     class="flex flex-col select-none items-center justify-center h-full text-base-content/40 text-center p-5">
                     <FileText :size="64" class="mb-4 opacity-50" />
@@ -567,13 +672,21 @@ function handleCancelEdit() {
                     <div class="text-sm leading-relaxed max-w-[240px]">拖拽链接或文字到这里创建笔记</div>
                 </div>
 
-                <NoteCard v-for="note in notes" :key="note.id" :note="note" @click="handleCardClick"
-                    @open="handleMenuOpen" @edit="handleMenuEdit" @delete="handleMenuDelete" />
+                <NoteCard v-for="note in notes" :key="note.id" :ref="(ref) => setNoteCardRef(note.id, ref)" :note="note"
+                    @click="handleCardClick" @open="handleMenuOpen" @edit="handleMenuEdit" @delete="handleMenuDelete"
+                    @expand="handleNoteExpand" @collapse="handleNoteCollapse" />
 
                 <!-- Loading 组件 -->
                 <div v-if="isLoading" class="flex justify-center py-4">
                     <span class="loading loading-spinner text-primary"></span>
                 </div>
+
+                <!-- 浮动收起按钮 -->
+                <button v-if="shouldShowCollapseButton" @click="handleCollapseCroppedNote"
+                    class="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 bg-base-100 border border-base-200 shadow-lg px-4 py-2 rounded-lg text-xs text-primary hover:text-primary/80 flex items-center gap-1 transition-all duration-200">
+                    收起笔记
+                    <ChevronUp :size="14" />
+                </button>
             </div>
         </div>
 
