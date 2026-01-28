@@ -10,6 +10,7 @@ import { saveFile } from '@/utils/fileUpload'
 import { extractTextFromFile, isSupportedFileType, getFileTypeDescription } from '@/utils/textExtraction'
 import { scrapeWebPage, isValidUrl } from '@/utils/webScraper'
 import { extractUrlFromUrlFile } from '@/utils/urlFileParser'
+import { isUrlFile } from '@/utils/validator'
 
 const noteStore = useNoteStore()
 
@@ -23,8 +24,8 @@ let savedScrollTop = 0
 const isNoteListScrolledToTop = ref(true)
 
 // 笔记展开状态管理和被切割笔记检测
-const expandedNoteIds = ref(new Map()) // 存储格式: { noteId: true/false }
-const croppedNoteId = ref(null) // 被底部边缘切割的笔记ID
+const expandedNoteIds = ref(new Map())
+const croppedNoteId = ref(null)
 
 // NoteCard 组件引用管理
 const noteCardRefs = ref(new Map())
@@ -44,37 +45,21 @@ function collapseNote(noteId) {
     }
 }
 
-// 自定义防抖函数
-function debounce(func, wait) {
-    let timeout
-    return function (...args) {
-        clearTimeout(timeout)
-        timeout = setTimeout(() => func.apply(this, args), wait)
-    }
-}
-
-// 创建防抖版本的检测函数
-const debouncedDetectCroppedNote = debounce(detectCroppedNote, 100)
-
 // 编辑器高度控制状态
-const EDITOR_THRESHOLD = 150 // 切换编辑器高度的滚动阈值
+const EDITOR_THRESHOLD = 150
 let lastScrollTop = 0
-let isScrollingDown = false // 滚动方向标志
+let isScrollingDown = false
 
 // 优化的编辑器高度更新逻辑
 function updateEditorHeight(scrollTop) {
-    // 判断滚动方向
     isScrollingDown = scrollTop > lastScrollTop
     lastScrollTop = scrollTop
 
-    // 使用方向性阈值，避免在临界点附近反复切换
     if (isScrollingDown) {
-        // 向下滚动：超过阈值才缩小编辑器
         if (scrollTop > EDITOR_THRESHOLD && isNoteListScrolledToTop.value) {
             isNoteListScrolledToTop.value = false
         }
     } else {
-        // 向上滚动：回到阈值以下才恢复编辑器
         if (scrollTop < EDITOR_THRESHOLD / 2 && !isNoteListScrolledToTop.value) {
             isNoteListScrolledToTop.value = true
         }
@@ -83,8 +68,8 @@ function updateEditorHeight(scrollTop) {
 
 const notes = ref([])
 const editorContent = ref('')
-const isDragging = ref(false) // 拖拽状态
-const isProcessing = ref(false) // 处理拖拽数据状态
+const isDragging = ref(false)
+const isProcessing = ref(false)
 const toastMessage = ref('')
 const toastVisible = ref(false)
 const toastType = ref('info')
@@ -98,10 +83,7 @@ const isLoading = ref(false)
 // 编辑相关状态
 const editingNote = ref(null)
 const isEditing = ref(false)
-const shouldClearEditor = ref(false) // 添加标志位用于强制清空编辑器
-
-// 笔记详情抽屉
-const drawerVisible = ref(false)
+const shouldClearEditor = ref(false)
 
 // 确认对话框
 const confirmVisible = ref(false)
@@ -120,8 +102,6 @@ onBeforeRouteLeave((to, from, next) => {
 // 组件激活时恢复滚动位置
 onActivated(async () => {
     await nextTick()
-
-    // 使用 setTimeout 确保 DOM 完全更新
     setTimeout(() => {
         if (noteListRef.value && savedScrollTop > 0) {
             noteListRef.value.scrollTop = savedScrollTop
@@ -134,20 +114,15 @@ function handleNoteListScroll() {
     if (noteListRef.value) {
         const scrollTop = noteListRef.value.scrollTop
 
-        // 滚动到底部时加载更多（实时检测，不防抖）
         const { scrollHeight, clientHeight } = noteListRef.value
         const distanceToBottom = scrollHeight - scrollTop - clientHeight
 
-        // 距离底部小于 100px 时加载更多
         if (distanceToBottom < 100 && hasMore.value && !isLoading.value) {
             loadNotes()
         }
 
-        // 使用优化的编辑器高度更新逻辑
         updateEditorHeight(scrollTop)
-
-        // 使用防抖版本的检测函数
-        debouncedDetectCroppedNote()
+        detectCroppedNote()
     }
 }
 
@@ -197,11 +172,9 @@ async function loadNotes(reset = false) {
 
         currentPage.value++
 
-        // 加载完成后重新检测被切割的笔记
         await nextTick()
         detectCroppedNote()
     } catch (error) {
-        console.error('Failed to load notes:', error)
         showToast('加载笔记失败', 'error')
     } finally {
         isLoading.value = false
@@ -210,19 +183,16 @@ async function loadNotes(reset = false) {
 
 // 编辑器提交
 async function handleEditorSubmit(noteData) {
-    // noteData 包含 { content, images }
     const content = noteData?.content || editorContent.value
     const images = noteData?.images || []
 
     if (content.trim() || images.length > 0) {
         if (isEditing.value && editingNote.value) {
-            // 编辑模式：更新笔记
             try {
                 await noteStore.updateNote(editingNote.value.id, {
                     content: content,
                     images: images
                 })
-                // 直接在数组中更新笔记
                 const index = notes.value.findIndex(n => n.id === editingNote.value.id)
                 if (index !== -1) {
                     notes.value[index] = {
@@ -236,17 +206,14 @@ async function handleEditorSubmit(noteData) {
                 editorContent.value = ''
                 showToast('笔记更新成功', 'success')
             } catch (error) {
-                console.error('Failed to update note:', error)
                 showToast('笔记更新失败：' + error.message, 'error')
             }
         } else {
-            // 创建模式：创建新笔记
             const newNote = await noteStore.addNote({
                 type: 'text',
                 content: content,
                 images: images
             })
-            // 直接在数组开头添加新笔记
             notes.value.unshift(newNote)
             editorContent.value = ''
             showToast('笔记创建成功', 'success')
@@ -288,14 +255,11 @@ function handleDrop(e) {
     e.preventDefault()
     e.stopPropagation()
 
-    // 重置计数器和拖拽状态
     dragCounter = 0
     isDragging.value = false
 
-    // 判断放置位置
     const dropInEditor = isDropInEditor(e.clientX, e.clientY)
 
-    // 优先处理文件
     const files = e.dataTransfer.files
     if (files && files.length > 0) {
         for (let i = 0; i < files.length; i++) {
@@ -308,7 +272,6 @@ function handleDrop(e) {
         return
     }
 
-    // 处理 URL/文本数据
     const textData = e.dataTransfer.getData('text/uri-list') || e.dataTransfer.getData('text/plain')
 
     if (textData) {
@@ -322,25 +285,19 @@ function handleDrop(e) {
 
 // 将文件添加到编辑器
 async function handleFileToEditor(file) {
-    if (file.name.endsWith('.url')) {
+    if (isUrlFile(file.name)) {
         showToast('请将 .url 文件拖拽到笔记列表创建笔记', 'info')
         return
     }
 
     const workDirectory = await noteStore.getWorkDirectory()
 
-    // 检查是否是支持的文档文件
     if (isSupportedFileType(file.name)) {
         showToast(`正在读取${getFileTypeDescription(file.name)}...`, 'info')
         isProcessing.value = true
         try {
-            // 保存文件到工作目录
             const savedPath = await saveFile(file, 'file', workDirectory)
-            
-            // 提取文本内容
             const content = await extractTextFromFile(file, savedPath, workDirectory)
-            
-            // 将内容添加到编辑器
             const htmlContent = content.replace(/\n/g, '<br>')
             editorContent.value += (editorContent.value ? '<br>' : '') + `<p>${htmlContent}</p>`
             showToast(`${getFileTypeDescription(file.name)}内容已添加到编辑器`, 'success')
@@ -356,25 +313,16 @@ async function handleFileToEditor(file) {
 
 // 将数据添加到编辑器
 async function handleDataToEditor(data) {
-    // 更宽松的 URL 正则表达式，支持查询参数
-    const urlRegex = /^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.\-?=&%]*)*\/?$/
-    const isUrl = urlRegex.test(data)
+    const isUrl = isValidUrl(data)
 
     if (isUrl) {
         try {
             isProcessing.value = true
-            
-            // 抓取网页信息和图片
             const { content, images } = await scrapeWebPage(data)
-            
-            // 将内容添加到编辑器
             editorContent.value += (editorContent.value ? '<br>' : '') + content
-            
-            // 将图片添加到编辑器
             if (images && images.length > 0 && noteEditorRef.value?.addImages) {
                 noteEditorRef.value.addImages(images)
             }
-            
             showToast('网页内容已添加到编辑器', 'success')
         } catch (error) {
             showToast('网页抓取失败: ' + error.message, 'error')
@@ -382,7 +330,6 @@ async function handleDataToEditor(data) {
             isProcessing.value = false
         }
     } else {
-        // 普通文本
         editorContent.value += (editorContent.value ? '<br>' : '') + data
         showToast('文本已添加到编辑器', 'success')
     }
@@ -390,9 +337,7 @@ async function handleDataToEditor(data) {
 
 // 处理拖拽数据（创建笔记）
 async function handleDroppedData(data) {
-    // 更宽松的 URL 正则表达式，支持查询参数
-    const urlRegex = /^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.\-?=&%]*)*\/?$/
-    const isUrl = urlRegex.test(data)
+    const isUrl = isValidUrl(data)
 
     if (isUrl) {
         await createLinkNote(data)
@@ -405,8 +350,7 @@ async function handleDroppedData(data) {
 async function handleDroppedFile(file) {
     const workDirectory = await noteStore.getWorkDirectory()
 
-    // .url 文件 - 解析文件内容获取 URL
-    if (file.name.endsWith('.url')) {
+    if (isUrlFile(file.name)) {
         isProcessing.value = true
         try {
             const url = await extractUrlFromUrlFile(file)
@@ -421,18 +365,11 @@ async function handleDroppedFile(file) {
             isProcessing.value = false
         }
     }
-    // 文档文件（txt、md）
     else if (isSupportedFileType(file.name)) {
         try {
             isProcessing.value = true
-
-            // 保存文件到工作目录
             const savedPath = await saveFile(file, 'file', workDirectory)
-
-            // 提取文本内容
             const content = await extractTextFromFile(file, savedPath, workDirectory)
-
-            // 创建附件笔记，type='file'，extractUrl 存储文件 URL
             const htmlContent = `<p>${content.replace(/\n/g, '<br>')}</p>`
 
             const newNote = await noteStore.addNote({
@@ -443,13 +380,11 @@ async function handleDroppedFile(file) {
             notes.value.unshift(newNote)
             showToast(`${getFileTypeDescription(file.name)}笔记创建成功`, 'success')
         } catch (error) {
-            console.error('文档处理失败:', error)
             showToast('文档处理失败: ' + error.message, 'error')
         } finally {
             isProcessing.value = false
         }
     }
-    // 不支持的文件类型
     else {
         showToast(`不支持的文件类型: ${file.name}`, 'error')
     }
@@ -464,22 +399,16 @@ async function createLinkNote(url) {
 
     try {
         isProcessing.value = true
-
-        // 抓取网页信息和图片
         const { content, images } = await scrapeWebPage(url)
-
-        // 创建链接笔记，包含爬取的图片
         const newNote = await noteStore.addNote({
             type: 'link',
             content: content,
             sourceUrl: url,
-            images: images || [] // 添加图片数组
+            images: images || []
         })
-
         notes.value.unshift(newNote)
         showToast('链接笔记创建成功', 'success')
     } catch (error) {
-        console.error('链接抓取失败:', error)
         showToast('链接抓取失败: ' + error.message, 'error')
     } finally {
         isProcessing.value = false
@@ -493,7 +422,6 @@ async function createTextNote(text) {
             type: 'text',
             content: text
         })
-        // 直接在数组开头添加新笔记
         notes.value.unshift(newNote)
         showToast('文字笔记创建成功', 'success')
     } catch (error) {
@@ -509,7 +437,6 @@ function handleCardClick(note) {
 // NoteCard 展开/收起事件处理
 function handleNoteExpand(noteId) {
     expandedNoteIds.value.set(noteId, true)
-    // 展开后等待 DOM 更新，再检测被切割的笔记
     nextTick(() => {
         detectCroppedNote()
     })
@@ -517,7 +444,6 @@ function handleNoteExpand(noteId) {
 
 function handleNoteCollapse(noteId) {
     expandedNoteIds.value.set(noteId, false)
-    // 收起后等待 DOM 更新，再检测被切割的笔记
     nextTick(() => {
         detectCroppedNote()
     })
@@ -530,7 +456,6 @@ function detectCroppedNote() {
     const containerRect = noteListRef.value.getBoundingClientRect()
     const containerBottom = containerRect.bottom
 
-    // 遍历所有笔记元素
     const noteElements = noteListRef.value.querySelectorAll('[data-note-id]')
     let croppedId = null
 
@@ -540,8 +465,6 @@ function detectCroppedNote() {
         const elementTop = elementRect.top
         const elementBottom = elementRect.bottom
 
-        // 检测是否被底部边缘切割：元素顶部在容器内，但底部超出容器
-        // 或者在容器边缘（任意部分被切割）
         if (elementTop < containerBottom && elementBottom > containerBottom) {
             croppedId = noteId
         }
@@ -552,7 +475,9 @@ function detectCroppedNote() {
 
 // 判断是否显示浮动收起按钮
 const shouldShowCollapseButton = computed(() => {
-    return croppedNoteId.value && expandedNoteIds.value.get(croppedNoteId.value) === true
+    const croppedId = croppedNoteId.value
+    if (!croppedId || !expandedNoteIds.value) return false
+    return expandedNoteIds.value.get(croppedId) === true
 })
 
 // 处理浮动收起按钮点击
@@ -573,13 +498,11 @@ function handleMenuOpen(note) {
 
 function handleMenuEdit(note) {
     editingNote.value = note
-    shouldClearEditor.value = false // 重置清空标志
-    // 延迟一帧设置 editorContent，确保 NoteEditor 组件已经挂载
+    shouldClearEditor.value = false
     nextTick(() => {
         editorContent.value = note.content
     })
     isEditing.value = true
-    // images 会通过 props 传递给 NoteEditor
     showToast('进入编辑模式', 'info')
 }
 
@@ -588,7 +511,6 @@ function handleMenuDelete(note) {
     confirmContent.value = '确定要删除这条笔记吗？'
     confirmOnOk.value = async () => {
         await noteStore.deleteNote(note.id)
-        // 直接从当前数组中移除笔记，避免重新加载导致的空白
         notes.value = notes.value.filter(n => n.id !== note.id)
         showToast('笔记已删除', 'success')
     }
@@ -605,8 +527,7 @@ function handleConfirmOk() {
 
 // 取消编辑
 function handleCancelEdit() {
-    shouldClearEditor.value = true // 设置清空标志
-    // 清理被删除的图片列表（取消编辑时不需要实际删除文件）
+    shouldClearEditor.value = true
     if (noteEditorRef.value?.clearDeletedImages) {
         noteEditorRef.value.clearDeletedImages()
     }
