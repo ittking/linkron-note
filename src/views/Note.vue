@@ -50,6 +50,7 @@ function updateEditorHeight(scrollTop) {
 const notes = ref([])
 const editorContent = ref('')
 const isDragging = ref(false) // 拖拽状态
+const isProcessing = ref(false) // 处理拖拽数据状态
 const toastMessage = ref('')
 const toastVisible = ref(false)
 const toastType = ref('info')
@@ -293,6 +294,7 @@ async function handleFileToEditor(file) {
     // 检查是否是支持的文档文件
     if (isSupportedFileType(file.name)) {
         showToast(`正在读取${getFileTypeDescription(file.name)}...`, 'info')
+        isProcessing.value = true
         try {
             // 保存文件到工作目录
             const savedPath = await saveFile(file, 'file', workDirectory)
@@ -306,6 +308,8 @@ async function handleFileToEditor(file) {
             showToast(`${getFileTypeDescription(file.name)}内容已添加到编辑器`, 'success')
         } catch (error) {
             showToast(`读取${getFileTypeDescription(file.name)}失败: ${error.message}`, 'error')
+        } finally {
+            isProcessing.value = false
         }
     } else {
         showToast(`不支持的文件类型，请拖拽到笔记列表创建笔记`, 'info')
@@ -320,6 +324,7 @@ async function handleDataToEditor(data) {
 
     if (isUrl) {
         showToast('正在抓取网页信息...', 'info')
+        isProcessing.value = true
         try {
             // 抓取网页信息和图片
             const { content, images } = await scrapeWebPage(data)
@@ -329,6 +334,8 @@ async function handleDataToEditor(data) {
             showToast('网页内容已添加到编辑器', 'success')
         } catch (error) {
             showToast('网页抓取失败: ' + error.message, 'error')
+        } finally {
+            isProcessing.value = false
         }
     } else {
         // 普通文本
@@ -338,15 +345,15 @@ async function handleDataToEditor(data) {
 }
 
 // 处理拖拽数据（创建笔记）
-function handleDroppedData(data) {
+async function handleDroppedData(data) {
     // 更宽松的 URL 正则表达式，支持查询参数
     const urlRegex = /^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.\-?=&%]*)*\/?$/
     const isUrl = urlRegex.test(data)
 
     if (isUrl) {
-        createLinkNote(data)
+        await createLinkNote(data)
     } else {
-        createTextNote(data)
+        await createTextNote(data)
     }
 }
 
@@ -356,22 +363,25 @@ async function handleDroppedFile(file) {
 
     // .url 文件 - 解析文件内容获取 URL
     if (file.name.endsWith('.url')) {
+        isProcessing.value = true
         try {
             const url = await extractUrlFromUrlFile(file)
             if (url && isValidUrl(url)) {
-                createLinkNote(url)
+                await createLinkNote(url)
             } else {
                 showToast('无法从 .url 文件中提取有效的 URL', 'error')
             }
         } catch (error) {
             console.error('解析 .url 文件失败:', error)
             showToast('解析 .url 文件失败: ' + error.message, 'error')
+        } finally {
+            isProcessing.value = false
         }
     }
     // 文档文件（txt、md）
     else if (isSupportedFileType(file.name)) {
         try {
-            showToast(`正在读取${getFileTypeDescription(file.name)}...`, 'info')
+            isProcessing.value = true
 
             // 保存文件到工作目录
             const savedPath = await saveFile(file, 'file', workDirectory)
@@ -392,6 +402,8 @@ async function handleDroppedFile(file) {
         } catch (error) {
             console.error('文档处理失败:', error)
             showToast('文档处理失败: ' + error.message, 'error')
+        } finally {
+            isProcessing.value = false
         }
     }
     // 不支持的文件类型
@@ -408,7 +420,7 @@ async function createLinkNote(url) {
     }
 
     try {
-        showToast('正在抓取网页信息...', 'info')
+        isProcessing.value = true
 
         // 抓取网页信息和图片
         const { content, images } = await scrapeWebPage(url)
@@ -426,6 +438,8 @@ async function createLinkNote(url) {
     } catch (error) {
         console.error('链接抓取失败:', error)
         showToast('链接抓取失败: ' + error.message, 'error')
+    } finally {
+        isProcessing.value = false
     }
 }
 
@@ -561,6 +575,12 @@ function handleCancelEdit() {
         <div
             :class="['toast toast-end z-[200] px-4 py-3 rounded-lg shadow-lg transition-all duration-300', toastVisible ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0', toastType === 'success' ? 'bg-success text-success-content' : toastType === 'error' ? 'bg-error text-error-content' : 'bg-info text-info-content']">
             {{ toastMessage }}
+        </div>
+
+        <!-- 处理中 Loading 提示 -->
+        <div v-if="isProcessing" class="fixed bottom-6 right-6 z-[300] flex items-center gap-2 px-4 py-3 bg-base-100 border border-base-300 rounded-lg shadow-lg">
+            <span class="loading loading-spinner loading-sm text-primary"></span>
+            <span class="text-sm text-base-content/80">处理中...</span>
         </div>
 
         <!-- 确认对话框 -->
