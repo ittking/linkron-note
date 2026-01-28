@@ -12,6 +12,7 @@ import tippy from 'tippy.js'
 import { useSettingStore } from '@/store/settingStore'
 import { saveImage, deleteResource } from '@/utils/fileUpload'
 import SelectionMenu from './SelectionMenu.vue'
+import ImageViewer from './ImageViewer.vue'
 import {
   Hash,
   Image as ImageIcon,
@@ -587,22 +588,21 @@ defineExpose({
           <div
             v-for="(imageUrl, index) in images"
             :key="index"
-            class="relative w-10 h-10 rounded overflow-hidden border border-base-200"
+            class="relative"
           >
-            <img
+            <ImageViewer
               :src="imageUrl"
-              class="w-full h-full object-cover"
-              alt="上传的图片"
+              :alt="`上传的图片 ${index + 1}`"
+              :images="images"
+              aspectRatio="square"
+              className="w-12 h-12"
             />
             <button
               @click="removeImage(index)"
-              class="absolute top-0 right-0 w-4 h-4 bg-black/50 hover:bg-black/70 rounded-full flex items-center justify-center text-white transition-all duration-200"
+              class="absolute top-1 right-1 w-4 h-4 bg-black/50 hover:bg-black/70 rounded-full flex items-center justify-center text-white transition-all duration-200 -mt-1 -mr-1"
               title="删除图片"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <line x1="18" y1="6" x2="6" y2="18"></line>
-                <line x1="6" y1="6" x2="18" y2="18"></line>
-              </svg>
+             <X size="10" />
             </button>
           </div>
         </div>

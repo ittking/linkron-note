@@ -253,7 +253,7 @@ onBeforeUnmount(() => {
 <template>
   <!-- 默认显示的图片 -->
   <div :class="[
-    'relative rounded-md overflow-hidden border border-base-200 bg-base-200 cursor-pointer hover:border-primary/50 transition-colors',
+    'relative overflow-hidden border border-base-200 bg-base-200 cursor-pointer hover:border-primary/50 transition-colors',
     aspectRatio === 'square' ? 'aspect-square' :
       aspectRatio === 'portrait' ? 'aspect-[3/4]' : 'aspect-video',
     className
