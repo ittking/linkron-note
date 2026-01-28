@@ -24,6 +24,7 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_store::Builder::new().build())
         .plugin(tauri_plugin_dialog::init())
+        .register_uri_scheme_protocol("iterm", protocol::iterm_protocol_handler)
         .setup(|app| {
             #[cfg(any(windows, target_os = "macos"))]
             {
@@ -34,7 +35,6 @@ pub fn run() {
 
             Ok(())
         })
-        .register_uri_scheme_protocol("iterm", protocol::iterm_protocol_handler)
         .invoke_handler(tauri::generate_handler![
             greet,
             mouse::start_mouse_listener,
@@ -47,8 +47,7 @@ pub fn run() {
             filesystem::save_image,
             filesystem::save_file,
             filesystem::get_image_path,
-            filesystem::get_resource_url,
-            filesystem::get_local_path_from_protocol,
+            filesystem::delete_resource_by_url,
             terminal::create_pty_session,
             terminal::write_to_pty,
             terminal::resize_pty,

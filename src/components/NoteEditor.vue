@@ -470,11 +470,11 @@ async function handleImageUpload(event) {
     try {
       // 使用抽离的工具方法保存图片
       const workDirectory = await getWorkDirectory()
-      const imagePath = await saveImage(file, workDirectory)
-      const resourceUrl = await getResourceUrl(imagePath)
+      const imageUrl = await saveImage(file, workDirectory)
+      // imageUrl 现在已经是完整 URL: Windows: http://iterm.localhost/resources/images/..., 其他平台: iterms://resources/images/...
 
       // 添加到图片列表（不再插入到编辑器）
-      images.value.push(resourceUrl)
+      images.value.push(imageUrl)
     } catch (error) {
       console.error('图片上传失败:', error)
     }

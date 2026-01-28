@@ -56,8 +56,14 @@ pub async fn save_image(file_data: Vec<u8>, file_name: String, work_directory: O
     std::fs::write(&file_path, &file_data)
         .map_err(|e| format!("Failed to write image file: {}", e))?;
 
-    // 返回相对路径
-    Ok(format!("resources/{}", unique_file_name))
+    // 返回完整 URL
+    // 在 Windows 上使用 http://iterm.localhost/ 格式
+    // 在其他平台使用 iterms:// 格式
+    #[cfg(target_os = "windows")]
+    let url = format!("http://iterm.localhost/resources/images/{}", unique_file_name);
+    #[cfg(not(target_os = "windows"))]
+    let url = format!("iterm://resources/images/{}", unique_file_name);
+    Ok(url)
 }
 
 /// 获取图片的完整路径
@@ -88,27 +94,18 @@ pub async fn get_image_path(relative_path: String, work_directory: Option<String
         .ok_or("Failed to convert path to string".to_string())
 }
 
-/// 获取资源的 iterm:// 协议 URL
-/// 在 Windows 上使用 http://iterm.localhost/ 格式
-/// 在其他平台使用 iterm:// 格式
-#[tauri::command]
 pub fn get_resource_url(relative_path: String) -> String {
     // 规范化路径：移除开头的斜杠，将反斜杠替换为正斜杠
     let normalized = relative_path
         .trim_start_matches('/')
         .replace('\\', "/");
 
+    // 根据平台使用不同的协议格式
     #[cfg(target_os = "windows")]
-    {
-        // Windows: 使用 http://iterm.localhost/ 格式
-        format!("http://iterm.localhost/{}", normalized)
-    }
-
+    let url = format!("http://iterm.localhost/resources/{}", normalized);
     #[cfg(not(target_os = "windows"))]
-    {
-        // 其他平台: 使用 iterm:// 格式
-        format!("iterm://{}", normalized)
-    }
+    let url = format!("iterm://resources/{}", normalized);
+    url
 }
 
 /// 保存文件（通用接口，支持图片和附件）
@@ -162,38 +159,44 @@ pub async fn save_file(
     std::fs::write(&file_path, &file_data)
         .map_err(|e| format!("Failed to write file: {}", e))?;
 
-    // 返回相对路径
-    let relative_path = if file_type == "image" {
-        format!("resources/images/{}", unique_file_name)
+    // 返回完整 URL
+    let resource_path = if file_type == "image" {
+        format!("images/{}", unique_file_name)
     } else {
-        format!("resources/files/{}", unique_file_name)
+        format!("files/{}", unique_file_name)
     };
 
-    Ok(relative_path)
+    // 生成完整 URL
+    // 根据平台使用不同的协议格式
+    #[cfg(target_os = "windows")]
+    let full_url = format!("http://iterm.localhost/resources/{}", resource_path);
+    #[cfg(not(target_os = "windows"))]
+    let full_url = format!("iterm://resources/{}", resource_path);
+    Ok(full_url)
 }
 
-/// 将 iterm:// 协议 URL 转换为本地文件路径
+/// 删除资源文件（公共方法）
 /// 
 /// 参数:
-/// - protocol_url: iterm:// 协议 URL (如: http://iterm.localhost/resources/files/1234567890-1234.bin)
+/// - url: 资源 URL (如: http://local.iterm/resources/images/1234567890-1234.png)
 /// - work_directory: 工作目录（可选）
 /// 
 /// 返回:
-/// - Ok(String): 本地文件路径
+/// - Ok(()): 删除成功
 /// - Err(String): 错误信息
 #[tauri::command]
-pub fn get_local_path_from_protocol(protocol_url: String, work_directory: Option<String>) -> Result<String, String> {
+pub fn delete_resource_by_url(url: String, work_directory: Option<String>) -> Result<(), String> {
     use std::path::PathBuf;
     
-    // 解析协议 URL
-    let path = if protocol_url.starts_with("http://iterm.localhost/") {
-        // Windows 格式: http://iterm.localhost/resources/files/1234567890-1234.bin
-        protocol_url.replace("http://iterm.localhost/", "")
-    } else if protocol_url.starts_with("iterm://") {
-        // 其他平台格式: iterm://resources/files/1234567890-1234.bin
-        protocol_url.replace("iterm://", "")
+    // 检查是否是本地资源 URL
+    // 支持 Windows 格式：http://iterm.localhost/resources/...
+    // 和其他平台格式：iterm://resources/...
+    let resource_path = if url.starts_with("http://iterm.localhost/resources/") {
+        url.trim_start_matches("http://iterm.localhost/resources/")
+    } else if url.starts_with("iterm://resources/") {
+        url.trim_start_matches("iterm://resources/")
     } else {
-        return Err(format!("无效的协议 URL: {}", protocol_url));
+        return Ok(()); // 外部 URL，跳过删除
     };
     
     // 确定基础目录
@@ -206,15 +209,16 @@ pub fn get_local_path_from_protocol(protocol_url: String, work_directory: Option
     };
     
     // 构建完整路径
-    let full_path = base_dir.join(&path);
+    let full_path = base_dir.join(resource_path);
     
     // 检查文件是否存在
     if !full_path.exists() {
-        return Err(format!("文件不存在: {}", full_path.display()));
+        return Ok(()); // 文件不存在，视为删除成功
     }
     
-    // 返回本地文件路径
-    full_path.to_str()
-        .map(|s| s.to_string())
-        .ok_or("Failed to convert path to string".to_string())
+    // 删除文件
+    std::fs::remove_file(&full_path)
+        .map_err(|e| format!("Failed to delete file {}: {}", full_path.display(), e))?;
+    
+    Ok(())
 }

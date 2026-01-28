@@ -89,19 +89,28 @@ fn build_error_response(status: u16, body: &'static str) -> Response<Vec<u8>> {
 }
 
 /// iterm:// 自定义协议处理器
-/// 支持 Windows 的 http://iterm.localhost/ 格式和其他平台的 iterm:// 格式
+/// 支持 http://iterm.localhost/resources/ 和 iterms://resources/ 格式
+/// 
+/// 在 Windows 上，前端使用：http://iterm.localhost/resources/...
+/// 在 macOS/Linux 上，前端使用：iterm://resources/...
 pub fn iterm_protocol_handler<R: tauri::Runtime>(
     ctx: UriSchemeContext<'_, R>,
     request: Request<Vec<u8>>,
 ) -> Response<Vec<u8>> {
     let app = ctx.app_handle();
     let path = request.uri().path();
-    let resource_path = path.trim_start_matches('/');
+
+    // 只处理 /resources/ 路径
+    let resource_path = match path.strip_prefix("/resources/") {
+        Some(p) => p,
+        None => return build_error_response(400, "Invalid request path: must start with /resources/"),
+    };
 
     let base_dir = get_base_directory(app);
+    let resources_dir = base_dir.join("resources");
 
     // 验证并规范化路径
-    let file_path = match validate_and_normalize_path(&base_dir, resource_path) {
+    let file_path = match validate_and_normalize_path(&resources_dir, resource_path) {
         Some(p) => p,
         None => return build_error_response(400, "Invalid request path"),
     };

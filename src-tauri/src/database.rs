@@ -13,6 +13,8 @@ pub struct Note {
     pub content: String,
     #[serde(rename = "sourceUrl")]
     pub source_url: Option<String>,
+    #[serde(rename = "extractUrl")]
+    pub extract_url: Option<String>,
     #[serde(default)]
     pub images: Vec<String>,
     #[serde(rename = "createdAt")]
@@ -39,6 +41,8 @@ pub struct NoteData {
     pub content: String,
     #[serde(rename = "sourceUrl")]
     pub source_url: Option<String>,
+    #[serde(rename = "extractUrl")]
+    pub extract_url: Option<String>,
     #[serde(default)]
     pub images: Vec<String>,
 }
@@ -48,6 +52,8 @@ pub struct NoteData {
 pub struct NoteUpdate {
     pub content: Option<String>,
     pub images: Option<Vec<String>>,
+    #[serde(rename = "extractUrl")]
+    pub extract_url: Option<String>,
 }
 
 // 标签数据结构
@@ -110,6 +116,7 @@ impl Database {
                 type TEXT NOT NULL DEFAULT 'text',
                 content TEXT NOT NULL,
                 source_url TEXT,
+                extract_url TEXT,
                 images TEXT DEFAULT '[]',
                 created_at TEXT NOT NULL,
                 updated_at TEXT NOT NULL
@@ -120,6 +127,12 @@ impl Database {
         // 检查并添加 images 列（兼容旧版本数据库）
         self.conn.execute(
             "ALTER TABLE notes ADD COLUMN images TEXT DEFAULT '[]'",
+            [],
+        ).ok(); // 忽略列已存在的错误
+
+        // 检查并添加 extract_url 列（兼容旧版本数据库）
+        self.conn.execute(
+            "ALTER TABLE notes ADD COLUMN extract_url TEXT",
             [],
         ).ok(); // 忽略列已存在的错误
 
@@ -208,9 +221,10 @@ impl Database {
                 note_type: row.get(1)?,
                 content: row.get(2)?,
                 source_url: row.get(3)?,
+                extract_url: row.get(4)?,
                 images: deserialize_images(&images_str),
-                created_at: row.get(5)?,
-                updated_at: row.get(6)?,
+                created_at: row.get(6)?,
+                updated_at: row.get(7)?,
             })
         })?;
 
@@ -232,15 +246,16 @@ impl Database {
         )?;
 
         let mut notes = stmt.query_map(params![id], |row| {
-            let images_str: String = row.get(4)?;
+            let images_str: String = row.get(5)?;
             Ok(Note {
                 id: row.get(0)?,
                 note_type: row.get(1)?,
                 content: row.get(2)?,
                 source_url: row.get(3)?,
+                extract_url: row.get(4)?,
                 images: deserialize_images(&images_str),
-                created_at: row.get(5)?,
-                updated_at: row.get(6)?,
+                created_at: row.get(6)?,
+                updated_at: row.get(7)?,
             })
         })?;
 
@@ -278,6 +293,7 @@ impl Database {
             note_type,
             content: note_data.content,
             source_url: note_data.source_url,
+            extract_url: note_data.extract_url,
             images: note_data.images,
             created_at: now.clone(),
             updated_at: now,
@@ -338,71 +354,35 @@ impl Database {
     }
 
     /// 删除笔记关联的资源文件
-    /// 包括 images 数组中的图片、content 中的图片引用，以及文件笔记的附件
+    /// 包括 images 数组中的图片、content 中的图片引用，以及附件笔记的 extractUrl
     fn delete_note_resources(note: &Note, work_directory: &Option<String>) {
-        use std::fs;
-        use std::path::PathBuf;
-
-        // 确定基础目录
-        let base_dir = if let Some(work_dir) = work_directory {
-            PathBuf::from(work_dir)
-        } else {
-            let mut path = dirs::data_local_dir().unwrap_or_else(|| PathBuf::from("."));
-            path.push("iterm");
-            path
-        };
-
-        // 收集所有需要删除的资源路径
-        let mut resources_to_delete: Vec<PathBuf> = Vec::new();
-
-        // 1. 从 images 数组中提取资源路径
+        // 1. 删除 images 数组中的图片
         for image_url in &note.images {
-            if let Some(resource_path) = Self::extract_resource_path_from_url(image_url) {
-                resources_to_delete.push(base_dir.join(&resource_path));
-            }
+            let _ = super::filesystem::delete_resource_by_url(
+                image_url.clone(),
+                work_directory.clone()
+            );
         }
 
-        // 2. 从 content 中提取图片标签的 src 路径
+        // 2. 删除 content 中的本地图片引用
         let img_regex = Regex::new(r#"<img[^>]+src="([^"]+)""#).unwrap();
         for caps in img_regex.captures_iter(&note.content) {
             if let Some(image_url) = caps.get(1) {
-                if let Some(resource_path) = Self::extract_resource_path_from_url(image_url.as_str()) {
-                    resources_to_delete.push(base_dir.join(&resource_path));
-                }
+                let _ = super::filesystem::delete_resource_by_url(
+                    image_url.as_str().to_string(),
+                    work_directory.clone()
+                );
             }
         }
 
-        // 3. 如果是文件笔记，删除 sourceUrl 指向的文件
+        // 3. 如果是附件笔记，删除 extractUrl 指向的文件
         if note.note_type == "file" {
-            if let Some(source_url) = &note.source_url {
-                if let Some(resource_path) = Self::extract_resource_path_from_url(source_url) {
-                    resources_to_delete.push(base_dir.join(&resource_path));
-                }
+            if let Some(extract_url) = &note.extract_url {
+                let _ = super::filesystem::delete_resource_by_url(
+                    extract_url.clone(),
+                    work_directory.clone()
+                );
             }
-        }
-
-        // 删除所有资源文件
-        for resource_path in &resources_to_delete {
-            if resource_path.exists() {
-                if let Err(e) = fs::remove_file(resource_path) {
-                    eprintln!("Failed to delete resource file {}: {}", resource_path.display(), e);
-                }
-            }
-        }
-    }
-
-    /// 从 URL 中提取资源路径
-    /// 支持 http://iterm.localhost/、iterm:// 格式，以及相对路径（如 resources/files/xxx.bin）
-    fn extract_resource_path_from_url(url: &str) -> Option<String> {
-        if url.starts_with("http://iterm.localhost/") {
-            Some(url.replace("http://iterm.localhost/", ""))
-        } else if url.starts_with("iterm://") {
-            Some(url.replace("iterm://", ""))
-        } else if url.starts_with("resources/") {
-            // 直接是相对路径，原样返回
-            Some(url.to_string())
-        } else {
-            None
         }
     }
 
@@ -411,7 +391,7 @@ impl Database {
         let search_pattern = format!("%{}%", keyword);
 
         let mut stmt = self.conn.prepare(
-            "SELECT id, type, content, source_url,
+            "SELECT id, type, content, source_url, extract_url,
              COALESCE(images, '[]') as images,
              created_at, updated_at
              FROM notes WHERE content LIKE ?1
@@ -419,15 +399,16 @@ impl Database {
         )?;
 
         let notes = stmt.query_map(params![search_pattern], |row| {
-            let images_str: String = row.get(4)?;
+            let images_str: String = row.get(5)?;
             Ok(Note {
                 id: row.get(0)?,
                 note_type: row.get(1)?,
                 content: row.get(2)?,
                 source_url: row.get(3)?,
+                extract_url: row.get(4)?,
                 images: deserialize_images(&images_str),
-                created_at: row.get(5)?,
-                updated_at: row.get(6)?,
+                created_at: row.get(6)?,
+                updated_at: row.get(7)?,
             })
         })?;
 
@@ -593,6 +574,7 @@ pub async fn migrate_from_json(work_directory: Option<String>) -> Result<usize, 
                 .unwrap_or("")
                 .to_string(),
             source_url: note_json.get("sourceUrl").and_then(|v| v.as_str()).map(|s| s.to_string()),
+            extract_url: note_json.get("extractUrl").and_then(|v| v.as_str()).map(|s| s.to_string()),
             images: vec![], // 迁移的笔记默认为空图片数组
         };
 
@@ -854,7 +836,7 @@ impl Database {
     pub fn get_notes_by_tag(&self, tag_id: &str, page: u32, page_size: u32) -> SqliteResult<Vec<Note>> {
         let offset = (page - 1) * page_size;
         let mut stmt = self.conn.prepare(
-            "SELECT DISTINCT n.id, n.type, n.content, n.source_url,
+            "SELECT DISTINCT n.id, n.type, n.content, n.source_url, n.extract_url,
              COALESCE(n.images, '[]') as images,
              n.created_at, n.updated_at
          FROM notes n
@@ -865,15 +847,16 @@ impl Database {
         )?;
 
         let notes = stmt.query_map(params![tag_id, page_size, offset], |row| {
-            let images_str: String = row.get(4)?;
+            let images_str: String = row.get(5)?;
             Ok(Note {
                 id: row.get(0)?,
                 note_type: row.get(1)?,
                 content: row.get(2)?,
                 source_url: row.get(3)?,
+                extract_url: row.get(4)?,
                 images: deserialize_images(&images_str),
-                created_at: row.get(5)?,
-                updated_at: row.get(6)?,
+                created_at: row.get(6)?,
+                updated_at: row.get(7)?,
             })
         })?;
 

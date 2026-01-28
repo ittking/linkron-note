@@ -72,14 +72,10 @@ const isFileNote = computed(() => noteType.value === 'file')
 const attachmentUrl = ref('')
 
 // 监听附件路径变化，更新 URL
-watch(() => props.note.sourceUrl, async (newSourceUrl) => {
-  if (isFileNote.value && newSourceUrl) {
-    try {
-      attachmentUrl.value = await getResourceUrl(newSourceUrl)
-    } catch (error) {
-      console.error('获取附件 URL 失败:', error)
-      attachmentUrl.value = ''
-    }
+watch(() => props.note.extractUrl, async (newExtractUrl) => {
+  if (isFileNote.value && newExtractUrl) {
+    // extractUrl 现在已经是完整 URL: Windows: http://iterm.localhost/resources/files/..., 其他平台: iterms://resources/files/...
+    attachmentUrl.value = newExtractUrl
   } else {
     attachmentUrl.value = ''
   }
