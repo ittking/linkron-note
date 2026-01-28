@@ -18,6 +18,7 @@ export async function saveFile(file, type = 'file', workDirectory) {
     const uint8Array = new Uint8Array(arrayBuffer)
     const dataArray = Array.from(uint8Array)
     
+    // 直接传递原始文件名，Rust 端会使用时间戳+随机数生成新文件名
     const fileName = file.name
     const mimeType = file.type
     

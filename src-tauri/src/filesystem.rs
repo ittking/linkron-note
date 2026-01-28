@@ -37,23 +37,17 @@ pub async fn save_image(file_data: Vec<u8>, file_name: String, work_directory: O
     std::fs::create_dir_all(&resources_dir)
         .map_err(|e| format!("Failed to create resources directory: {}", e))?;
 
-    // 生成唯一文件名（使用时间戳）
-    let timestamp = chrono::Utc::now().timestamp();
+    // 从原始文件名获取扩展名
     let file_path_buf = PathBuf::from(&file_name);
-
-    // 获取文件名（不含扩展名）和扩展名
-    let file_stem = file_path_buf
-        .file_stem()
-        .and_then(|s| s.to_str())
-        .unwrap_or("image");
     let ext = file_path_buf
         .extension()
         .and_then(|e| e.to_str())
         .unwrap_or("png");
 
-    // 限制文件名长度并生成唯一文件名
-    let stem_short = file_stem.chars().take(20).collect::<String>();
-    let unique_file_name = format!("{}-{}.{}", timestamp, stem_short, ext);
+    // 使用时间戳 + 随机数生成唯一文件名，避免编码问题
+    let timestamp = chrono::Utc::now().timestamp_millis();
+    let random: u32 = rand::random();
+    let unique_file_name = format!("{}-{}.{}", timestamp, random, ext);
 
     // 构建完整文件路径
     let file_path = resources_dir.join(&unique_file_name);
@@ -149,23 +143,17 @@ pub async fn save_file(
     std::fs::create_dir_all(&target_dir)
         .map_err(|e| format!("Failed to create directory: {}", e))?;
 
-    // 生成唯一文件名（使用时间戳）
-    let timestamp = chrono::Utc::now().timestamp();
+    // 从原始文件名获取扩展名
     let file_path_buf = PathBuf::from(&file_name);
-
-    // 获取文件名（不含扩展名）和扩展名
-    let file_stem = file_path_buf
-        .file_stem()
-        .and_then(|s| s.to_str())
-        .unwrap_or("file");
     let ext = file_path_buf
         .extension()
         .and_then(|e| e.to_str())
         .unwrap_or("bin");
 
-    // 限制文件名长度并生成唯一文件名
-    let stem_short = file_stem.chars().take(20).collect::<String>();
-    let unique_file_name = format!("{}-{}.{}", timestamp, stem_short, ext);
+    // 使用时间戳 + 随机数生成唯一文件名，避免编码问题
+    let timestamp = chrono::Utc::now().timestamp_millis();
+    let random: u32 = rand::random();
+    let unique_file_name = format!("{}-{}.{}", timestamp, random, ext);
 
     // 构建完整文件路径
     let file_path = target_dir.join(&unique_file_name);
@@ -187,7 +175,7 @@ pub async fn save_file(
 /// 将 iterm:// 协议 URL 转换为本地文件路径
 /// 
 /// 参数:
-/// - protocol_url: iterm:// 协议 URL (如: http://iterm.localhost/resources/files/file.md)
+/// - protocol_url: iterm:// 协议 URL (如: http://iterm.localhost/resources/files/1234567890-1234.bin)
 /// - work_directory: 工作目录（可选）
 /// 
 /// 返回:
@@ -199,10 +187,10 @@ pub fn get_local_path_from_protocol(protocol_url: String, work_directory: Option
     
     // 解析协议 URL
     let path = if protocol_url.starts_with("http://iterm.localhost/") {
-        // Windows 格式: http://iterm.localhost/resources/files/file.md
+        // Windows 格式: http://iterm.localhost/resources/files/1234567890-1234.bin
         protocol_url.replace("http://iterm.localhost/", "")
     } else if protocol_url.starts_with("iterm://") {
-        // 其他平台格式: iterm://resources/files/file.md
+        // 其他平台格式: iterm://resources/files/1234567890-1234.bin
         protocol_url.replace("iterm://", "")
     } else {
         return Err(format!("无效的协议 URL: {}", protocol_url));

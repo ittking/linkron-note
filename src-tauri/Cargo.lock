@@ -2000,6 +2000,7 @@ dependencies = [
  "mime_guess",
  "objc",
  "portable-pty",
+ "rand 0.8.5",
  "rdev",
  "regex",
  "reqwest",
