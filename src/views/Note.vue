@@ -323,9 +323,9 @@ async function handleDataToEditor(data) {
     const isUrl = urlRegex.test(data)
 
     if (isUrl) {
-        showToast('正在抓取网页信息...', 'info')
-        isProcessing.value = true
         try {
+            isProcessing.value = true
+            
             // 抓取网页信息和图片
             const { content, images } = await scrapeWebPage(data)
             
