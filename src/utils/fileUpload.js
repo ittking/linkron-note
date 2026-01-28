@@ -4,6 +4,7 @@
  */
 
 import { invoke } from '@tauri-apps/api/core'
+import { revealItemInDir } from '@tauri-apps/plugin-opener'
 
 /**
  * 保存文件到工作目录
@@ -85,4 +86,40 @@ export async function deleteResource(url, workDirectory) {
 export async function deleteResources(urls, workDirectory) {
   const promises = urls.map(url => deleteResource(url, workDirectory))
   await Promise.all(promises)
+}
+
+/**
+ * 获取资源 URL（已废弃，后端直接返回完整 URL）
+ * @param {string} relativePath - 文件相对路径
+ * @returns {Promise<string>} 资源 URL (http://iterm.localhost/resources/...)
+ * @deprecated 后端 save_file/save_image 现在直接返回完整 URL，不再需要此方法
+ */
+export async function getResourceUrl(relativePath) {
+  try {
+    return await invoke('get_resource_url', { relativePath })
+  } catch (error) {
+    console.error('获取资源 URL 失败:', error)
+    throw new Error(`获取资源 URL 失败: ${error.message}`)
+  }
+}
+
+/**
+ * 在文件夹中显示文件
+ * @param {string} protocolUrl - 协议 URL (http://iterm.localhost/resources/files/xxx.txt)
+ * @param {string} workDirectory - 工作目录路径
+ * @returns {Promise<void>}
+ */
+export async function revealFile(protocolUrl, workDirectory) {
+  try {
+    // 将协议 URL 转换为本地文件路径
+    const localPath = await invoke('get_local_path_from_protocol', {
+      protocolUrl,
+      workDirectory
+    })
+    // 使用本地路径打开文件夹并选中文件
+    await revealItemInDir(localPath)
+  } catch (error) {
+    console.error('显示文件失败:', error)
+    throw new Error(`显示文件失败: ${error.message}`)
+  }
 }

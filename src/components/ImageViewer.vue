@@ -1,6 +1,8 @@
 <script setup>
 import { ref, onMounted, onBeforeUnmount, watch } from 'vue'
-import { X, ZoomIn, ZoomOut, RotateCw } from 'lucide-vue-next'
+import { X, ZoomIn, ZoomOut, RotateCw, FolderOpen } from 'lucide-vue-next'
+import { useSettingStore } from '@/store/settingStore'
+import { revealFile } from '@/utils/fileUpload'
 
 const props = defineProps({
   src: {
@@ -23,6 +25,8 @@ const props = defineProps({
 })
 
 const emit = defineEmits([])
+
+const settingStore = useSettingStore()
 
 // 预览相关状态
 const previewVisible = ref(false)
@@ -72,6 +76,16 @@ function handleWheel(e) {
 // 旋转
 function handleRotate() {
   rotation.value = (rotation.value + 90) % 360
+}
+
+// 在文件夹中显示图片
+async function revealImageFile() {
+  try {
+    const workDirectory = await settingStore.get('workDirectory', '')
+    await revealFile(props.src, workDirectory)
+  } catch (error) {
+    console.error('显示图片失败:', error)
+  }
 }
 
 // 阻止原生拖拽
@@ -184,6 +198,12 @@ onBeforeUnmount(() => {
           <button @click="handleRotate"
             class="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors">
             <RotateCw :size="18" />
+          </button>
+          <div class="w-px h-6 bg-white/30"></div>
+          <button @click="revealImageFile"
+            class="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors"
+            title="在文件夹中显示">
+            <FolderOpen :size="18" />
           </button>
         </div>
 

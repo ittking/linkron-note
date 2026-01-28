@@ -2,9 +2,9 @@
 import { computed, ref, onMounted, onBeforeUnmount, watch } from 'vue'
 import { MoreHorizontal, Edit, Trash2, ChevronDown, ChevronUp } from 'lucide-vue-next'
 import { useEditor, EditorContent } from '@tiptap/vue-3'
-import { openUrl, revealItemInDir } from '@tauri-apps/plugin-opener'
-import { invoke } from '@tauri-apps/api/core'
+import { openUrl } from '@tauri-apps/plugin-opener'
 import { useNoteStore } from '@/store/noteStore'
+import { revealFile } from '@/utils/fileUpload'
 import ImageViewer from './ImageViewer.vue'
 import StarterKit from '@tiptap/starter-kit'
 import Highlight from '@tiptap/extension-highlight'
@@ -181,17 +181,11 @@ async function openLink() {
 }
 
 // 在文件夹中显示文件
-async function revealFile() {
+async function handleRevealFile() {
+  if (!props.note.extractUrl) return
   try {
     const workDirectory = await noteStore.getWorkDirectory()
-
-    if (isFileNote.value && props.note.extractUrl) {
-      const localPath = await invoke('get_local_path_from_protocol', {
-        protocolUrl: props.note.extractUrl,
-        workDirectory
-      })
-      await revealItemInDir(localPath)
-    }
+    await revealFile(props.note.extractUrl, workDirectory)
   } catch (error) {
     console.error('显示文件失败:', error)
   }
@@ -303,7 +297,7 @@ onBeforeUnmount(() => {
       </span>
       <span v-else-if="isFileNote && note.extractUrl" class="inline-flex items-center gap-1">
         附件：
-        <a :href="attachmentUrl" @click.stop="revealFile" target="_blank"
+        <a :href="attachmentUrl" @click.stop="handleRevealFile" target="_blank"
           class="text-primary hover:underline cursor-pointer">
           {{ extractFileName }}
         </a>
