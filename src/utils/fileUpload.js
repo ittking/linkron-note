@@ -10,7 +10,7 @@ import { invoke } from '@tauri-apps/api/core'
  * @param {File} file - 文件对象
  * @param {string} type - 文件类型 ('image' | 'file')
  * @param {string} workDirectory - 工作目录路径
- * @returns {Promise<string>} 文件完整 URL (Windows: http://iterm.localhost/resources/..., 其他平台: iterms://resources/...)
+ * @returns {Promise<string>} 文件完整 URL (http://iterm.localhost/resources/...)
  */
 export async function saveFile(file, type = 'file', workDirectory) {
   try {
@@ -28,7 +28,7 @@ export async function saveFile(file, type = 'file', workDirectory) {
       workDirectory
     })
     
-    // result 现在是完整 URL: Windows: http://iterm.localhost/resources/..., 其他平台: iterms://resources/...
+    // result 现在是完整 URL: http://iterm.localhost/resources/...
     return result
   } catch (error) {
     console.error('文件保存失败:', error)
@@ -40,7 +40,7 @@ export async function saveFile(file, type = 'file', workDirectory) {
  * 保存图片文件（向后兼容）
  * @param {File} file - 图片文件对象
  * @param {string} workDirectory - 工作目录路径
- * @returns {Promise<string>} 图片完整 URL (Windows: http://iterm.localhost/resources/images/..., 其他平台: iterms://resources/images/...)
+ * @returns {Promise<string>} 图片完整 URL (http://iterm.localhost/resources/images/...)
  */
 export async function saveImage(file, workDirectory) {
   return saveFile(file, 'image', workDirectory)
@@ -49,7 +49,7 @@ export async function saveImage(file, workDirectory) {
 /**
  * 获取资源 URL（已废弃，后端直接返回完整 URL）
  * @param {string} relativePath - 文件相对路径
- * @returns {Promise<string>} 资源 URL (Windows: http://iterm.localhost/resources/..., 其他平台: iterms://resources/...)
+ * @returns {Promise<string>} 资源 URL (http://iterm.localhost/resources/...)
  * @deprecated 后端 save_file/save_image 现在直接返回完整 URL，不再需要此方法
  */
 export async function getResourceUrl(relativePath) {

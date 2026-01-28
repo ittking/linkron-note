@@ -57,13 +57,7 @@ pub async fn save_image(file_data: Vec<u8>, file_name: String, work_directory: O
         .map_err(|e| format!("Failed to write image file: {}", e))?;
 
     // 返回完整 URL
-    // 在 Windows 上使用 http://iterm.localhost/ 格式
-    // 在其他平台使用 iterms:// 格式
-    #[cfg(target_os = "windows")]
-    let url = format!("http://iterm.localhost/resources/images/{}", unique_file_name);
-    #[cfg(not(target_os = "windows"))]
-    let url = format!("iterm://resources/images/{}", unique_file_name);
-    Ok(url)
+    Ok(format!("http://iterm.localhost/resources/images/{}", unique_file_name))
 }
 
 /// 获取图片的完整路径
@@ -100,12 +94,8 @@ pub fn get_resource_url(relative_path: String) -> String {
         .trim_start_matches('/')
         .replace('\\', "/");
 
-    // 根据平台使用不同的协议格式
-    #[cfg(target_os = "windows")]
-    let url = format!("http://iterm.localhost/resources/{}", normalized);
-    #[cfg(not(target_os = "windows"))]
-    let url = format!("iterm://resources/{}", normalized);
-    url
+    // 统一使用 http://iterm.localhost/ 格式
+    format!("http://iterm.localhost/resources/{}", normalized)
 }
 
 /// 保存文件（通用接口，支持图片和附件）
@@ -167,11 +157,7 @@ pub async fn save_file(
     };
 
     // 生成完整 URL
-    // 根据平台使用不同的协议格式
-    #[cfg(target_os = "windows")]
     let full_url = format!("http://iterm.localhost/resources/{}", resource_path);
-    #[cfg(not(target_os = "windows"))]
-    let full_url = format!("iterm://resources/{}", resource_path);
     Ok(full_url)
 }
 
@@ -189,15 +175,12 @@ pub fn delete_resource_by_url(url: String, work_directory: Option<String>) -> Re
     use std::path::PathBuf;
     
     // 检查是否是本地资源 URL
-    // 支持 Windows 格式：http://iterm.localhost/resources/...
-    // 和其他平台格式：iterm://resources/...
-    let resource_path = if url.starts_with("http://iterm.localhost/resources/") {
-        url.trim_start_matches("http://iterm.localhost/resources/")
-    } else if url.starts_with("iterm://resources/") {
-        url.trim_start_matches("iterm://resources/")
-    } else {
+    if !url.starts_with("http://iterm.localhost/resources/") {
         return Ok(()); // 外部 URL，跳过删除
-    };
+    }
+    
+    // 提取资源路径：移除 http://iterm.localhost/resources/ 前缀
+    let resource_path = url.trim_start_matches("http://iterm.localhost/resources/");
     
     // 确定基础目录
     let base_dir = if let Some(work_dir) = work_directory {

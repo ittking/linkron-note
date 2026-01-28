@@ -89,10 +89,7 @@ fn build_error_response(status: u16, body: &'static str) -> Response<Vec<u8>> {
 }
 
 /// iterm:// 自定义协议处理器
-/// 支持 http://iterm.localhost/resources/ 和 iterms://resources/ 格式
-/// 
-/// 在 Windows 上，前端使用：http://iterm.localhost/resources/...
-/// 在 macOS/Linux 上，前端使用：iterm://resources/...
+/// 统一使用 http://iterm.localhost/resources/ 格式
 pub fn iterm_protocol_handler<R: tauri::Runtime>(
     ctx: UriSchemeContext<'_, R>,
     request: Request<Vec<u8>>,

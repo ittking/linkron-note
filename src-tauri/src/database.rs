@@ -210,7 +210,8 @@ impl Database {
         let mut stmt = self.conn.prepare(
             "SELECT id, type, content, source_url,
              COALESCE(images, '[]') as images,
-             created_at, updated_at
+             created_at, updated_at,
+             extract_url
              FROM notes ORDER BY updated_at DESC LIMIT ? OFFSET ?"
         )?;
 
@@ -221,10 +222,10 @@ impl Database {
                 note_type: row.get(1)?,
                 content: row.get(2)?,
                 source_url: row.get(3)?,
-                extract_url: row.get(4)?,
+                extract_url: row.get(7)?,
                 images: deserialize_images(&images_str),
-                created_at: row.get(6)?,
-                updated_at: row.get(7)?,
+                created_at: row.get(5)?,
+                updated_at: row.get(6)?,
             })
         })?;
 
@@ -241,21 +242,22 @@ impl Database {
         let mut stmt = self.conn.prepare(
             "SELECT id, type, content, source_url,
              COALESCE(images, '[]') as images,
-             created_at, updated_at
+             created_at, updated_at,
+             extract_url
              FROM notes WHERE id = ?"
         )?;
 
         let mut notes = stmt.query_map(params![id], |row| {
-            let images_str: String = row.get(5)?;
+            let images_str: String = row.get(4)?;
             Ok(Note {
                 id: row.get(0)?,
                 note_type: row.get(1)?,
                 content: row.get(2)?,
                 source_url: row.get(3)?,
-                extract_url: row.get(4)?,
+                extract_url: row.get(7)?,
                 images: deserialize_images(&images_str),
-                created_at: row.get(6)?,
-                updated_at: row.get(7)?,
+                created_at: row.get(5)?,
+                updated_at: row.get(6)?,
             })
         })?;
 

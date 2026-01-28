@@ -74,7 +74,7 @@ const attachmentUrl = ref('')
 // 监听附件路径变化，更新 URL
 watch(() => props.note.extractUrl, async (newExtractUrl) => {
   if (isFileNote.value && newExtractUrl) {
-    // extractUrl 现在已经是完整 URL: Windows: http://iterm.localhost/resources/files/..., 其他平台: iterms://resources/files/...
+    // extractUrl 现在已经是完整 URL: http://iterm.localhost/resources/files/...
     attachmentUrl.value = newExtractUrl
   } else {
     attachmentUrl.value = ''

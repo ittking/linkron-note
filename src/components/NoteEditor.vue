@@ -471,7 +471,7 @@ async function handleImageUpload(event) {
       // 使用抽离的工具方法保存图片
       const workDirectory = await getWorkDirectory()
       const imageUrl = await saveImage(file, workDirectory)
-      // imageUrl 现在已经是完整 URL: Windows: http://iterm.localhost/resources/images/..., 其他平台: iterms://resources/images/...
+      // imageUrl 现在已经是完整 URL: http://iterm.localhost/resources/images/...
 
       // 添加到图片列表（不再插入到编辑器）
       images.value.push(imageUrl)
