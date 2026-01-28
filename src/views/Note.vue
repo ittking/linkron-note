@@ -8,7 +8,7 @@ import NoteEditor from '@/components/NoteEditor.vue'
 import { useNoteStore } from '@/store/noteStore'
 import { saveFile } from '@/utils/fileUpload'
 import { extractTextFromFile, isSupportedFileType, getFileTypeDescription } from '@/utils/textExtraction'
-import { scrapeWebPage, isValidUrl, formatWebPageToNote } from '@/utils/webScraper'
+import { scrapeWebPage, isValidUrl } from '@/utils/webScraper'
 import { extractUrlFromUrlFile } from '@/utils/urlFileParser'
 
 const noteStore = useNoteStore()
@@ -325,18 +325,15 @@ async function createLinkNote(url) {
     try {
         showToast('正在抓取网页信息...', 'info')
 
-        // 抓取网页信息
-        const pageInfo = await scrapeWebPage(url)
-
-        // 格式化为笔记内容
-        const content = formatWebPageToNote(pageInfo)
+        // 抓取网页信息和图片
+        const { content, images } = await scrapeWebPage(url)
 
         // 创建链接笔记，包含爬取的图片
         const newNote = await noteStore.addNote({
             type: 'link',
             content: content,
             sourceUrl: url,
-            images: pageInfo.images || [] // 添加图片数组
+            images: images || [] // 添加图片数组
         })
 
         notes.value.unshift(newNote)

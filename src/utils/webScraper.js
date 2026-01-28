@@ -8,7 +8,7 @@ import { invoke } from '@tauri-apps/api/core'
 /**
  * 抓取网页信息
  * @param {string} url - 网页 URL
- * @returns {Promise<WebPageInfo>} 网页信息对象
+ * @returns {Promise<{content: string, images: string[]}>} 包含 HTML 内容和图片数组的对象
  */
 export async function scrapeWebPage(url) {
   if (!isValidUrl(url)) {
@@ -26,100 +26,73 @@ export async function scrapeWebPage(url) {
 }
 
 /**
- * 解析网页 HTML 提取元数据
+ * 解析网页 HTML 提取内容和图片
  * @param {string} html - HTML 内容
- * @returns {WebPageInfo} 网页信息对象
+ * @returns {{content: string, images: string[]}} 包含 HTML 内容和图片数组的对象
  */
 function parseWebPage(html) {
   const parser = new DOMParser()
   const doc = parser.parseFromString(html, 'text/html')
 
-  // 提取基础元数据
-  const title = doc.querySelector('title')?.textContent?.trim() || ''
-  const description = doc.querySelector('meta[name="description"]')?.content?.trim() || ''
-  const keywords = doc.querySelector('meta[name="keywords"]')?.content?.trim() || ''
+  // 移除脚本、样式、隐藏元素等不需要的内容
+  const scripts = doc.querySelectorAll('script, style, noscript, iframe, [style*="display:none"], [style*="display: none"], [hidden]')
+  scripts.forEach(el => el.remove())
 
-  // 提取 Open Graph 标签
-  const ogTitle = doc.querySelector('meta[property="og:title"]')?.content?.trim() || title
-  const ogDescription = doc.querySelector('meta[property="og:description"]')?.content?.trim() || description
-  const ogImage = doc.querySelector('meta[property="og:image"]')?.content?.trim() || ''
-  const ogType = doc.querySelector('meta[property="og:type"]')?.content?.trim() || 'website'
-  const ogSiteName = doc.querySelector('meta[property="og:site_name"]')?.content?.trim() || ''
-
-  // 提取 Twitter Card 标签
-  const twitterTitle = doc.querySelector('meta[name="twitter:title"]')?.content?.trim() || ogTitle
-  const twitterDescription = doc.querySelector('meta[name="twitter:description"]')?.content?.trim() || ogDescription
-  const twitterImage = doc.querySelector('meta[name="twitter:image"]')?.content?.trim() || ogImage
-
-  // 提取正文内容（移除脚本和样式）
-  const bodyText = extractBodyText(doc)
-
-  // 提取链接
-  const links = extractLinks(doc)
+  // 移除所有 #标签名 格式的内容
+  removeHashTags(doc)
 
   // 提取图片
   const images = extractImages(doc)
 
+  // 提取 HTML 内容
+  const content = extractBodyHtml(doc)
+
   return {
-    title: ogTitle,
-    description: ogDescription,
-    ogTitle,
-    ogDescription,
-    ogImage,
-    ogType,
-    ogSiteName,
-    twitterTitle,
-    twitterDescription,
-    twitterImage,
-    bodyText: bodyText.substring(0, 2000), // 限制正文长度
-    links: links.slice(0, 10), // 限制链接数量
-    images: images.slice(0, 5), // 限制图片数量
-    metadata: {
-      keywords,
-      charset: doc.characterSet || 'UTF-8',
-      language: doc.documentElement.lang || 'en'
-    }
+    content,
+    images
   }
 }
 
 /**
- * 提取网页正文文本
+ * 移除文档中所有 #标签名 格式的文本内容
  * @param {Document} doc - DOM 文档对象
- * @returns {string} 正文文本
  */
-function extractBodyText(doc) {
-  // 移除脚本和样式标签
-  const scripts = doc.querySelectorAll('script, style, noscript, iframe')
-  scripts.forEach(el => el.remove())
+function removeHashTags(doc) {
+  // 使用 TreeWalker 遍历所有文本节点
+  const walker = doc.createTreeWalker(
+    doc.body,
+    NodeFilter.SHOW_TEXT,
+    null,
+    false
+  )
 
-  // 移除隐藏元素
-  const hiddenElements = doc.querySelectorAll('[style*="display:none"], [style*="display: none"], [hidden]')
-  hiddenElements.forEach(el => el.remove())
+  const textNodes = []
 
-  // 提取文本
-  const bodyText = doc.body?.textContent?.trim() || ''
-  
-  // 移除多余空白
-  return bodyText.replace(/\s+/g, ' ').substring(0, 2000)
+  let node
+  while (node = walker.nextNode()) {
+    textNodes.push(node)
+  }
+
+  // 移除包含标签的文本节点
+  textNodes.forEach(node => {
+    const text = node.textContent
+    if (text && /#[a-zA-Z0-9_\u4e00-\u9fa5/]+/.test(text)) {
+      node.textContent = text.replace(/#[a-zA-Z0-9_\u4e00-\u9fa5/]+/g, '')
+    }
+  })
 }
 
 /**
- * 提取页面中的链接
+ * 提取网页正文 HTML
  * @param {Document} doc - DOM 文档对象
- * @returns {string[]} 链接数组
+ * @returns {string} HTML 内容
  */
-function extractLinks(doc) {
-  const links = []
-  const anchorElements = doc.querySelectorAll('a[href]')
-
-  anchorElements.forEach(a => {
-    const href = a.getAttribute('href')
-    if (href && !href.startsWith('#') && !href.startsWith('javascript:')) {
-      links.push(href.trim())
-    }
-  })
-
-  return links
+function extractBodyHtml(doc) {
+  // 获取 body 的 HTML 内容
+  const bodyHtml = doc.body?.innerHTML?.trim() || ''
+  
+  // 清理多余的空白
+  return bodyHtml.replace(/\s+/g, ' ')
 }
 
 /**
@@ -153,43 +126,4 @@ export function isValidUrl(string) {
   } catch (_) {
     return false
   }
-}
-
-/**
- * 从 URL 提取域名
- * @param {string} url - URL 字符串
- * @returns {string} 域名
- */
-export function extractDomain(url) {
-  try {
-    const urlObj = new URL(url)
-    return urlObj.hostname
-  } catch (_) {
-    return url
-  }
-}
-
-/**
- * 格式化网页信息为笔记内容
- * @param {WebPageInfo} pageInfo - 网页信息对象
- * @returns {string} 格式化的 HTML 内容
- */
-export function formatWebPageToNote(pageInfo) {
-  const parts = []
-
-  // 标题
-  if (pageInfo.title) {
-    parts.push(`<h3>${pageInfo.title}</h3>`)
-  }
-
-  // 描述
-  if (pageInfo.description) {
-    parts.push(`<p>${pageInfo.description}</p>`)
-  }
-
-  // 正文摘要
-  if (pageInfo.bodyText) {
-    parts.push(`<p>${pageInfo.bodyText}</p>`)
-  }
-  return parts.join('')
 }
