@@ -47,21 +47,6 @@ export async function saveImage(file, workDirectory) {
 }
 
 /**
- * 获取资源 URL（已废弃，后端直接返回完整 URL）
- * @param {string} relativePath - 文件相对路径
- * @returns {Promise<string>} 资源 URL (http://iterm.localhost/resources/...)
- * @deprecated 后端 save_file/save_image 现在直接返回完整 URL，不再需要此方法
- */
-export async function getResourceUrl(relativePath) {
-  try {
-    return await invoke('get_resource_url', { relativePath })
-  } catch (error) {
-    console.error('获取资源 URL 失败:', error)
-    throw new Error(`获取资源 URL 失败: ${error.message}`)
-  }
-}
-
-/**
  * 批量保存文件
  * @param {File[]} files - 文件数组
  * @param {string} type - 文件类型

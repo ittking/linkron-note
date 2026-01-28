@@ -2,7 +2,6 @@
 import { computed, ref, onMounted, onBeforeUnmount, watch } from 'vue'
 import { MoreHorizontal, Edit, Trash2, ChevronDown, ChevronUp } from 'lucide-vue-next'
 import { useEditor, EditorContent } from '@tiptap/vue-3'
-import { getResourceUrl } from '@/utils/fileUpload'
 import { openUrl, revealItemInDir } from '@tauri-apps/plugin-opener'
 import { invoke } from '@tauri-apps/api/core'
 import { useNoteStore } from '@/store/noteStore'
@@ -183,18 +182,16 @@ async function openLink() {
 
 // 在文件夹中显示文件
 async function revealFile() {
-  if (!props.note.sourceUrl) return
   try {
-    // 先将相对路径转换为协议 URL
-    const protocolUrl = await getResourceUrl(props.note.sourceUrl)
-    // 再将协议 URL 转换为本地文件路径
     const workDirectory = await noteStore.getWorkDirectory()
-    const localPath = await invoke('get_local_path_from_protocol', {
-      protocolUrl,
-      workDirectory
-    })
-    // 使用本地路径打开文件夹
-    await revealItemInDir(localPath)
+
+    if (isFileNote.value && props.note.extractUrl) {
+      const localPath = await invoke('get_local_path_from_protocol', {
+        protocolUrl: props.note.extractUrl,
+        workDirectory
+      })
+      await revealItemInDir(localPath)
+    }
   } catch (error) {
     console.error('显示文件失败:', error)
   }

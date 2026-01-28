@@ -52,8 +52,6 @@ pub struct NoteData {
 pub struct NoteUpdate {
     pub content: Option<String>,
     pub images: Option<Vec<String>>,
-    #[serde(rename = "extractUrl")]
-    pub extract_url: Option<String>,
 }
 
 // 标签数据结构
@@ -77,20 +75,6 @@ pub struct TagStats {
     #[serde(flatten)]
     pub tag: Tag,
     pub count: i64,
-}
-
-// 创建标签的数据结构
-#[derive(Debug, Deserialize)]
-pub struct TagData {
-    pub name: String,
-    pub color: Option<String>,
-}
-
-// 笔记标签关联数据
-#[derive(Debug, Deserialize)]
-pub struct NoteTagData {
-    pub note_id: String,
-    pub tag_id: String,
 }
 
 // 数据库管理器
@@ -474,14 +458,6 @@ pub async fn get_all_notes(page: u32, page_size: u32, work_directory: Option<Str
     db.get_all_notes(page, page_size).map_err(|e| format!("Failed to get notes: {}", e))
 }
 
-/// Tauri 命令：获取笔记总数
-#[tauri::command]
-pub async fn get_notes_count(work_directory: Option<String>) -> Result<i64, String> {
-    let db_path = get_database_path(work_directory)?;
-    let db = Database::new(&db_path).map_err(|e| format!("Failed to open database: {}", e))?;
-    db.count_notes().map_err(|e| format!("Failed to count notes: {}", e))
-}
-
 /// Tauri 命令：获取单个笔记
 #[tauri::command]
 pub async fn get_note(id: String, work_directory: Option<String>) -> Result<Option<Note>, String> {
@@ -597,50 +573,40 @@ pub async fn migrate_from_json(work_directory: Option<String>) -> Result<usize, 
 // ========== 标签相关函数 ==========
 
 impl Database {
-    /// 解析内容中的标签并创建关联（只在 span 标签内且 data-type="tag" 时识别）
+    /// 解析内容中的标签并创建关联（直接匹配文本中的 #标签名 格式）
     fn parse_and_create_tags(&self, note_id: &str, content: &str) -> SqliteResult<()> {
-        // 使用正则表达式匹配 <span data-type="tag"> 标签内的内容，然后提取其中的标签
-        // 匹配 <span data-type="tag">...</span> 中的内容，然后在内容中查找 #标签名
-        let span_re = Regex::new(r#"<span[^>]*data-type\s*=\s*["']tag["'][^>]*>(.*?)</span>"#).unwrap();
+        // 直接在内容中查找标签：#标签名 或 #标签名/子标签
+        let tag_re = Regex::new(r"#([a-zA-Z0-9_\u4e00-\u9fa5/]+)").unwrap();
 
-        for span_cap in span_re.captures_iter(content) {
-            if let Some(span_content) = span_cap.get(1) {
-                let span_content_str = span_content.as_str();
+        for tag_cap in tag_re.captures_iter(content) {
+            if let Some(tag_name) = tag_cap.get(1) {
+                let tag_name_str = tag_name.as_str();
 
-                // 在 span 内容中查找标签：#标签名 或 #标签名/子标签
-                let tag_re = Regex::new(r"#([a-zA-Z0-9_\u4e00-\u9fa5/]+)").unwrap();
+                // 解析多级标签
+                let parts: Vec<&str> = tag_name_str.split('/').collect();
 
-                for tag_cap in tag_re.captures_iter(span_content_str) {
-                    if let Some(tag_name) = tag_cap.get(1) {
-                        let tag_name_str = tag_name.as_str();
+                // 创建或获取所有层级的标签（从父级到子级）
+                let mut current_path = String::new();
+                for (i, part) in parts.iter().enumerate() {
+                    let full_name = if i == 0 {
+                        part.to_string()
+                    } else {
+                        format!("{}/{}", current_path, part)
+                    };
 
-                        // 解析多级标签
-                        let parts: Vec<&str> = tag_name_str.split('/').collect();
-
-                        // 创建或获取所有层级的标签（从父级到子级）
-                        let mut current_path = String::new();
-                        for (i, part) in parts.iter().enumerate() {
-                            let full_name = if i == 0 {
-                                part.to_string()
-                            } else {
-                                format!("{}/{}", current_path, part)
-                            };
-
-                            // 创建或获取标签
-                            if let Ok(_tag) = self.create_or_get_tag(&full_name, None) {
-                                // 只将最末级的标签与笔记关联
-                                if i == parts.len() - 1 {
-                                    self.conn.execute(
-                                        "INSERT OR IGNORE INTO note_tags (note_id, tag_id) VALUES (?1, ?2)",
-                                        params![note_id, &_tag.id],
-                                    )?;
-                                }
-                            }
-
-                            // 更新当前路径
-                            current_path = full_name;
+                    // 创建或获取标签
+                    if let Ok(_tag) = self.create_or_get_tag(&full_name, None) {
+                        // 只将最末级的标签与笔记关联
+                        if i == parts.len() - 1 {
+                            self.conn.execute(
+                                "INSERT OR IGNORE INTO note_tags (note_id, tag_id) VALUES (?1, ?2)",
+                                params![note_id, &_tag.id],
+                            )?;
                         }
                     }
+
+                    // 更新当前路径
+                    current_path = full_name;
                 }
             }
         }

@@ -60,44 +60,6 @@ pub async fn save_image(file_data: Vec<u8>, file_name: String, work_directory: O
     Ok(format!("http://iterm.localhost/resources/images/{}", unique_file_name))
 }
 
-/// 获取图片的完整路径
-#[tauri::command]
-pub async fn get_image_path(relative_path: String, work_directory: Option<String>) -> Result<String, String> {
-    use std::path::PathBuf;
-    
-    // 确定基础目录
-    let base_dir = if let Some(work_dir) = work_directory {
-        PathBuf::from(&work_dir)
-    } else {
-        let mut path = dirs::data_local_dir().ok_or("Failed to get data directory")?;
-        path.push("iterm");
-        path
-    };
-    
-    // 构建完整路径
-    let full_path = base_dir.join(&relative_path);
-    
-    // 检查文件是否存在
-    if !full_path.exists() {
-        return Err(format!("Image file not found: {}", relative_path));
-    }
-    
-    // 返回完整路径
-    full_path.to_str()
-        .map(|s| s.to_string())
-        .ok_or("Failed to convert path to string".to_string())
-}
-
-pub fn get_resource_url(relative_path: String) -> String {
-    // 规范化路径：移除开头的斜杠，将反斜杠替换为正斜杠
-    let normalized = relative_path
-        .trim_start_matches('/')
-        .replace('\\', "/");
-
-    // 统一使用 http://iterm.localhost/ 格式
-    format!("http://iterm.localhost/resources/{}", normalized)
-}
-
 /// 保存文件（通用接口，支持图片和附件）
 /// 返回相对路径
 #[tauri::command]
@@ -162,26 +124,26 @@ pub async fn save_file(
 }
 
 /// 删除资源文件（公共方法）
-/// 
+///
 /// 参数:
 /// - url: 资源 URL (如: http://local.iterm/resources/images/1234567890-1234.png)
 /// - work_directory: 工作目录（可选）
-/// 
+///
 /// 返回:
 /// - Ok(()): 删除成功
 /// - Err(String): 错误信息
 #[tauri::command]
 pub fn delete_resource_by_url(url: String, work_directory: Option<String>) -> Result<(), String> {
     use std::path::PathBuf;
-    
+
     // 检查是否是本地资源 URL
     if !url.starts_with("http://iterm.localhost/resources/") {
         return Ok(()); // 外部 URL，跳过删除
     }
-    
+
     // 提取资源路径：移除 http://iterm.localhost/resources/ 前缀
     let resource_path = url.trim_start_matches("http://iterm.localhost/resources/");
-    
+
     // 确定基础目录
     let base_dir = if let Some(work_dir) = work_directory {
         PathBuf::from(&work_dir)
@@ -190,18 +152,62 @@ pub fn delete_resource_by_url(url: String, work_directory: Option<String>) -> Re
         path.push("iterm");
         path
     };
-    
+
     // 构建完整路径：需要添加 resources 目录
     let full_path = base_dir.join("resources").join(resource_path);
-    
+
     // 检查文件是否存在
     if !full_path.exists() {
         return Ok(()); // 文件不存在，视为删除成功
     }
-    
+
     // 删除文件
     std::fs::remove_file(&full_path)
         .map_err(|e| format!("Failed to delete file {}: {}", full_path.display(), e))?;
-    
+
     Ok(())
+}
+
+/// 将协议 URL 转换为本地文件路径
+///
+/// 参数:
+/// - protocol_url: 协议 URL (如: http://iterm.localhost/resources/files/xxx.txt)
+/// - work_directory: 工作目录（可选）
+///
+/// 返回:
+/// - Ok(String): 本地文件路径
+/// - Err(String): 错误信息
+#[tauri::command]
+pub fn get_local_path_from_protocol(protocol_url: String, work_directory: Option<String>) -> Result<String, String> {
+    use std::path::PathBuf;
+
+    // 检查是否是本地资源 URL
+    if !protocol_url.starts_with("http://iterm.localhost/resources/") {
+        return Err("Not a local resource URL".to_string());
+    }
+
+    // 提取资源路径：移除 http://iterm.localhost/resources/ 前缀
+    let resource_path = protocol_url.trim_start_matches("http://iterm.localhost/resources/");
+
+    // 确定基础目录
+    let base_dir = if let Some(work_dir) = work_directory {
+        PathBuf::from(&work_dir)
+    } else {
+        let mut path = dirs::data_local_dir().ok_or("Failed to get data directory")?;
+        path.push("iterm");
+        path
+    };
+
+    // 构建完整路径：需要添加 resources 目录
+    let full_path = base_dir.join("resources").join(resource_path);
+
+    // 检查文件是否存在
+    if !full_path.exists() {
+        return Err(format!("File not found: {}", full_path.display()));
+    }
+
+    // 返回完整路径
+    full_path.to_str()
+        .map(|s| s.to_string())
+        .ok_or("Failed to convert path to string".to_string())
 }

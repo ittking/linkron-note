@@ -46,7 +46,7 @@ pub fn run() {
             filesystem::create_directory,
             filesystem::save_image,
             filesystem::save_file,
-            filesystem::get_image_path,
+            filesystem::get_local_path_from_protocol,
             filesystem::delete_resource_by_url,
             terminal::create_pty_session,
             terminal::write_to_pty,

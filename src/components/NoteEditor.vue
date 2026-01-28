@@ -10,7 +10,7 @@ import { common, createLowlight } from 'lowlight'
 import { TagExtension } from '@/extensions/tag-extension'
 import tippy from 'tippy.js'
 import { useSettingStore } from '@/store/settingStore'
-import { saveImage, getResourceUrl, deleteResource } from '@/utils/fileUpload'
+import { saveImage, deleteResource } from '@/utils/fileUpload'
 import SelectionMenu from './SelectionMenu.vue'
 import {
   Hash,
