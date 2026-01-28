@@ -71,15 +71,6 @@ const isFileNote = computed(() => noteType.value === 'file')
 // 附件 URL
 const attachmentUrl = ref('')
 
-// 获取工作目录（带缓存）
-async function getWorkDirectory() {
-  if (workDirectoryCache.value) {
-    return workDirectoryCache.value
-  }
-  workDirectoryCache.value = await noteStore.getWorkDirectory()
-  return workDirectoryCache.value
-}
-
 // 监听 noteStore 变化，清空工作目录缓存
 watch(() => noteStore.$state, () => {
   workDirectoryCache.value = null
@@ -88,7 +79,6 @@ watch(() => noteStore.$state, () => {
 // 监听附件路径变化，更新 URL
 watch(() => props.note.extractUrl, async (newExtractUrl) => {
   if (isFileNote.value && newExtractUrl) {
-    // extractUrl 现在已经是完整 URL: http://iterm.localhost/resources/files/...
     attachmentUrl.value = newExtractUrl
   } else {
     attachmentUrl.value = ''
@@ -208,7 +198,7 @@ function handleCardClick() {
 }
 
 // 点击外部关闭菜单
-function handleClickOutside(event) {
+function handleClickOutside() {
   if (menuVisible.value) {
     menuVisible.value = false
   }
@@ -301,7 +291,7 @@ defineExpose({
 
     <!-- 图片列表 -->
     <div v-if="note.images && note.images.length > 0"
-      class="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-7 xl:grid-cols-8 gap-2 mt-3">
+      class="grid mn:grid-cols-5 xs:grid-cols-6 sm:grid-cols-7 sm:grid-cols-8 md:grid-cols-10 gap-2 mt-3">
       <ImageViewer 
         v-for="(imageUrl, index) in note.images" 
         :key="index"
