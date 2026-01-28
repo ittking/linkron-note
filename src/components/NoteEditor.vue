@@ -556,7 +556,7 @@ defineExpose({
       }" />
 
       <!-- 图片列表 -->
-      <div v-if="images.length > 0" class="mt-2">
+      <div v-if="images.length > 0" class="mt-2 max-h-22 overflow-y-auto no-scrollbar">
         <div class="flex flex-wrap gap-2">
           <div
             v-for="(imageUrl, index) in images"

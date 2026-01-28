@@ -440,7 +440,7 @@ function handleCancelEdit() {
         <div class="flex-1 overflow-hidden">
             <div ref="noteListRef" class="p-3 h-full overflow-y-auto no-scrollbar" @scroll="handleNoteListScroll">
                 <div v-if="notes.length === 0"
-                    class="flex flex-col items-center justify-center h-full text-base-content/40 text-center p-5">
+                    class="flex flex-col select-none items-center justify-center h-full text-base-content/40 text-center p-5">
                     <FileText :size="64" class="mb-4 opacity-50" />
                     <div class="text-base font-medium mb-2 text-base-content/60">暂无笔记</div>
                     <div class="text-sm leading-relaxed max-w-[240px]">拖拽链接或文字到这里创建笔记</div>
