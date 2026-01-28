@@ -49,8 +49,7 @@ function updateEditorHeight(scrollTop) {
 
 const notes = ref([])
 const editorContent = ref('')
-const dragCounter = ref(0) // 拖拽计数器
-const isDragging = ref(false)
+const isDragging = ref(false) // 拖拽状态
 const toastMessage = ref('')
 const toastVisible = ref(false)
 const toastType = ref('info')
@@ -221,15 +220,18 @@ function isDropInEditor(clientX, clientY) {
 }
 
 // 拖拽事件处理
+let dragCounter = 0
+
 function handleDragEnter(e) {
     e.preventDefault()
-    dragCounter.value++
+    dragCounter++
     isDragging.value = true
 }
 
 function handleDragLeave(e) {
-    // 简化：如果鼠标离开容器且不是进入子元素，则隐藏
-    if (e.target === e.currentTarget) {
+    e.preventDefault()
+    dragCounter--
+    if (dragCounter === 0) {
         isDragging.value = false
     }
 }
@@ -242,7 +244,8 @@ function handleDrop(e) {
     e.preventDefault()
     e.stopPropagation()
 
-    // 简化：直接处理，不需要 dragCounter
+    // 重置计数器和拖拽状态
+    dragCounter = 0
     isDragging.value = false
 
     // 判断放置位置
@@ -504,7 +507,15 @@ function handleCancelEdit() {
     <div class="h-full flex flex-col max-w-200 mx-auto" @dragenter="handleDragEnter" @dragleave="handleDragLeave"
         @dragover="handleDragOver" @drop="handleDrop">
         <!-- 编辑器区域 -->
-        <div ref="editorContainerRef" class="px-4 py-3">
+        <div ref="editorContainerRef" class="px-4 py-3 relative">
+            <!-- 编辑器拖拽遮罩 -->
+            <div v-if="isDragging"
+                class="absolute inset-0 bg-primary/20 border-2 border-dashed border-primary flex flex-col items-center justify-center z-10 transition-opacity duration-200 pointer-events-none">
+                <Download :size="32" class="text-primary mb-3 animate-bounce" />
+                <div class="text-sm font-medium text-primary mb-1">释放以添加到编辑器</div>
+                <div class="text-xs text-base-content/60">支持链接、文档、文字</div>
+            </div>
+
             <NoteEditor ref="noteEditorRef" v-model="editorContent" placeholder="现在的想法是..." :is-scrolled-to-top="isNoteListScrolledToTop"
                 :is-editing="isEditing" :images="editingNote?.images || []" :should-clear="shouldClearEditor"
                 @submit="handleEditorSubmit">
@@ -519,7 +530,15 @@ function handleCancelEdit() {
         </div>
 
         <!-- 笔记列表 -->
-        <div class="flex-1 overflow-hidden">
+        <div class="flex-1 overflow-hidden relative">
+            <!-- 笔记列表拖拽遮罩 -->
+            <div v-if="isDragging"
+                class="absolute inset-0 bg-primary/20 border-2 border-dashed border-primary flex flex-col items-center justify-center z-10 transition-opacity duration-200 pointer-events-none">
+                <Download :size="48" class="text-primary mb-4 animate-bounce" />
+                <div class="text-base font-medium text-primary mb-2">释放以创建笔记</div>
+                <div class="text-sm text-base-content/60">支持链接、文档（md、txt）、文字</div>
+            </div>
+
             <div ref="noteListRef" class="p-3 h-full overflow-y-auto no-scrollbar" @scroll="handleNoteListScroll">
                 <div v-if="notes.length === 0"
                     class="flex flex-col select-none items-center justify-center h-full text-base-content/40 text-center p-5">
@@ -536,15 +555,6 @@ function handleCancelEdit() {
                     <span class="loading loading-spinner text-primary"></span>
                 </div>
             </div>
-        </div>
-
-        <!-- 拖拽遮罩 -->
-        <div v-if="isDragging"
-            class="fixed inset-0 bg-primary/20 border-2 border-dashed border-primary flex flex-col items-center justify-center z-[9999] transition-opacity duration-200"
-            @dragenter="handleDragEnter" @dragleave="handleDragLeave" @dragover="handleDragOver" @drop="handleDrop">
-            <Download :size="48" class="text-primary mb-4 animate-bounce" />
-            <div class="text-base font-medium text-primary mb-2">释放以创建笔记</div>
-            <div class="text-sm text-base-content/60">支持链接、文档（md、txt）、文字</div>
         </div>
 
         <!-- Toast 提示 -->
