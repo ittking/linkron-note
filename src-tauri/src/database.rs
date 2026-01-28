@@ -359,49 +359,32 @@ impl Database {
     /// 删除笔记关联的资源文件
     /// 包括 images 数组中的图片、content 中的图片引用，以及附件笔记的 extractUrl
     fn delete_note_resources(note: &Note, work_directory: &Option<String>) {
-        eprintln!("Deleting resources for note type: {}", note.note_type);
-        eprintln!("Work directory: {:?}", work_directory);
-        eprintln!("Images: {:?}", note.images);
-        eprintln!("Extract URL: {:?}", note.extract_url);
-
         // 1. 删除 images 数组中的图片
         for image_url in &note.images {
-            eprintln!("Deleting image: {}", image_url);
-            match super::filesystem::delete_resource_by_url(
+            let _ = super::filesystem::delete_resource_by_url(
                 image_url.clone(),
                 work_directory.clone()
-            ) {
-                Ok(_) => eprintln!("Successfully deleted: {}", image_url),
-                Err(e) => eprintln!("Failed to delete {}: {}", image_url, e),
-            }
+            );
         }
 
         // 2. 删除 content 中的本地图片引用
         let img_regex = Regex::new(r#"<img[^>]+src="([^"]+)""#).unwrap();
         for caps in img_regex.captures_iter(&note.content) {
             if let Some(image_url) = caps.get(1) {
-                eprintln!("Deleting image from content: {}", image_url.as_str());
-                match super::filesystem::delete_resource_by_url(
+                let _ = super::filesystem::delete_resource_by_url(
                     image_url.as_str().to_string(),
                     work_directory.clone()
-                ) {
-                    Ok(_) => eprintln!("Successfully deleted: {}", image_url.as_str()),
-                    Err(e) => eprintln!("Failed to delete {}: {}", image_url.as_str(), e),
-                }
+                );
             }
         }
 
         // 3. 如果是附件笔记，删除 extractUrl 指向的文件
         if note.note_type == "file" {
             if let Some(extract_url) = &note.extract_url {
-                eprintln!("Deleting file attachment: {}", extract_url);
-                match super::filesystem::delete_resource_by_url(
+                let _ = super::filesystem::delete_resource_by_url(
                     extract_url.clone(),
                     work_directory.clone()
-                ) {
-                    Ok(_) => eprintln!("Successfully deleted: {}", extract_url),
-                    Err(e) => eprintln!("Failed to delete {}: {}", extract_url, e),
-                }
+                );
             }
         }
     }

@@ -174,25 +174,18 @@ pub async fn save_file(
 pub fn delete_resource_by_url(url: String, work_directory: Option<String>) -> Result<(), String> {
     use std::path::PathBuf;
     
-    eprintln!("delete_resource_by_url called with URL: {}", url);
-    eprintln!("Work directory: {:?}", work_directory);
-    
     // 检查是否是本地资源 URL
     if !url.starts_with("http://iterm.localhost/resources/") {
-        eprintln!("URL is not a local resource, skipping: {}", url);
         return Ok(()); // 外部 URL，跳过删除
     }
     
     // 提取资源路径：移除 http://iterm.localhost/resources/ 前缀
     let resource_path = url.trim_start_matches("http://iterm.localhost/resources/");
-    eprintln!("Extracted resource path: {}", resource_path);
     
     // 确定基础目录
     let base_dir = if let Some(work_dir) = work_directory {
-        eprintln!("Using work directory: {}", work_dir);
         PathBuf::from(&work_dir)
     } else {
-        eprintln!("Using default data directory");
         let mut path = dirs::data_local_dir().ok_or("Failed to get data directory")?;
         path.push("iterm");
         path
@@ -200,19 +193,15 @@ pub fn delete_resource_by_url(url: String, work_directory: Option<String>) -> Re
     
     // 构建完整路径：需要添加 resources 目录
     let full_path = base_dir.join("resources").join(resource_path);
-    eprintln!("Full file path: {:?}", full_path);
     
     // 检查文件是否存在
     if !full_path.exists() {
-        eprintln!("File does not exist: {:?}", full_path);
         return Ok(()); // 文件不存在，视为删除成功
     }
     
     // 删除文件
-    eprintln!("Attempting to delete file...");
     std::fs::remove_file(&full_path)
         .map_err(|e| format!("Failed to delete file {}: {}", full_path.display(), e))?;
     
-    eprintln!("File deleted successfully");
     Ok(())
 }

@@ -41,8 +41,6 @@ fn set_window_on_all_desktops_windows(window: &WebviewWindow) {
         unsafe {
             SetWindowLongPtrW(hwnd, GWL_EXSTYLE, new_style);
         }
-        
-        println!("窗口已设置为跨所有虚拟桌面显示 (Windows)");
     }
 }
 
@@ -59,6 +57,5 @@ fn set_window_on_all_desktops_macos(window: &WebviewWindow) {
             let ns_window: *mut Object = ns_window as *mut Object;
             let _: () = msg_send![ns_window, setCollectionBehavior: NSWindowCollectionBehaviorCanJoinAllSpaces];
         }
-        println!("窗口已设置为跨所有虚拟桌面显示 (macOS)");
     }
 }
