@@ -461,11 +461,11 @@ function handleCancelEdit() {
 
         <!-- 拖拽遮罩 -->
         <div v-if="isDragging"
-            class="fixed inset-0 bg-primary/5 border-2 border-dashed border-primary flex flex-col items-center justify-center z-[9999] transition-opacity duration-200"
+            class="fixed inset-0 bg-primary/20 border-2 border-dashed border-primary flex flex-col items-center justify-center z-[9999] transition-opacity duration-200"
             @dragenter="handleDragEnter" @dragleave="handleDragLeave" @dragover="handleDragOver" @drop="handleDrop">
             <Download :size="48" class="text-primary mb-4 animate-bounce" />
             <div class="text-base font-medium text-primary mb-2">释放以创建笔记</div>
-            <div class="text-sm text-base-content/60">支持链接、文字</div>
+            <div class="text-sm text-base-content/60">支持链接、文档（md、txt）、文字</div>
         </div>
 
         <!-- Toast 提示 -->
