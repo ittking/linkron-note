@@ -25,7 +25,8 @@ function updateTime() {
 
   const hours = now.getHours().toString().padStart(2, '0')
   const minutes = now.getMinutes().toString().padStart(2, '0')
-  currentTime.value = `${hours}:${minutes}`
+  const seconds = now.getSeconds().toString().padStart(2, '0')
+  currentTime.value = `${hours}:${minutes}:${seconds}`
 }
 
 function setupVisibilityObserver() {
@@ -73,21 +74,22 @@ onUnmounted(() => {
 <template>
   <div ref="capsuleElement" class="absolute top-0 right-0 z-[1000]">
     <div
-      class="flex items-center gap-2 px-3 py-2 bg-base-100 border border-base-300 rounded-full shadow-lg backdrop-blur-md"
-    >
-      <div class="flex items-center gap-1 text-xs text-base-content">
-        <span class="font-semibold text-primary">{{ currentDate }}</span>
-        <span class="text-base-content/70">{{ currentDay }}</span>
-        <span class="font-mono font-medium">{{ currentTime }}</span>
+      class="flex items-center gap-2 p-1 bg-base-100 border border-base-300 bg-base-100/50 rounded-full shadow-lg backdrop-blur select-none">
+      <div class="flex items-center gap-2 text-xs text-base-content pl-2">
+        <span data-tauri-drag-region class="font-semibold text-primary">{{ currentDate }}</span>
+        <div data-tauri-drag-region class="flex flex-col items-center text-base-content/70 scale-80">
+          <span data-tauri-drag-region>{{ currentDay }}</span>
+          <span data-tauri-drag-region>{{ currentTime }}</span>
+        </div>
       </div>
 
-      <button
-        class="btn btn-primary btn-circle btn-xs flex items-center justify-center w-5 h-5 min-h-0 p-0"
-        @click="emit('expand')"
-        title="展开"
-      >
+      <button class="btn btn-primary btn-circle btn-xs flex items-center justify-center w-8 h-8 min-h-0 p-0"
+        @click="emit('expand')" title="展开">
         <Maximize2 :size="12" />
       </button>
     </div>
+
+    <!-- 其他内容 -->
+    <div></div>
   </div>
 </template>
