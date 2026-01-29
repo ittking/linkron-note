@@ -29,7 +29,7 @@ function isActive(path) {
 </script>
 
 <template>
-  <div through-listener="true" class="main-content h-full flex flex-col overflow-hidden border border-base-300 rounded-xl">
+  <div through-listener="true" class="main-content h-full flex flex-col overflow-hidden border border-base-300 rounded">
     <!-- 顶部控制栏 -->
     <div data-tauri-drag-region
       class="select-none h-9 border-b border-base-300 flex items-center justify-between px-3 flex-shrink-0">
