@@ -1,5 +1,5 @@
 <script setup>
-import { onMounted, onUnmounted, ref, watch } from 'vue'
+import { onMounted, onUnmounted, ref, watch, nextTick } from 'vue'
 import { getCurrentWindow, LogicalSize } from '@tauri-apps/api/window'
 import { useWindowThrough } from './composable/useWindowThrough'
 import MainContent from './components/MainContent.vue'
@@ -92,12 +92,18 @@ async function expandWindow() {
 
 // 监听窗口状态变化，控制穿透监听
 watch(isMaximized, async (newValue) => {
+  // 等待 DOM 更新完成
+  await nextTick()
+
   if (!newValue) {
     // 胶囊状态：启动穿透监听
     await register()
   } else {
-    // 主页状态：停止穿透监听
     await unregister()
+    
+    // 重新设置为不可穿透
+    const currentWindow = getCurrentWindow()
+    currentWindow.setIgnoreCursorEvents(false)
   }
 })
 

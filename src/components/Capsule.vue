@@ -59,7 +59,6 @@ onMounted(() => {
   updateTime()
   timer = setInterval(updateTime, 1000)
   setupVisibilityObserver()
-  // 确保组件在挂载后显示
   nextTick(() => {
     visible.value = true
   })

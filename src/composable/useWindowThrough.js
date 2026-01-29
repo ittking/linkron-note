@@ -151,7 +151,7 @@ export function useWindowThrough() {
     // 设置窗口穿透状态
     // 在元素范围内：不穿透（可以交互）
     // 不在元素范围内：穿透（点击穿透到下方窗口）
-    setWindowIgnore(!inAnyElement);
+    await setWindowIgnore(!inAnyElement);
   }
 
   /**
@@ -293,6 +293,8 @@ export function useWindowThrough() {
     await stopListening();
     stopMutationObserver();
     registeredElements.value.clear();
+    // 确保窗口重置为非穿透状态，可以接收点击
+    await setWindowIgnore(false);
   }
 
   return {
