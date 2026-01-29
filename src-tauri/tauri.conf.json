@@ -31,10 +31,8 @@
         "title": "Floating Ball",
         "label": "floating",
         "url": "/floating",
-        "width": 100,
-        "height": 100,
-        "minWidth": 100,
-        "minHeight": 100,
+        "width": 300,
+        "height": 300,
         "x": 100,
         "y": 100,
         "center": false,
@@ -44,7 +42,6 @@
         "hiddenTitle": true,
         "alwaysOnTop": true,
         "decorations": false,
-        "dragDropEnabled": false,
         "resizable": false,
         "visible": true
       }

@@ -1,69 +1,14 @@
 <script setup>
-import { ref, onMounted, onBeforeUnmount } from 'vue'
-
 const emit = defineEmits(['click'])
 
-const ballRef = ref(null)
-const isDragging = ref(false)
-let startX, startY, initialX, initialY
-
-function handleMouseDown(e) {
-  isDragging.value = true
-  startX = e.clientX
-  startY = e.clientY
-
-  // Get current position
-  const rect = ballRef.value.getBoundingClientRect()
-  initialX = rect.left
-  initialY = rect.top
-
-  // Add dragging class to disable animations
-  ballRef.value.classList.add('dragging')
-}
-
-function handleMouseMove(e) {
-  if (!isDragging.value) return
-
-  const dx = e.clientX - startX
-  const dy = e.clientY - startY
-
-  // Switch to fixed positioning on first drag
-  ballRef.value.style.position = 'fixed'
-  ballRef.value.style.left = (initialX + dx) + 'px'
-  ballRef.value.style.top = (initialY + dy) + 'px'
-  ballRef.value.style.transform = 'none'
-}
-
-function handleMouseUp() {
-  if (isDragging.value) {
-    ballRef.value.classList.remove('dragging')
-  }
-  isDragging.value = false
-}
-
 function handleClick() {
-  // Only emit click if not dragging
-  if (!isDragging.value) {
-    emit('click')
-  }
+  emit('click')
 }
-
-onMounted(() => {
-  document.addEventListener('mousemove', handleMouseMove)
-  document.addEventListener('mouseup', handleMouseUp)
-})
-
-onBeforeUnmount(() => {
-  document.removeEventListener('mousemove', handleMouseMove)
-  document.removeEventListener('mouseup', handleMouseUp)
-})
 </script>
 
 <template>
   <div
-    ref="ballRef"
     class="floating-ball"
-    @mousedown="handleMouseDown"
     @click="handleClick"
   >
     <span class="ball-icon">&gt;_</span>
@@ -92,7 +37,7 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  cursor: grab;
+  cursor: pointer;
   position: relative;
   box-shadow:
     0 4px 20px rgba(0, 0, 0, 0.5),
@@ -112,16 +57,8 @@ onBeforeUnmount(() => {
 }
 
 .floating-ball:active {
-  cursor: grabbing;
   transform: scale(1);
   transition: none;
-}
-
-.floating-ball.dragging {
-  animation: none;
-  transition: none;
-  will-change: transform;
-  cursor: grabbing;
 }
 
 @keyframes float {

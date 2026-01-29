@@ -18,16 +18,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="floating-container">
-    <FloatingBall @click="handleBallClick" />
+  <div class="border h-full w-full flex items-center justify-center">
+    <FloatingBall @click="handleBallClick" data-tauri-drag-region />
   </div>
 </template>
-
-<style scoped>
-.floating-container {
-  width: 100vw;
-  height: 100vh;
-  position: relative;
-  background: transparent;
-}
-</style>
