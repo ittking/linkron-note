@@ -1,16 +1,12 @@
 <script setup>
 import { ref, onMounted } from 'vue'
-import { getCurrentWindow } from '@tauri-apps/api/window'
 import { Store } from '@tauri-apps/plugin-store'
 import FloatingBall from '@/components/FloatingBall.vue'
 
-const appWindow = getCurrentWindow()
 const currentTheme = ref('light')
 let store = null
 
 function handleBallClick() {
-  // 点击悬浮球时打开主窗口
-  // 这里可以实现打开主窗口的逻辑
   console.log('Floating ball clicked')
 }
 
@@ -40,10 +36,6 @@ async function loadTheme() {
 }
 
 onMounted(async () => {
-  // 窗口挂载时的初始化逻辑
-  console.log('Floating window mounted')
-
-  // 加载主题
   await loadTheme()
 
   // 定期检查主题变化（每秒检查一次）
