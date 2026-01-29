@@ -1,94 +1,86 @@
 <script setup>
+import { ref, onMounted, onBeforeUnmount } from 'vue'
+
 const emit = defineEmits(['click'])
+const isHovered = ref(false)
 
 function handleClick() {
   emit('click')
 }
+
+function handleMouseEnter() {
+  isHovered.value = true
+}
+
+function handleMouseLeave() {
+  isHovered.value = false
+}
+
+// 监听主题变化
+let themeObserver = null
+
+onMounted(() => {
+  // 监听 .iterm-root 元素的 data-theme 属性变化
+  const itermRoot = document.querySelector('.iterm-root')
+  if (itermRoot) {
+    themeObserver = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        if (mutation.type === 'attributes' && mutation.attributeName === 'data-theme') {
+          // 主题变化时触发重新渲染，让 CSS 变量更新
+          // DaisyUI 的 CSS 变量会自动根据 data-theme 属性变化
+        }
+      })
+    })
+
+    themeObserver.observe(itermRoot, {
+      attributes: true,
+      attributeFilter: ['data-theme']
+    })
+  }
+})
+
+onBeforeUnmount(() => {
+  if (themeObserver) {
+    themeObserver.disconnect()
+  }
+})
 </script>
 
 <template>
-  <div
-    class="floating-ball"
-    @click="handleClick"
-  >
-    <span class="ball-icon">&gt;_</span>
-    <span class="ball-tooltip">点击展开终端</span>
+  <div data-tauri-drag-region
+    class="relative w-12 h-12 bg-base-100 rounded-full flex items-center justify-center cursor-pointer transition-all duration-300 animate-float hover:scale-110 hover:shadow-[0_8px_32px_hsl(var(--p)/0.2),0_0_0_1px_hsl(var(--p)),inset_0_1px_0_hsl(var(--bc)/0.1)] active:scale-100 active:transition-none shadow-[0_4px_20px_rgba(0,0,0,0.3),0_0_0_1px_hsl(var(--bc)/0.1),inset_0_1px_0_hsl(var(--bc)/0.05)]"
+    @click="handleClick" @mouseenter="handleMouseEnter" @mouseleave="handleMouseLeave">
+    <!-- Pulse ring effect -->
+    <div class="absolute inset-0 rounded-full border border-primary opacity-0 animate-pulse-ring"></div>
+
+    <!-- Terminal icon -->
+    <span class="font-mono text-base font-bold text-primary transition-all duration-300">
+      &gt;_
+    </span>
+
+    <!-- Tooltip -->
+    <span
+      class="absolute left-[60px] bg-base-300 text-base-content/70 px-3.5 py-2 rounded-lg text-xs font-medium whitespace-nowrap opacity-0 pointer-events-none -translate-x-2.5 transition-all duration-250 shadow-[0_4px_20px_rgba(0,0,0,0.3),0_0_0_1px_hsl(var(--bc)/0.1)]"
+      :class="{ 'opacity-100 translate-x-0': isHovered }">
+      <div
+        class="absolute left-[-5px] top-1/2 -translate-y-1/2 rotate-45 w-2.5 h-2.5 bg-base-300 border-l border-t border-base-content/10">
+      </div>
+      点击展开终端
+    </span>
   </div>
 </template>
 
 <style scoped>
-/* CSS Variables */
-.floating-ball {
-  --bg-primary: #0a0a0b;
-  --bg-secondary: #141417;
-  --bg-tertiary: #1c1c21;
-  --border-subtle: #2a2a32;
-  --text-primary: #e8e8ed;
-  --text-secondary: #6b6b76;
-  --accent-primary: #00ff88;
-  --accent-glow: rgba(0, 255, 136, 0.15);
-}
-
-.floating-ball {
-  width: 48px;
-  height: 48px;
-  background: linear-gradient(145deg, var(--bg-secondary), var(--bg-tertiary));
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  position: relative;
-  box-shadow:
-    0 4px 20px rgba(0, 0, 0, 0.5),
-    0 0 0 1px rgba(255, 255, 255, 0.05),
-    inset 0 1px 0 rgba(255, 255, 255, 0.05);
-  transition: box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-              transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  animation: float 3s ease-in-out infinite;
-}
-
-.floating-ball:hover {
-  transform: scale(1.08);
-  box-shadow:
-    0 8px 32px rgba(0, 255, 136, 0.2),
-    0 0 0 1px var(--accent-primary),
-    inset 0 1px 0 rgba(255, 255, 255, 0.1);
-}
-
-.floating-ball:active {
-  transform: scale(1);
-  transition: none;
-}
-
 @keyframes float {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-6px); }
-}
 
-/* Terminal icon inside ball */
-.ball-icon {
-  font-family: 'JetBrains Mono', 'Consolas', 'Monaco', monospace;
-  font-size: 16px;
-  font-weight: 600;
-  color: var(--accent-primary);
-  text-shadow: 0 0 20px var(--accent-glow);
-  transition: all 0.3s ease;
-}
+  0%,
+  100% {
+    transform: translateY(0);
+  }
 
-.floating-ball:hover .ball-icon {
-  text-shadow: 0 0 30px var(--accent-glow), 0 0 60px var(--accent-glow);
-}
-
-/* Pulse ring effect */
-.floating-ball::before {
-  content: '';
-  position: absolute;
-  inset: -4px;
-  border-radius: 50%;
-  border: 1px solid var(--accent-primary);
-  opacity: 0;
-  animation: pulse-ring 2s ease-out infinite;
+  50% {
+    transform: translateY(-6px);
+  }
 }
 
 @keyframes pulse-ring {
@@ -96,48 +88,23 @@ function handleClick() {
     transform: scale(0.8);
     opacity: 0.5;
   }
+
   100% {
     transform: scale(1.5);
     opacity: 0;
   }
 }
 
-/* Tooltip */
-.ball-tooltip {
-  position: absolute;
-  left: 60px;
-  background: var(--bg-tertiary);
-  color: var(--text-secondary);
-  padding: 8px 14px;
-  border-radius: 8px;
-  font-family: 'JetBrains Mono', 'Consolas', 'Monaco', monospace;
-  font-size: 11px;
-  font-weight: 500;
-  white-space: nowrap;
-  opacity: 0;
-  pointer-events: none;
-  transform: translateX(-10px);
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow:
-    0 4px 20px rgba(0, 0, 0, 0.4),
-    0 0 0 1px rgba(255, 255, 255, 0.05);
+.animate-float {
+  animation: float 3s ease-in-out infinite;
 }
 
-.ball-tooltip::before {
-  content: '';
-  position: absolute;
-  left: -5px;
-  top: 50%;
-  transform: translateY(-50%) rotate(45deg);
-  width: 10px;
-  height: 10px;
-  background: var(--bg-tertiary);
-  border-left: 1px solid rgba(255, 255, 255, 0.05);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+.animate-pulse-ring {
+  animation: pulse-ring 2s ease-out infinite;
 }
 
-.floating-ball:hover .ball-tooltip {
-  opacity: 1;
-  transform: translateX(0);
+/* Hover state for icon glow */
+.group:hover .icon-glow {
+  text-shadow: 0 0 30px hsl(var(--p)/0.3), 0 0 60px hsl(var(--p)/0.3);
 }
 </style>
