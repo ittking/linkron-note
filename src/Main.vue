@@ -139,11 +139,11 @@ onUnmounted(async () => {
 
 <template>
   <div class="iterm-root h-full flex flex-col overflow-hidden bg-transparent">
-    <!-- 主页内容 -->
-    <MainContent v-show="isMaximized" :on-minimize="minimizeWindow" class="w-full h-full bg-base-100" />
-
     <!-- 胶囊组件 -->
-    <Capsule v-show="!isMaximized" @expand="expandWindow" />
+    <Capsule v-show="isMaximized" @expand="expandWindow" />
+    
+    <!-- 主页内容 -->
+    <MainContent v-show="!isMaximized" :on-minimize="minimizeWindow" class="w-full h-full bg-base-100" />
   </div>
 
 </template>

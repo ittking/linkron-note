@@ -137,19 +137,92 @@ const hideMenu = () => {
 // 设置链接
 function setLink() {
   const previousUrl = props.editor.getAttributes('link').href
-  const url = window.prompt('请输入链接地址:', previousUrl)
-
-  // 取消操作
-  if (url === null) {
-    return
+  
+  // 创建对话框容器
+  const dialogContainer = document.createElement('div')
+  dialogContainer.className = 'fixed inset-0 z-[2000] flex items-center justify-center bg-black/50'
+  
+  dialogContainer.innerHTML = `
+    <div class="modal-box bg-base-200 border border-base-300 w-96">
+      <h3 class="font-bold text-lg text-base-content mb-4">设置链接</h3>
+      <input 
+        type="text" 
+        id="link-input" 
+        placeholder="请输入链接地址" 
+        value="${previousUrl || ''}"
+        class="input input-bordered w-full mb-4"
+        autocomplete="off"
+      />
+      <div class="modal-action">
+        <button id="link-cancel" class="btn btn-ghost text-base-content/60 hover:text-base-content">取消</button>
+        <button id="link-remove" class="btn btn-ghost text-error hover:text-error/80">移除链接</button>
+        <button id="link-confirm" class="btn btn-primary">确定</button>
+      </div>
+    </div>
+  `
+  
+  document.body.appendChild(dialogContainer)
+  
+  const input = dialogContainer.querySelector('#link-input')
+  const cancelBtn = dialogContainer.querySelector('#link-cancel')
+  const removeBtn = dialogContainer.querySelector('#link-remove')
+  const confirmBtn = dialogContainer.querySelector('#link-confirm')
+  
+  // 自动聚焦并选中所有文本
+  setTimeout(() => {
+    input.focus()
+    input.select()
+  }, 10)
+  
+  // 处理确定
+  const handleConfirm = () => {
+    const url = input.value.trim()
+    if (url === '') {
+      props.editor.chain().focus().unsetLink().run()
+    } else {
+      props.editor.chain().focus().setLink({ href: url }).run()
+    }
+    cleanup()
   }
-
-  // 空链接表示取消链接
-  if (url === '') {
+  
+  // 处理取消
+  const handleCancel = () => {
+    cleanup()
+  }
+  
+  // 处理移除链接
+  const handleRemove = () => {
     props.editor.chain().focus().unsetLink().run()
-  } else {
-    props.editor.chain().focus().setLink({ href: url }).run()
+    cleanup()
   }
+  
+  // 处理回车键
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      handleConfirm()
+    } else if (e.key === 'Escape') {
+      handleCancel()
+    }
+  }
+  
+  // 清理函数
+  const cleanup = () => {
+    dialogContainer.remove()
+    input.removeEventListener('keydown', handleKeyDown)
+  }
+  
+  // 绑定事件
+  confirmBtn.addEventListener('click', handleConfirm)
+  cancelBtn.addEventListener('click', handleCancel)
+  removeBtn.addEventListener('click', handleRemove)
+  input.addEventListener('keydown', handleKeyDown)
+  
+  // 点击背景关闭
+  dialogContainer.addEventListener('click', (e) => {
+    if (e.target === dialogContainer) {
+      handleCancel()
+    }
+  })
 }
 
 // 创建悬浮菜单
