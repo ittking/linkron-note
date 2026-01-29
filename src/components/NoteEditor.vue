@@ -473,24 +473,25 @@ const hasContent = computed(() => {
   // 如果正在卸载或编辑器未初始化或已销毁，返回 false
   if (isUnmounting.value || !editor.value || editor.value.isDestroyed) return false
 
-  // 检查是否有文本内容
-  const hasText = editor.value.getText().trim().length > 0
-
-  // 检查是否有图片
-  let hasImage = false
   try {
+    // 检查是否有文本内容
+    const hasText = editor.value.getText().trim().length > 0
+
+    // 检查是否有图片
+    let hasImage = false
     editor.value.state.doc.descendants((node) => {
       if (node.type.name === 'image') {
         hasImage = true
         return false // 找到图片后停止遍历
       }
     })
+
+    // 有文本或有图片都可以提交
+    return hasText || hasImage
   } catch {
     // 编辑器可能已被销毁，忽略错误
+    return false
   }
-
-  // 有文本或有图片都可以提交
-  return hasText || hasImage
 })
 
 // 工具栏操作

@@ -17,57 +17,65 @@ const isUnmounting = ref(false) // 标志：组件是否正在卸载
 
 // 检查选择是否在编辑器内
 const isSelectionInEditor = (view) => {
-  if (!view || !view.dom) return false
+  if (isUnmounting.value || !view || !view.dom) return false
 
-  const selection = window.getSelection()
-  if (!selection || selection.rangeCount === 0) {
+  try {
+    const selection = window.getSelection()
+    if (!selection || selection.rangeCount === 0) {
+      return false
+    }
+
+    const range = selection.getRangeAt(0)
+    const startNode = range.startContainer
+    const endNode = range.endContainer
+
+    // 检查选择范围的节点是否在编辑器 DOM 内
+    return view.dom.contains(startNode) || view.dom.contains(endNode)
+  } catch {
     return false
   }
-
-  const range = selection.getRangeAt(0)
-  const startNode = range.startContainer
-  const endNode = range.endContainer
-
-  // 检查选择范围的节点是否在编辑器 DOM 内
-  return view.dom.contains(startNode) || view.dom.contains(endNode)
 }
 
 // 检查是否有选中的文本
 const shouldShow = ({ view, state }) => {
   if (isUnmounting.value) return false
-  if (!state || !state.selection) {
+  if (!view || !view.dom || !state || !state.selection) {
     return false
   }
 
-  const { selection } = state
-  const { empty } = selection
+  try {
+    const { selection } = state
+    const { empty } = selection
 
-  // 空选择不显示
-  if (empty) {
+    // 空选择不显示
+    if (empty) {
+      return false
+    }
+
+    // 获取选中文本
+    const selectedText = state.doc.textBetween(selection.from, selection.to)
+
+    // 检查选中文本长度，至少需要 2 个字符才显示菜单
+    if (selectedText.length < 2) {
+      return false
+    }
+
+    // 检查选中文本是否在代码块中
+    const { $from } = state.selection
+    // 检查父节点是否是代码块
+    let node = $from.node($from.depth)
+    if (node && node.type.name === 'codeBlock') {
+      return false
+    }
+    // 检查标记中是否包含代码标记
+    if ($from.marks().some(mark => mark.type.name === 'code')) {
+      return false
+    }
+
+    return true
+  } catch {
     return false
   }
-
-  // 获取选中文本
-  const selectedText = state.doc.textBetween(selection.from, selection.to)
-
-  // 检查选中文本长度，至少需要 2 个字符才显示菜单
-  if (selectedText.length < 2) {
-    return false
-  }
-
-  // 检查选中文本是否在代码块中
-  const { $from } = state.selection
-  // 检查父节点是否是代码块
-  let node = $from.node($from.depth)
-  if (node && node.type.name === 'codeBlock') {
-    return false
-  }
-  // 检查标记中是否包含代码标记
-  if ($from.marks().some(mark => mark.type.name === 'code')) {
-    return false
-  }
-
-  return true
 }
 
 // 更新按钮状态
@@ -94,7 +102,7 @@ const showMenu = () => {
 
   try {
     const { view, state } = props.editor
-    if (view && state && shouldShow({ view, state })) {
+    if (view && view.dom && state && shouldShow({ view, state })) {
       tippyInstance.value.show()
       updateButtonStates()
     }
@@ -105,12 +113,12 @@ const showMenu = () => {
 
 // 隐藏菜单
 const hideMenu = () => {
-  if (!isUnmounting.value && tippyInstance.value) {
-    try {
-      tippyInstance.value.hide()
-    } catch {
-      // 忽略错误
-    }
+  if (isUnmounting.value || !tippyInstance.value) return
+
+  try {
+    tippyInstance.value.hide()
+  } catch {
+    // 忽略错误
   }
 }
 
@@ -198,20 +206,32 @@ function createSelectionMenu() {
     placement: 'top',
     appendTo: appendTarget,
     getReferenceClientRect: () => {
-      const { view, state } = props.editor
-      const { selection } = state
+      if (isUnmounting.value || !props.editor || props.editor.isDestroyed) {
+        return { left: 0, right: 0, top: 0, bottom: 0, width: 0, height: 0 }
+      }
 
-      // 获取选中文本的坐标
-      const coords = view.coordsAtPos(selection.from)
-      const endCoords = view.coordsAtPos(selection.to)
+      try {
+        const { view, state } = props.editor
+        if (!view || !state || !state.selection) {
+          return { left: 0, right: 0, top: 0, bottom: 0, width: 0, height: 0 }
+        }
 
-      return {
-        left: coords.left + (endCoords.left - coords.left) / 2 - 50,
-        right: coords.right,
-        top: coords.top,
-        bottom: coords.top,
-        width: 100,
-        height: 0,
+        const { selection } = state
+
+        // 获取选中文本的坐标
+        const coords = view.coordsAtPos(selection.from)
+        const endCoords = view.coordsAtPos(selection.to)
+
+        return {
+          left: coords.left + (endCoords.left - coords.left) / 2 - 50,
+          right: coords.right,
+          top: coords.top,
+          bottom: coords.top,
+          width: 100,
+          height: 0,
+        }
+      } catch {
+        return { left: 0, right: 0, top: 0, bottom: 0, width: 0, height: 0 }
       }
     },
     duration: [200, 100],
@@ -236,7 +256,7 @@ function setupEditorListeners(newEditor) {
 
       try {
         const { view, state } = newEditor
-        if (view && state && shouldShow({ view, state })) {
+        if (view && view.dom && state && shouldShow({ view, state })) {
           tippyInstance.value.show()
         } else {
           tippyInstance.value.hide()
@@ -251,7 +271,7 @@ function setupEditorListeners(newEditor) {
       if (isUnmounting.value || !tippyInstance.value) return
 
       try {
-        if (view && state && shouldShow({ view, state })) {
+        if (view && view.dom && state && shouldShow({ view, state })) {
           tippyInstance.value.show()
         } else {
           tippyInstance.value.hide()
