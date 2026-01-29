@@ -274,7 +274,7 @@ defineExpose({
       </div>
 
       <!-- 展开/收起按钮 -->
-      <div class="relative">
+      <div class="relative select-none">
         <div v-if="!isExpanded && isOverflowing"
           class="absolute -top-15 left-0 right-0 h-15 bg-gradient-to-b from-transparent to-base-100 pointer-events-none">
         </div>
