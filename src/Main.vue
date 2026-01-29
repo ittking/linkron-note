@@ -5,12 +5,10 @@ import { useWindowThrough } from './composable/useWindowThrough'
 import MainContent from './components/MainContent.vue'
 import { useSettingStore } from './store/settingStore'
 import { useNoteStore } from './store/noteStore'
-import { useConfig } from './store/configStore'
 import Capsule from './components/Capsule.vue'
 
 const settingStore = useSettingStore()
 const noteStore = useNoteStore()
-const configStore = useConfig()
 const { register, unregister } = useWindowThrough()
 const appWindow = getCurrentWindow()
 const isMaximized = ref(true)
@@ -80,13 +78,11 @@ async function setupWindowResizeListener() {
 
 // 最小化窗口
 async function minimizeWindow() {
-  await configStore.toggleMaximized()
   isMaximized.value = false
 }
 
 // 展开窗口
 async function expandWindow() {
-  await configStore.toggleMaximized()
   isMaximized.value = true
 }
 
@@ -127,10 +123,6 @@ onMounted(async () => {
 
     // 设置窗口大小变化监听
     await setupWindowResizeListener()
-
-    // 初始化配置存储
-    await configStore.initConfig()
-    isMaximized.value = configStore.isMaximized.value
 
     // 注册穿透监听
     await register()
