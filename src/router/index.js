@@ -28,6 +28,12 @@ const routes = [
     name: 'setting',
     component: () => import('@/views/Setting.vue'),
     meta: { title: '设置', keepAlive: true }
+  },
+  {
+    path: '/floating',
+    name: 'Floating',
+    component: () => import('@/views/Floating.vue'),
+    meta: { title: '悬浮球', keepAlive: false }
   }
 ]
 

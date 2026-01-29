@@ -13,6 +13,7 @@
     "windows": [
       {
         "title": "iterm",
+        "label": "main",
         "width": 360,
         "height": 680,
         "minHeight": 680,
@@ -25,6 +26,27 @@
         "alwaysOnTop": true,
         "decorations": false,
         "dragDropEnabled": false
+      },
+      {
+        "title": "Floating Ball",
+        "label": "floating",
+        "url": "/floating",
+        "width": 100,
+        "height": 100,
+        "minWidth": 100,
+        "minHeight": 100,
+        "x": 100,
+        "y": 100,
+        "center": false,
+        "shadow": false,
+        "skipTaskbar": true,
+        "transparent": true,
+        "hiddenTitle": true,
+        "alwaysOnTop": true,
+        "decorations": false,
+        "dragDropEnabled": false,
+        "resizable": false,
+        "visible": true
       }
     ],
     "security": {

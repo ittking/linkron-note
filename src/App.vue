@@ -91,30 +91,37 @@ function isActive(path) {
 }
 
 onMounted(async () => {
-  // 应用启动时加载并应用主题
-  try {
-    const theme = await settingStore.get('theme', 'light')
-    // 由于使用了命名空间 #iterm-panel，data-theme 需要设置在这个元素上
-    const itermPanel = document.getElementById('iterm-panel')
-    if (itermPanel) {
-      itermPanel.setAttribute('data-theme', theme)
+  // 获取当前窗口标签
+  const currentWindow = getCurrentWindow()
+  const windowLabel = currentWindow.label
+
+  // 只在主窗口中执行初始化操作
+  if (windowLabel === 'main') {
+    // 应用启动时加载并应用主题
+    try {
+      const theme = await settingStore.get('theme', 'light')
+      // 由于使用了命名空间 #iterm-panel，data-theme 需要设置在这个元素上
+      const itermPanel = document.getElementById('iterm-panel')
+      if (itermPanel) {
+        itermPanel.setAttribute('data-theme', theme)
+      }
+    } catch (error) {
+      console.error('Failed to load theme:', error)
     }
-  } catch (error) {
-    console.error('Failed to load theme:', error)
+
+    // 初始化数据库
+    try {
+      await noteStore.initDatabase()
+    } catch (error) {
+      console.error('Failed to init database:', error)
+    }
+
+    // 恢复窗口大小
+    await restoreWindowSize()
+
+    // 设置窗口大小变化监听
+    await setupWindowResizeListener()
   }
-
-  // 初始化数据库
-  try {
-    await noteStore.initDatabase()
-  } catch (error) {
-    console.error('Failed to init database:', error)
-  }
-
-  // 恢复窗口大小
-  await restoreWindowSize()
-
-  // 设置窗口大小变化监听
-  await setupWindowResizeListener()
 })
 
 // 组件卸载时清理监听器
