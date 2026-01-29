@@ -65,6 +65,7 @@ const images = ref([])
 const deletedImages = ref([]) // 追踪编辑模式下被删除的图片
 const workDirectoryCache = ref(null) // 工作目录缓存
 const isSettingContent = ref(false) // 标志：是否正在从外部设置内容
+const isUnmounting = ref(false) // 标志：组件是否正在卸载
 
 // 监听 props.images 变化，同步到本地状态
 watch(() => props.images, (newImages) => {
@@ -97,17 +98,15 @@ onMounted(() => {
 
 // 组件卸载时销毁编辑器实例，避免内存泄漏
 onBeforeUnmount(() => {
+  isUnmounting.value = true
   // 安全销毁编辑器，避免在过渡动画中 DOM 已被移除时报错
   try {
     if (editor.value && !editor.value.isDestroyed) {
-      // 检查编辑器视图是否仍然可用
-      if (editor.value.view && editor.value.view.dom) {
-        editor.value.destroy()
-      }
+      editor.value.destroy()
     }
   } catch (error) {
     // 忽略销毁过程中的错误，通常发生在过渡动画中 DOM 已被移除
-    console.warn('Editor cleanup warning:', error.message)
+    // 静默处理，不打印警告
   }
 })
 
@@ -453,33 +452,43 @@ watch(() => settingStore.$state, () => {
 
 // 监听 modelValue 变化
 watch(() => props.modelValue, (newValue) => {
+  // 如果正在卸载，不处理
+  if (isUnmounting.value) return
+
   // 如果编辑器已初始化且内容不同，则更新
-  if (editor.value && newValue && newValue !== editor.value.getHTML()) {
+  if (editor.value && !editor.value.isDestroyed && newValue && newValue !== editor.value.getHTML()) {
     isSettingContent.value = true
     editor.value.commands.setContent(newValue, false)
     // 稍后重置标志
     setTimeout(() => {
-      isSettingContent.value = false
+      if (!isUnmounting.value) {
+        isSettingContent.value = false
+      }
     }, 0)
   }
 })
 
 // 计算是否有内容
 const hasContent = computed(() => {
-  if (!editor.value) return false
-  
+  // 如果正在卸载或编辑器未初始化或已销毁，返回 false
+  if (isUnmounting.value || !editor.value || editor.value.isDestroyed) return false
+
   // 检查是否有文本内容
   const hasText = editor.value.getText().trim().length > 0
-  
+
   // 检查是否有图片
   let hasImage = false
-  editor.value.state.doc.descendants((node) => {
-    if (node.type.name === 'image') {
-      hasImage = true
-      return false // 找到图片后停止遍历
-    }
-  })
-  
+  try {
+    editor.value.state.doc.descendants((node) => {
+      if (node.type.name === 'image') {
+        hasImage = true
+        return false // 找到图片后停止遍历
+      }
+    })
+  } catch {
+    // 编辑器可能已被销毁，忽略错误
+  }
+
   // 有文本或有图片都可以提交
   return hasText || hasImage
 })

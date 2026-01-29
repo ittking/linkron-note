@@ -1,15 +1,17 @@
 <script setup>
-import { onMounted, onUnmounted, ref } from 'vue'
+import { onMounted, onUnmounted, ref, watch } from 'vue'
+import { getCurrentWindow, LogicalSize } from '@tauri-apps/api/window'
+import { useWindowThrough } from './composable/useWindowThrough'
+import MainContent from './components/MainContent.vue'
 import { useSettingStore } from './store/settingStore'
 import { useNoteStore } from './store/noteStore'
 import { useConfig } from './store/configStore'
-import MainContent from './components/MainContent.vue'
 import Capsule from './components/Capsule.vue'
-import { getCurrentWindow, LogicalSize } from '@tauri-apps/api/window'
 
 const settingStore = useSettingStore()
 const noteStore = useNoteStore()
 const configStore = useConfig()
+const { register, unregister } = useWindowThrough()
 const appWindow = getCurrentWindow()
 const isMaximized = ref(true)
 
@@ -88,6 +90,17 @@ async function expandWindow() {
   isMaximized.value = true
 }
 
+// 监听窗口状态变化，控制穿透监听
+watch(isMaximized, async (newValue) => {
+  if (!newValue) {
+    // 胶囊状态：启动穿透监听
+    await register()
+  } else {
+    // 主页状态：停止穿透监听
+    await unregister()
+  }
+})
+
 onMounted(async () => {
   // 获取当前窗口标签
   const currentWindow = getCurrentWindow()
@@ -126,10 +139,12 @@ onMounted(async () => {
 })
 
 // 组件卸载时清理监听器
-onUnmounted(() => {
+onUnmounted(async () => {
   if (unlistenResize) {
     unlistenResize()
   }
+  // 清理穿透监听
+  await unregister()
 })
 </script>
 

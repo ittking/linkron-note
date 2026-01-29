@@ -13,9 +13,12 @@ const props = defineProps({
 const tippyInstance = ref(null)
 const referenceElement = ref(null)
 const globalMouseUpHandler = ref(null)
+const isUnmounting = ref(false) // 标志：组件是否正在卸载
 
 // 检查选择是否在编辑器内
 const isSelectionInEditor = (view) => {
+  if (!view || !view.dom) return false
+
   const selection = window.getSelection()
   if (!selection || selection.rangeCount === 0) {
     return false
@@ -31,6 +34,7 @@ const isSelectionInEditor = (view) => {
 
 // 检查是否有选中的文本
 const shouldShow = ({ view, state }) => {
+  if (isUnmounting.value) return false
   if (!state || !state.selection) {
     return false
   }
@@ -86,19 +90,27 @@ const updateButtonStates = () => {
 
 // 显示菜单
 const showMenu = () => {
-  if (tippyInstance.value && props.editor) {
+  if (isUnmounting.value || !tippyInstance.value || !props.editor || props.editor.isDestroyed) return
+
+  try {
     const { view, state } = props.editor
     if (view && state && shouldShow({ view, state })) {
       tippyInstance.value.show()
       updateButtonStates()
     }
+  } catch {
+    // 忽略错误，可能编辑器已销毁
   }
 }
 
 // 隐藏菜单
 const hideMenu = () => {
-  if (tippyInstance.value) {
-    tippyInstance.value.hide()
+  if (!isUnmounting.value && tippyInstance.value) {
+    try {
+      tippyInstance.value.hide()
+    } catch {
+      // 忽略错误
+    }
   }
 }
 
@@ -208,57 +220,71 @@ function createSelectionMenu() {
 
 // 设置编辑器监听
 function setupEditorListeners(newEditor) {
-  if (!newEditor) return
+  if (!newEditor || isUnmounting.value) return
 
   // 等待编辑器完全初始化
   setTimeout(() => {
+    if (isUnmounting.value) return
+
     createSelectionMenu()
 
     const view = newEditor.view
 
     // 监听所有事务变化
     newEditor.on('update', ({ transaction }) => {
-      if (tippyInstance.value) {
+      if (isUnmounting.value || !tippyInstance.value) return
+
+      try {
         const { view, state } = newEditor
         if (view && state && shouldShow({ view, state })) {
           tippyInstance.value.show()
         } else {
           tippyInstance.value.hide()
         }
+      } catch {
+        // 忽略错误，可能编辑器已销毁
       }
     })
 
     // 同时监听选择变化事件
     newEditor.on('selectionUpdate', ({ view, state }) => {
-      if (tippyInstance.value && view && state) {
-        if (shouldShow({ view, state })) {
+      if (isUnmounting.value || !tippyInstance.value) return
+
+      try {
+        if (view && state && shouldShow({ view, state })) {
           tippyInstance.value.show()
         } else {
           tippyInstance.value.hide()
         }
+      } catch {
+        // 忽略错误，可能编辑器已销毁
       }
     })
 
     // 监听视图的鼠标选择事件（编辑器内）
     view.dom.addEventListener('mouseup', () => {
+      if (isUnmounting.value) return
       setTimeout(() => {
-        showMenu()
+        if (!isUnmounting.value) showMenu()
       }, 10)
     })
 
     // 监听键盘 Shift 键选择
     view.dom.addEventListener('keyup', (e) => {
+      if (isUnmounting.value) return
       if (e.shiftKey) {
         setTimeout(() => {
-          showMenu()
+          if (!isUnmounting.value) showMenu()
         }, 10)
       }
     })
 
     // 添加全局 mouseup 监听器，捕获在编辑器外抬起鼠标的情况
     globalMouseUpHandler.value = (e) => {
+      if (isUnmounting.value) return
       // 延迟检查，确保选择已经更新
       setTimeout(() => {
+        if (isUnmounting.value) return
         // 检查选择是否在编辑器内
         if (isSelectionInEditor(view)) {
           showMenu()
@@ -280,6 +306,8 @@ watch(() => props.editor, (newEditor) => {
 
 // 组件卸载时清理 tippy 实例
 onBeforeUnmount(() => {
+  isUnmounting.value = true
+
   // 移除全局 mouseup 监听器
   if (globalMouseUpHandler.value) {
     document.removeEventListener('mouseup', globalMouseUpHandler.value, { capture: true })
@@ -287,11 +315,19 @@ onBeforeUnmount(() => {
   }
 
   if (tippyInstance.value) {
-    tippyInstance.value.destroy()
+    try {
+      tippyInstance.value.destroy()
+    } catch {
+      // 忽略销毁错误
+    }
     tippyInstance.value = null
   }
   if (referenceElement.value) {
-    referenceElement.value.remove()
+    try {
+      referenceElement.value.remove()
+    } catch {
+      // 忽略移除错误
+    }
     referenceElement.value = null
   }
 })
