@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref, onMounted, onBeforeUnmount, watch } from 'vue'
+import { computed, ref, onMounted, onBeforeUnmount, watch, nextTick } from 'vue'
 import { MoreHorizontal, Edit, Trash2, ChevronDown, ChevronUp } from 'lucide-vue-next'
 import { useEditor, EditorContent } from '@tiptap/vue-3'
 import { openUrl } from '@tauri-apps/plugin-opener'
@@ -128,10 +128,7 @@ watch([editor, () => props.note.content], ([newEditor, newContent]) => {
   if (newEditor && newContent && newContent !== newEditor.getHTML()) {
     newEditor.commands.setContent(newContent, false)
   }
-  if (newEditor) {
-    setTimeout(checkOverflow, 200)
-  }
-})
+}, { immediate: true })
 
 // 格式化日期
 const formattedDate = computed(() => {
@@ -143,8 +140,20 @@ const formattedDate = computed(() => {
 function checkOverflow() {
   if (!contentRef.value || !editor.value) return
 
-  const scrollHeight = contentRef.value.scrollHeight
-  isOverflowing.value = scrollHeight > MAX_HEIGHT
+  // 等待 DOM 完全渲染
+  nextTick(() => {
+    if (!contentRef.value) return
+
+    const scrollHeight = contentRef.value.scrollHeight
+
+    // 如果 scrollHeight 为 0，说明元素还没有渲染，延迟后再检查
+    if (scrollHeight === 0) {
+      setTimeout(checkOverflow, 100)
+      return
+    }
+
+    isOverflowing.value = scrollHeight > MAX_HEIGHT
+  })
 }
 
 // 切换展开/收起
@@ -206,6 +215,11 @@ function handleClickOutside() {
 
 onMounted(() => {
   document.addEventListener('click', handleClickOutside)
+  // 组件挂载后检查溢出状态
+  nextTick(() => {
+    setTimeout(checkOverflow, 100)
+    setTimeout(checkOverflow, 300)
+  })
 })
 
 onBeforeUnmount(() => {
