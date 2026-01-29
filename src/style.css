@@ -14,7 +14,7 @@
 html,
 body,
 #app {
-  @apply h-full;
+  @apply h-full w-full;
 }
 
 /* 隐藏滚动条但保持滚动功能 */

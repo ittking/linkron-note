@@ -1,5 +1,7 @@
 import { ref, nextTick } from "vue";
 import { getCurrentWindow } from "@tauri-apps/api/window";
+import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 
 /**
  * 窗口穿透管理器
@@ -34,8 +36,6 @@ export function useWindowThrough() {
       
       windowPosition.value = { x: pos.x, y: pos.y };
       scaleFactor.value = scale;
-      
-      console.log('窗口信息:', { position: windowPosition.value, scaleFactor: scale });
     } catch (error) {
       console.error("获取窗口信息失败:", error);
     }
@@ -121,11 +121,7 @@ export function useWindowThrough() {
         bounds,
         id,
       });
-
-      console.log(`注册穿透监听元素: ${id}`, bounds);
     });
-
-    console.log(`共注册 ${registeredElements.value.size} 个穿透监听元素`);
   }
 
   /**
@@ -148,7 +144,6 @@ export function useWindowThrough() {
     for (const [id, data] of registeredElements.value) {
       if (isMouseInBounds(x, y, data.bounds)) {
         inAnyElement = true;
-        console.log(`鼠标在元素 ${id} 范围内: (${x}, ${y})`);
         break;
       }
     }
@@ -164,18 +159,13 @@ export function useWindowThrough() {
    */
   async function startListening() {
     if (isListening.value) {
-      console.warn("窗口穿透监听已经在运行");
       return;
     }
 
     try {
-      // 获取窗口信息（位置和缩放比例）
       await updateWindowInfo();
-      
-      // 启动后端鼠标监听
       await invoke("start_mouse_listener");
 
-      // 监听鼠标移动事件
       unlistenFn.value = await listen("mouse-event", (event) => {
         if (event.payload.event_type === "Move") {
           handleMouseMove(event);
@@ -183,7 +173,6 @@ export function useWindowThrough() {
       });
 
       isListening.value = true;
-      console.log("窗口穿透监听已启动");
     } catch (error) {
       console.error("启动窗口穿透监听失败:", error);
     }
@@ -198,17 +187,14 @@ export function useWindowThrough() {
     }
 
     try {
-      // 停止后端鼠标监听
       await invoke("stop_mouse_listener");
 
-      // 取消前端事件监听
       if (unlistenFn.value) {
         unlistenFn.value();
         unlistenFn.value = null;
       }
 
       isListening.value = false;
-      console.log("窗口穿透监听已停止");
     } catch (error) {
       console.error("停止窗口穿透监听失败:", error);
     }
@@ -277,22 +263,17 @@ export function useWindowThrough() {
         }
       });
 
-      // 如果需要重新扫描
       if (needsRescan) {
-        console.log('检测到 DOM 变化，重新扫描元素');
         scanThroughElements();
       }
     });
 
-    // 开始观察整个文档
     mutationObserver.value.observe(document.body, {
       attributes: true,
       attributeFilter: ['through-listener'],
       childList: true,
       subtree: true,
     });
-
-    console.log('MutationObserver 已启动');
   }
 
   /**
@@ -302,7 +283,6 @@ export function useWindowThrough() {
     if (mutationObserver.value) {
       mutationObserver.value.disconnect();
       mutationObserver.value = null;
-      console.log('MutationObserver 已停止');
     }
   }
 
