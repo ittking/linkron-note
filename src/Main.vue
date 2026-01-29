@@ -98,16 +98,16 @@ onMounted(async () => {
   // 只在主窗口中执行初始化操作
   if (windowLabel === 'main') {
     // 应用启动时加载并应用主题
-      try {
-        const theme = await settingStore.get('theme', 'light')
-        // 由于使用了命名空间 .iterm-root，data-theme 需要设置在这个元素上
-        const itermPanel = document.querySelector('.iterm-root')
-        if (itermPanel) {
-          itermPanel.setAttribute('data-theme', theme)
-        }
-      } catch (error) {
-        console.error('Failed to load theme:', error)
+    try {
+      const theme = await settingStore.get('theme', 'light')
+      // 由于使用了命名空间 .iterm-root，data-theme 需要设置在这个元素上
+      const itermPanel = document.querySelector('.iterm-root')
+      if (itermPanel) {
+        itermPanel.setAttribute('data-theme', theme)
       }
+    } catch (error) {
+      console.error('Failed to load theme:', error)
+    }
     // 初始化数据库
     try {
       await noteStore.initDatabase()
@@ -135,8 +135,8 @@ onUnmounted(() => {
   <div class="iterm-root h-full">
     <main class="h-full bg-base-100 flex flex-col overflow-hidden border border-base-300">
       <!-- 顶部控制栏 -->
-      <div class="select-none h-9 border-b border-base-300 flex items-center justify-between px-3 flex-shrink-0"
-        data-tauri-drag-region>
+      <div data-tauri-drag-region
+        class="select-none h-9 border-b border-base-300 flex items-center justify-between px-3 flex-shrink-0">
         <!-- 左侧：终端图标和名称 -->
         <div class="flex items-center gap-2">
           <Terminal :size="16" class="text-primary" data-tauri-drag-region />
