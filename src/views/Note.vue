@@ -563,7 +563,7 @@ function handleCancelEdit() {
         <div ref="editorContainerRef" class="px-4 py-3 relative">
             <!-- 编辑器拖拽遮罩 -->
             <div v-if="isDragging"
-                class="absolute inset-0 bg-primary/20 border-2 border-dashed border-primary flex flex-col items-center justify-center z-10 transition-opacity duration-200 pointer-events-none">
+                class="absolute inset-0 bg-primary/2 border-2 border-dashed border-primary flex flex-col items-center justify-center z-10 transition-opacity duration-200 pointer-events-none">
                 <Download :size="32" class="text-primary mb-3 animate-bounce" />
                 <div class="text-sm font-medium text-primary mb-1">释放以添加到编辑器</div>
                 <div class="text-xs text-base-content/60">支持链接、文档、文字</div>
@@ -586,7 +586,7 @@ function handleCancelEdit() {
         <div class="flex-1 overflow-hidden relative">
             <!-- 笔记列表拖拽遮罩 -->
             <div v-if="isDragging"
-                class="absolute inset-0 bg-primary/20 border-2 border-dashed border-primary flex flex-col items-center justify-center z-10 transition-opacity duration-200 pointer-events-none">
+                class="absolute inset-0 bg-primary/2 border-2 border-dashed border-primary flex flex-col items-center justify-center z-10 transition-opacity duration-200 pointer-events-none">
                 <Download :size="48" class="text-primary mb-4 animate-bounce" />
                 <div class="text-base font-medium text-primary mb-2">释放以创建笔记</div>
                 <div class="text-sm text-base-content/60">支持链接、文档（md、txt）、文字</div>

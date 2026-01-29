@@ -345,6 +345,18 @@ const editor = useEditor({
     attributes: {
       class: 'prose prose-sm max-w-none focus:outline-none py-2 text-sm',
     },
+    handleDragOver: (view, event) => {
+      // 阻止默认的拖拽行为，防止 TipTap 自动处理拖拽
+      event.preventDefault()
+      return true
+    },
+    handleDrop: (view, event, slice, moved) => {
+      // 阻止默认的 drop 行为，防止 TipTap 自动插入拖拽的内容
+      // 所有拖拽操作都由父组件 Note.vue 的 handleDrop 统一处理
+      event.preventDefault()
+      // 不阻止事件冒泡，让父组件能够接收 drop 事件并重置拖拽状态
+      return true
+    },
     handlePaste: (view, event, slice) => {
       // 获取粘贴的数据
       const items = Array.from(event.clipboardData?.items || [])
