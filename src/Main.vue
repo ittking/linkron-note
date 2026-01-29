@@ -11,7 +11,6 @@ const settingStore = useSettingStore()
 const noteStore = useNoteStore()
 const configStore = useConfig()
 const appWindow = getCurrentWindow()
-
 const isMaximized = ref(true)
 
 // 防抖函数
