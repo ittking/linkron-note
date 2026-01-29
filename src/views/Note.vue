@@ -289,7 +289,10 @@ function handleDrop(e) {
         return
     }
 
-    const textData = e.dataTransfer.getData('text/uri-list') || e.dataTransfer.getData('text/plain')
+    // 尝试获取不同类型的文本数据
+    const uriListData = e.dataTransfer.getData('text/uri-list')
+    const plainTextData = e.dataTransfer.getData('text/plain')
+    const textData = uriListData || plainTextData
 
     if (textData) {
         if (dropInEditor) {
@@ -305,10 +308,6 @@ async function processFile(file, target = 'note') {
     const workDirectory = await getWorkDirectory()
 
     if (isUrlFile(file.name)) {
-        if (target === 'editor') {
-            showToast('请将 .url 文件拖拽到笔记列表创建笔记', 'info')
-            return null
-        }
         // 处理 .url 文件
         try {
             isProcessing.value = true
@@ -351,7 +350,20 @@ async function handleFileToEditor(file) {
     if (!result) return
 
     if (result.type === 'url') {
-        await createLinkNote(result.url)
+        // .url 文件提取的 URL，爬取内容到编辑器
+        try {
+            isProcessing.value = true
+            const { content, images } = await scrapeWebPage(result.url)
+            editorContent.value += (editorContent.value ? '<br>' : '') + content
+            if (images && images.length > 0 && noteEditorRef.value?.addImages) {
+                noteEditorRef.value.addImages(images)
+            }
+            showToast('网页内容已添加到编辑器', 'success')
+        } catch (error) {
+            showToast('网页抓取失败: ' + error.message, 'error')
+        } finally {
+            isProcessing.value = false
+        }
         return
     }
 
@@ -368,11 +380,15 @@ async function handleDataToEditor(data) {
         try {
             isProcessing.value = true
             const { content, images } = await scrapeWebPage(data)
-            editorContent.value += (editorContent.value ? '<br>' : '') + content
-            if (images && images.length > 0 && noteEditorRef.value?.addImages) {
-                noteEditorRef.value.addImages(images)
+            if (content) {
+                editorContent.value += (editorContent.value ? '<br>' : '') + content
+                if (images && images.length > 0 && noteEditorRef.value?.addImages) {
+                    noteEditorRef.value.addImages(images)
+                }
+                showToast('网页内容已添加到编辑器', 'success')
+            } else {
+                showToast('网页内容为空', 'error')
             }
-            showToast('网页内容已添加到编辑器', 'success')
         } catch (error) {
             showToast('网页抓取失败: ' + error.message, 'error')
         } finally {
