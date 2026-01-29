@@ -37,8 +37,8 @@ onMounted(async () => {
     temp.style.color = `var(${varName})`
     temp.style.display = 'none'
 
-    // 由于使用了命名空间，需要将临时元素添加到 #iterm-root 内部
-    const itermPanel = document.getElementById('iterm-root')
+    // 由于使用了命名空间，需要将临时元素添加到 .iterm-root 内部
+    const itermPanel = document.querySelector('.iterm-root')
     if (itermPanel) {
       itermPanel.appendChild(temp)
     } else {
@@ -103,8 +103,8 @@ onMounted(async () => {
     updateTerminalTheme()
   })
 
-  // 监听 #iterm-root 元素的 data-theme 属性变化
-  const itermPanel = document.getElementById('iterm-root')
+  // 监听 .iterm-root 元素的 data-theme 属性变化
+  const itermPanel = document.querySelector('.iterm-root')
   if (itermPanel) {
     observer.observe(itermPanel, {
       attributes: true,

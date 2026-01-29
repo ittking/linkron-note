@@ -72,8 +72,8 @@ async function changeTheme(theme) {
 
 // 应用主题
 function applyTheme(theme) {
-  // 由于使用了命名空间 #iterm-root，data-theme 需要设置在这个元素上
-  const itermPanel = document.getElementById('iterm-root')
+  // 由于使用了命名空间 .iterm-root，data-theme 需要设置在这个元素上
+  const itermPanel = document.querySelector('.iterm-root')
   if (itermPanel) {
     itermPanel.setAttribute('data-theme', theme)
   }

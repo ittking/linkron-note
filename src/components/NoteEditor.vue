@@ -207,8 +207,8 @@ const editor = useEditor({
               component = document.createElement('div')
               component.className = 'bg-base-100 border border-base-200 rounded-lg shadow-xl max-h-60 overflow-y-auto no-scrollbar p-2'
 
-              // 获取 #iterm-root 元素，确保标签建议框在命名空间内
-              const itermPanel = document.getElementById('iterm-root')
+              // 获取 .iterm-root 元素，确保标签建议框在命名空间内
+              const itermPanel = document.querySelector('.iterm-root')
               const appendTarget = itermPanel || document.body
 
               // 使用正确的虚拟定位方式
