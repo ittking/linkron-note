@@ -5,7 +5,6 @@ import { BookOpen, Terminal, Settings, CheckSquare, Minimize2 } from 'lucide-vue
 import { useSettingStore } from './store/settingStore'
 import { useNoteStore } from './store/noteStore'
 import { getCurrentWindow, LogicalSize } from '@tauri-apps/api/window'
-import FloatingBall from '@/components/FloatingBall.vue'
 
 const settingStore = useSettingStore()
 const noteStore = useNoteStore()
@@ -134,7 +133,6 @@ onUnmounted(() => {
 
 <template>
   <div class="iterm-root h-full flex flex-col">
-    <FloatingBall />
     <main class="h-full bg-base-100 flex flex-col overflow-hidden border border-base-300">
       <!-- 顶部控制栏 -->
       <div data-tauri-drag-region
