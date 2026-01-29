@@ -72,11 +72,10 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div ref="capsuleElement" class="absolute top-0 right-0 z-[1000]">
-    <div
-      through-listener="true"
+  <div data-tauri-drag-region ref="capsuleElement" class="absolute top-0 right-0 z-[1000]">
+    <div data-tauri-drag-region through-listener="true"
       class="flex items-center gap-2 p-1 bg-base-100 border border-base-300 bg-base-100/50 rounded-full shadow-lg backdrop-blur select-none">
-      <div class="flex items-center gap-2 text-xs text-base-content pl-2">
+      <div data-tauri-drag-region class="flex items-center gap-2 text-xs text-base-content pl-2">
         <span data-tauri-drag-region class="font-semibold text-primary">{{ currentDate }}</span>
         <div data-tauri-drag-region class="flex flex-col items-center text-base-content/70 scale-80">
           <span data-tauri-drag-region>{{ currentDay }}</span>
