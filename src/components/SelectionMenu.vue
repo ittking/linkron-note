@@ -175,8 +175,8 @@ function createSelectionMenu() {
   document.body.appendChild(reference)
 
   // 创建 Tippy 实例
-  // 获取 #iterm-panel 元素，确保悬浮菜单在命名空间内
-  const itermPanel = document.getElementById('iterm-panel')
+  // 获取 #iterm-root 元素，确保悬浮菜单在命名空间内
+  const itermPanel = document.getElementById('iterm-root')
   const appendTarget = itermPanel || document.body
 
   tippyInstance.value = tippy(reference, {

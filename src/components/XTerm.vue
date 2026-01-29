@@ -37,12 +37,12 @@ onMounted(async () => {
     temp.style.color = `var(${varName})`
     temp.style.display = 'none'
 
-    // 由于使用了命名空间，需要将临时元素添加到 #iterm-panel 内部
-    const itermPanel = document.getElementById('iterm-panel')
+    // 由于使用了命名空间，需要将临时元素添加到 #iterm-root 内部
+    const itermPanel = document.getElementById('iterm-root')
     if (itermPanel) {
       itermPanel.appendChild(temp)
     } else {
-      // 如果找不到 iterm-panel，降级到 body
+      // 如果找不到 iterm-root，降级到 body
       document.body.appendChild(temp)
     }
 
@@ -103,8 +103,8 @@ onMounted(async () => {
     updateTerminalTheme()
   })
 
-  // 监听 #iterm-panel 元素的 data-theme 属性变化
-  const itermPanel = document.getElementById('iterm-panel')
+  // 监听 #iterm-root 元素的 data-theme 属性变化
+  const itermPanel = document.getElementById('iterm-root')
   if (itermPanel) {
     observer.observe(itermPanel, {
       attributes: true,

@@ -100,8 +100,8 @@ onMounted(async () => {
     // 应用启动时加载并应用主题
     try {
       const theme = await settingStore.get('theme', 'light')
-      // 由于使用了命名空间 #iterm-panel，data-theme 需要设置在这个元素上
-      const itermPanel = document.getElementById('iterm-panel')
+      // 由于使用了命名空间 #iterm-root，data-theme 需要设置在这个元素上
+      const itermPanel = document.getElementById('iterm-root')
       if (itermPanel) {
         itermPanel.setAttribute('data-theme', theme)
       }
@@ -133,7 +133,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div id="iterm-panel" class="h-full">
+  <div id="iterm-root" class="h-full">
     <main class="h-full bg-base-100 flex flex-col overflow-hidden border border-base-300">
       <!-- 顶部控制栏 -->
       <div class="select-none h-9 border-b border-base-300 flex items-center justify-between px-3 flex-shrink-0"
