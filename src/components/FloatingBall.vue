@@ -6,7 +6,7 @@ function handleClick() {
 </script>
 
 <template>
-  <div data-tauri-drag-region class="floating-ball bg-base-100 select-none" @click="handleClick">
+  <div data-tauri-drag-region class="floating-ball bg-base-300 select-none" @click="handleClick">
     <span class="ball-icon">&gt;_</span>
   </div>
 
