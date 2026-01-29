@@ -1,24 +1,18 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, nextTick } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { Maximize2 } from 'lucide-vue-next'
 
 const emit = defineEmits<{
   expand: []
 }>()
 
-const currentDate = ref('')
 const currentDay = ref('')
 const currentTime = ref('')
-const visible = ref(false)
-const capsuleElement = ref<HTMLElement | null>(null)
 
 let timer: ReturnType<typeof setInterval> | null = null
-let observer: IntersectionObserver | null = null
 
 function updateTime() {
   const now = new Date()
-
-  currentDate.value = `${now.getDate()}号`
 
   const days = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六']
   currentDay.value = days[now.getDay()]
@@ -29,53 +23,21 @@ function updateTime() {
   currentTime.value = `${hours}:${minutes}:${seconds}`
 }
 
-function setupVisibilityObserver() {
-  if (capsuleElement.value) {
-    observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            setTimeout(() => {
-              visible.value = true
-            }, 50)
-          } else {
-            visible.value = false
-          }
-        })
-      },
-      { threshold: 0.1 }
-    )
-
-    observer.observe(capsuleElement.value)
-  }
-}
-
-function cleanupObserver() {
-  observer?.disconnect()
-  observer = null
-}
-
 onMounted(() => {
   updateTime()
   timer = setInterval(updateTime, 1000)
-  setupVisibilityObserver()
-  nextTick(() => {
-    visible.value = true
-  })
 })
 
 onUnmounted(() => {
   if (timer) clearInterval(timer)
-  cleanupObserver()
 })
 </script>
 
 <template>
-  <div data-tauri-drag-region ref="capsuleElement" class="absolute top-0 right-1 z-[1000]">
+  <div data-tauri-drag-region class="absolute top-0 right-1 z-[1000]">
     <div data-tauri-drag-region through-listener="true"
       class="flex items-center gap-2 p-1 bg-base-100 border border-base-300 bg-base-100/80 rounded-full shadow-lg backdrop-blur select-none">
       <div data-tauri-drag-region class="flex items-center gap-2 text-xs text-base-content pl-2">
-        <span data-tauri-drag-region class="font-semibold text-primary">{{ currentDate }}</span>
         <div data-tauri-drag-region class="flex flex-col items-center text-base-content/70 scale-80">
           <span data-tauri-drag-region>{{ currentDay }}</span>
           <span data-tauri-drag-region>{{ currentTime }}</span>
@@ -87,8 +49,5 @@ onUnmounted(() => {
         <Maximize2 :size="12" />
       </button>
     </div>
-
-    <!-- 其他内容 -->
-    <div></div>
   </div>
 </template>
