@@ -62,7 +62,7 @@ function isActive(path) {
     </div>
 
     <!-- 子页面内容区域 -->
-    <div class="flex-1 overflow-hidden">
+    <div class="flex-1 overflow-hidden pb-3">
       <router-view v-slot="{ Component, route }">
         <transition name="page-fade" mode="out-in">
           <keep-alive v-if="route.meta?.keepAlive">
