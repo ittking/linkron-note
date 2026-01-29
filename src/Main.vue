@@ -133,7 +133,7 @@ onUnmounted(() => {
 
 <template>
   <div class="iterm-root h-full flex flex-col">
-    <main class="h-full bg-base-100 flex flex-col overflow-hidden border border-base-300">
+    <main class="h-full flex flex-col overflow-hidden border border-base-300">
       <!-- 顶部控制栏 -->
       <div data-tauri-drag-region
         class="select-none h-9 border-b border-base-300 flex items-center justify-between px-3 flex-shrink-0">
