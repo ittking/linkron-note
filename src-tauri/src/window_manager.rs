@@ -1,7 +1,7 @@
 // 窗口管理模块 - 实现跨虚拟桌面置顶
 // 支持 Windows 和 macOS
 
-use tauri::WebviewWindow;
+use tauri::{App, Manager, WebviewWindow};
 
 #[cfg(windows)]
 use windows::Win32::Foundation::HWND;
@@ -58,4 +58,17 @@ fn set_window_on_all_desktops_macos(window: &WebviewWindow) {
             let _: () = msg_send![ns_window, setCollectionBehavior: NSWindowCollectionBehaviorCanJoinAllSpaces];
         }
     }
+}
+
+/// 初始化窗口管理器
+/// 这是一个便捷函数，用于在 Tauri app setup 中调用
+pub fn setup_window_manager(app: &App) -> Result<(), Box<dyn std::error::Error>> {
+    #[cfg(any(windows, target_os = "macos"))]
+    {
+        if let Some(window) = app.get_webview_window("main") {
+            set_window_on_all_desktops(&window);
+        }
+    }
+
+    Ok(())
 }

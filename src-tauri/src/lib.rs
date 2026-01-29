@@ -11,8 +11,6 @@ mod web_scraper;
 #[cfg(any(windows, target_os = "macos"))]
 mod window_manager;
 
-use tauri::Manager;
-
 #[tauri::command]
 fn greet(name: &str) -> String {
     format!("Hello, {}! You've been greeted from Rust!", name)
@@ -25,16 +23,7 @@ pub fn run() {
         .plugin(tauri_plugin_store::Builder::new().build())
         .plugin(tauri_plugin_dialog::init())
         .register_uri_scheme_protocol("iterm", protocol::iterm_protocol_handler)
-        .setup(|app| {
-            #[cfg(any(windows, target_os = "macos"))]
-            {
-                if let Some(window) = app.get_webview_window("main") {
-                    window_manager::set_window_on_all_desktops(&window);
-                }
-            }
-
-            Ok(())
-        })
+        .setup(|app| window_manager::setup_window_manager(app))
         .invoke_handler(tauri::generate_handler![
             greet,
             mouse::start_mouse_listener,
