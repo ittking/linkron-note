@@ -97,8 +97,17 @@ onMounted(() => {
 
 // 组件卸载时销毁编辑器实例，避免内存泄漏
 onBeforeUnmount(() => {
-  if (editor.value) {
-    editor.value.destroy()
+  // 安全销毁编辑器，避免在过渡动画中 DOM 已被移除时报错
+  try {
+    if (editor.value && !editor.value.isDestroyed) {
+      // 检查编辑器视图是否仍然可用
+      if (editor.value.view && editor.value.view.dom) {
+        editor.value.destroy()
+      }
+    }
+  } catch (error) {
+    // 忽略销毁过程中的错误，通常发生在过渡动画中 DOM 已被移除
+    console.warn('Editor cleanup warning:', error.message)
   }
 })
 
