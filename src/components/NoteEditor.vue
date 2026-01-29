@@ -72,7 +72,7 @@ watch(() => props.images, (newImages) => {
   // 只在编辑模式下才同步外部 images 变化
   // 避免在新建笔记模式下被意外重置
   if (!props.isEditing || !newImages) return
-  
+
   // 只比较引用，如果引用变化则更新
   if (newImages !== images.value) {
     images.value = [...newImages]
@@ -434,9 +434,6 @@ const editor = useEditor({
   },
 })
 
-// 移除了对 props.modelValue 的 watch，避免用户输入时频繁更新编辑器导致状态丢失
-// 编辑器内容只在初始化时设置一次，后续用户输入不会反向同步
-
 // 监听 shouldClear 标志，强制清空编辑器和图片
 watch(() => props.shouldClear, (shouldClear) => {
   if (shouldClear && editor.value) {
@@ -494,11 +491,6 @@ const hasContent = computed(() => {
   }
 })
 
-// 工具栏操作
-function toggleHighlight() {
-  editor.value?.chain().focus().toggleHighlight().run()
-}
-
 function toggleBulletList() {
   editor.value?.chain().focus().toggleBulletList().run()
 }
@@ -544,10 +536,10 @@ async function handleImageUpload(event) {
 // 删除图片
 async function removeImage(index) {
   const removedImage = images.value[index]
-  
+
   // 从当前图片列表中移除
   images.value.splice(index, 1)
-  
+
   // 根据模式处理文件删除
   if (props.isEditing) {
     // 编辑模式：记录被删除的图片，在保存时统一删除
@@ -589,7 +581,7 @@ async function handleSubmit() {
         // 删除图片文件失败，静默处理
       }
     }
-    
+
     // 通过 emit 传递完整的笔记数据
     emit('submit', {
       content: editor.value.getHTML(),
@@ -621,37 +613,26 @@ defineExpose({
   <div
     class="note-editor relative bg-base-100 border border-primary rounded-xl p-4 shadow-sm transition-all duration-200 focus-within:shadow-md focus-within:border-primary/80">
     <!-- 编辑器内容区域 -->
-    <EditorContent class="transition-all duration-200 overflow-y-auto max-h-[400px] no-scrollbar"
-      :editor="editor" :class="{
+    <EditorContent class="transition-all duration-200 overflow-y-auto max-h-[400px] no-scrollbar" :editor="editor"
+      :class="{
         'min-h-[80px]': props.isScrolledToTop,
         'min-h-[40px]': !props.isScrolledToTop
       }" />
 
-      <!-- 图片列表 -->
-      <div v-if="images.length > 0" class="mt-2 max-h-22 overflow-y-auto no-scrollbar">
-        <div class="flex flex-wrap gap-2">
-          <div
-            v-for="(imageUrl, index) in images"
-            :key="index"
-            class="relative"
-          >
-            <ImageViewer
-              :src="imageUrl"
-              :alt="`上传的图片 ${index + 1}`"
-              :images="images"
-              aspectRatio="square"
-              className="w-12 h-12"
-            />
-            <button
-              @click="removeImage(index)"
-              class="absolute top-1 right-1 w-4 h-4 bg-black/50 hover:bg-black/70 rounded-full flex items-center justify-center text-white transition-all duration-200 -mt-1 -mr-1"
-              title="删除图片"
-            >
-             <X size="10" />
-            </button>
-          </div>
+    <!-- 图片列表 -->
+    <div v-if="images.length > 0" class="mt-2 max-h-22 overflow-y-auto no-scrollbar">
+      <div class="flex flex-wrap gap-2">
+        <div v-for="(imageUrl, index) in images" :key="index" class="relative">
+          <ImageViewer :src="imageUrl" :alt="`上传的图片 ${index + 1}`" :images="images" aspectRatio="square"
+            className="w-12 h-12" />
+          <button @click="removeImage(index)"
+            class="absolute top-1 right-1 w-4 h-4 bg-black/50 hover:bg-black/70 rounded-full flex items-center justify-center text-white transition-all duration-200 -mt-1 -mr-1"
+            title="删除图片">
+            <X size="10" />
+          </button>
         </div>
       </div>
+    </div>
 
     <!-- 底部工具栏 -->
     <div class="flex items-center justify-between mt-2">
@@ -723,5 +704,4 @@ defineExpose({
   </div>
 </template>
 
-<style scoped>
-</style>
+<style scoped></style>
