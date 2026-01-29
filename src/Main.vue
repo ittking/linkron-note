@@ -135,7 +135,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="iterm-root h-full flex flex-col overflow-hidden" :class="{ '!bg-transparent': !isMaximized }">
+  <div class="iterm-root h-full flex flex-col overflow-hidden bg-base-100" :class="{ '!bg-transparent': !isMaximized }">
     <!-- 主页内容 -->
     <MainContent v-show="isMaximized" :on-minimize="minimizeWindow" class="w-full h-full" />
 
