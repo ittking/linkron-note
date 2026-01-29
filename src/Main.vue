@@ -90,6 +90,13 @@ async function expandWindow() {
   isMaximized.value = true
 }
 
+// 监听窗口状态变化，控制窗口是否可调整大小
+watch(isMaximized, async (newValue) => {
+  // 胶囊状态（最小化）：不可调整大小
+  // 主页状态（展开）：可调整大小
+  await appWindow.setResizable(newValue)
+})
+
 onMounted(async () => {
   // 获取当前窗口标签
   const currentWindow = getCurrentWindow()
