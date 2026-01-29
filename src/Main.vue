@@ -78,17 +78,17 @@ async function setupWindowResizeListener() {
 
 // 最小化窗口
 async function minimizeWindow() {
-  isMaximized.value = false
+  isMaximized.value = true
 }
 
 // 展开窗口
 async function expandWindow() {
-  isMaximized.value = true
+  isMaximized.value = false
 }
 
 // 监听窗口状态变化，控制窗口是否可调整大小
-watch(isMaximized, async (newValue) => {
-  await appWindow.setResizable(newValue)
+watch(isMaximized, async (value) => {
+  await appWindow.setResizable(!value)
 })
 
 onMounted(async () => {
@@ -141,7 +141,7 @@ onUnmounted(async () => {
   <div class="iterm-root h-full flex flex-col overflow-hidden bg-transparent">
     <!-- 胶囊组件 -->
     <Capsule v-show="isMaximized" @expand="expandWindow" />
-    
+
     <!-- 主页内容 -->
     <MainContent v-show="!isMaximized" :on-minimize="minimizeWindow" class="w-full h-full bg-base-100" />
   </div>

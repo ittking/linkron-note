@@ -124,9 +124,7 @@ const editor = useEditor({
         keepAttributes: false,
       },
       codeBlock: false, // 禁用默认的 CodeBlock，使用 CodeBlockLowlight 代替
-    }).configure({
-      // 排除 Link 扩展，因为我们要单独添加并配置它
-      exclude: ['link'],
+      link: false, // 排除 Link 扩展，因为我们要单独添加并配置它
     }),
     Highlight.configure({
       multicolor: true,

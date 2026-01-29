@@ -1,5 +1,5 @@
 <script setup>
-import { ref, watch, onBeforeUnmount, h, render } from 'vue'
+import { ref, watch, onBeforeUnmount, h, render, nextTick } from 'vue'
 import { Highlighter, Underline, Italic, Bold, Link as LinkIcon } from 'lucide-vue-next'
 import tippy from 'tippy.js'
 
@@ -14,6 +14,13 @@ const tippyInstance = ref(null)
 const referenceElement = ref(null)
 const globalMouseUpHandler = ref(null)
 const isUnmounting = ref(false) // 标志：组件是否正在卸载
+
+// 链接弹窗状态
+const linkDialog = ref({
+  visible: false,
+  url: ''
+})
+const linkInputRef = ref(null)
 
 // 检查选择是否在编辑器内
 const isSelectionInEditor = (view) => {
@@ -137,94 +144,48 @@ const hideMenu = () => {
 // 设置链接
 function setLink() {
   const previousUrl = props.editor.getAttributes('link').href
+  linkDialog.value.url = previousUrl || ''
+  linkDialog.value.visible = true
   
-  // 创建对话框容器
-  const dialogContainer = document.createElement('div')
-  dialogContainer.className = 'fixed inset-0 z-[2000] flex items-center justify-center bg-black/50'
-  
-  dialogContainer.innerHTML = `
-    <div class="modal-box bg-base-200 border border-base-300 w-96">
-      <h3 class="font-bold text-lg text-base-content mb-4">设置链接</h3>
-      <input 
-        type="text" 
-        id="link-input" 
-        placeholder="请输入链接地址" 
-        value="${previousUrl || ''}"
-        class="input input-bordered w-full mb-4"
-        autocomplete="off"
-      />
-      <div class="modal-action">
-        <button id="link-cancel" class="btn btn-ghost text-base-content/60 hover:text-base-content">取消</button>
-        <button id="link-remove" class="btn btn-ghost text-error hover:text-error/80">移除链接</button>
-        <button id="link-confirm" class="btn btn-primary">确定</button>
-      </div>
-    </div>
-  `
-  
-  document.body.appendChild(dialogContainer)
-  
-  const input = dialogContainer.querySelector('#link-input')
-  const cancelBtn = dialogContainer.querySelector('#link-cancel')
-  const removeBtn = dialogContainer.querySelector('#link-remove')
-  const confirmBtn = dialogContainer.querySelector('#link-confirm')
-  
-  // 自动聚焦并选中所有文本
-  setTimeout(() => {
-    input.focus()
-    input.select()
-  }, 10)
-  
-  // 处理确定
-  const handleConfirm = () => {
-    const url = input.value.trim()
-    if (url === '') {
-      props.editor.chain().focus().unsetLink().run()
-    } else {
-      props.editor.chain().focus().setLink({ href: url }).run()
-    }
-    cleanup()
-  }
-  
-  // 处理取消
-  const handleCancel = () => {
-    cleanup()
-  }
-  
-  // 处理移除链接
-  const handleRemove = () => {
-    props.editor.chain().focus().unsetLink().run()
-    cleanup()
-  }
-  
-  // 处理回车键
-  const handleKeyDown = (e) => {
-    if (e.key === 'Enter') {
-      handleConfirm()
-    } else if (e.key === 'Escape') {
-      handleCancel()
-    }
-  }
-  
-  // 清理函数
-  const cleanup = () => {
-    dialogContainer.remove()
-    input.removeEventListener('keydown', handleKeyDown)
-  }
-  
-  // 绑定事件
-  confirmBtn.addEventListener('click', handleConfirm)
-  cancelBtn.addEventListener('click', handleCancel)
-  removeBtn.addEventListener('click', handleRemove)
-  input.addEventListener('keydown', handleKeyDown)
-  
-  // 点击背景关闭
-  dialogContainer.addEventListener('click', (e) => {
-    if (e.target === dialogContainer) {
-      handleCancel()
+  nextTick(() => {
+    if (linkInputRef.value) {
+      linkInputRef.value.focus()
+      linkInputRef.value.select()
     }
   })
 }
 
+// 确认设置链接
+function confirmLink() {
+  const url = linkDialog.value.url.trim()
+  if (url === '') {
+    props.editor.chain().focus().unsetLink().run()
+  } else {
+    props.editor.chain().focus().setLink({ href: url }).run()
+  }
+  linkDialog.value.visible = false
+}
+
+// 取消设置链接
+function cancelLink() {
+  linkDialog.value.visible = false
+  linkDialog.value.url = ''
+}
+
+// 移除链接
+function removeLink() {
+  props.editor.chain().focus().unsetLink().run()
+  linkDialog.value.visible = false
+}
+
+// 处理链接输入框键盘事件
+function handleLinkKeyDown(e) {
+  if (e.key === 'Enter') {
+    confirmLink()
+  } else if (e.key === 'Escape') {
+    cancelLink()
+  }
+}
 // 创建悬浮菜单
 function createSelectionMenu() {
   if (!props.editor) {
@@ -521,6 +482,39 @@ onBeforeUnmount(() => {
 <template>
   <!-- SelectionMenu 组件不需要渲染任何内容，悬浮菜单是通过 DOM 操作创建的 -->
   <div></div>
+
+  <!-- 链接弹窗 -->
+  <dialog :open="linkDialog.visible" class="modal">
+    <div class="modal-box bg-base-200 border border-base-300">
+      <h3 class="font-bold text-lg text-base-content">设置链接</h3>
+      <div class="py-4">
+        <input
+          ref="linkInputRef"
+          v-model="linkDialog.url"
+          type="text"
+          placeholder="请输入链接地址"
+          class="input input-bordered w-full"
+          @keyup.enter="confirmLink"
+          @keydown="handleLinkKeyDown"
+          autocomplete="off"
+        />
+      </div>
+      <div class="modal-action">
+        <button class="btn btn-ghost text-base-content/60 hover:text-base-content" @click="cancelLink">
+          取消
+        </button>
+        <button class="btn btn-ghost text-error hover:text-error/80" @click="removeLink">
+          移除链接
+        </button>
+        <button class="btn btn-primary text-primary-content" @click="confirmLink">
+          确定
+        </button>
+      </div>
+    </div>
+    <form method="dialog" class="modal-backdrop bg-black/50" @click="cancelLink">
+      <button></button>
+    </form>
+  </dialog>
 </template>
 
 <style>
