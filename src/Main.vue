@@ -140,9 +140,9 @@ onUnmounted(async () => {
 </script>
 
 <template>
-  <div class="iterm-root h-full flex flex-col overflow-hidden bg-base-100" :class="{ '!bg-transparent': !isMaximized }">
+  <div class="iterm-root h-full flex flex-col overflow-hidden bg-transparent">
     <!-- 主页内容 -->
-    <MainContent v-show="isMaximized" :on-minimize="minimizeWindow" class="w-full h-full" />
+    <MainContent v-show="isMaximized" :on-minimize="minimizeWindow" class="w-full h-full bg-base-100" />
 
     <!-- 胶囊组件 -->
     <Capsule v-show="!isMaximized" @expand="expandWindow" />
