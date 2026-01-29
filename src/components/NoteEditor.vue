@@ -6,6 +6,7 @@ import StarterKit from '@tiptap/starter-kit'
 import Highlight from '@tiptap/extension-highlight'
 import Placeholder from '@tiptap/extension-placeholder'
 import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight'
+import Link from '@tiptap/extension-link'
 import { common, createLowlight } from 'lowlight'
 import { TagExtension } from '@/extensions/tag-extension'
 import tippy from 'tippy.js'
@@ -123,9 +124,18 @@ const editor = useEditor({
         keepAttributes: false,
       },
       codeBlock: false, // 禁用默认的 CodeBlock，使用 CodeBlockLowlight 代替
+    }).configure({
+      // 排除 Link 扩展，因为我们要单独添加并配置它
+      exclude: ['link'],
     }),
     Highlight.configure({
       multicolor: true,
+    }),
+    Link.configure({
+      openOnClick: false,
+      HTMLAttributes: {
+        class: 'text-primary hover:text-primary/80 underline',
+      },
     }),
     CodeBlockLowlight.configure({
       lowlight,

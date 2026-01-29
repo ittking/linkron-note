@@ -1,6 +1,6 @@
 <script setup>
 import { ref, watch, onBeforeUnmount, h, render } from 'vue'
-import { Highlighter, Underline } from 'lucide-vue-next'
+import { Highlighter, Underline, Italic, Bold, Link as LinkIcon } from 'lucide-vue-next'
 import tippy from 'tippy.js'
 
 const props = defineProps({
@@ -87,12 +87,24 @@ const updateButtonStates = () => {
 
   const highlightBtn = menu.querySelector('button[data-action="highlight"]')
   const underlineBtn = menu.querySelector('button[data-action="underline"]')
+  const italicBtn = menu.querySelector('button[data-action="italic"]')
+  const boldBtn = menu.querySelector('button[data-action="bold"]')
+  const linkBtn = menu.querySelector('button[data-action="link"]')
 
   if (highlightBtn && highlightBtn.updateState) {
     highlightBtn.updateState()
   }
   if (underlineBtn && underlineBtn.updateState) {
     underlineBtn.updateState()
+  }
+  if (italicBtn && italicBtn.updateState) {
+    italicBtn.updateState()
+  }
+  if (boldBtn && boldBtn.updateState) {
+    boldBtn.updateState()
+  }
+  if (linkBtn && linkBtn.updateState) {
+    linkBtn.updateState()
   }
 }
 
@@ -122,6 +134,24 @@ const hideMenu = () => {
   }
 }
 
+// 设置链接
+function setLink() {
+  const previousUrl = props.editor.getAttributes('link').href
+  const url = window.prompt('请输入链接地址:', previousUrl)
+
+  // 取消操作
+  if (url === null) {
+    return
+  }
+
+  // 空链接表示取消链接
+  if (url === '') {
+    props.editor.chain().focus().unsetLink().run()
+  } else {
+    props.editor.chain().focus().setLink({ href: url }).run()
+  }
+}
+
 // 创建悬浮菜单
 function createSelectionMenu() {
   if (!props.editor) {
@@ -132,18 +162,29 @@ function createSelectionMenu() {
   const menu = document.createElement('div')
   menu.className = 'selection-menu flex items-center gap-1 bg-base-100 border border-base-200 rounded-lg shadow-xl p-1'
 
-  // 创建 Vue 应用来渲染按钮
-  const highlightBtn = document.createElement('button')
-  highlightBtn.className = 'w-7 h-7 rounded-md flex items-center justify-center text-base-content/50 hover:text-base-content hover:bg-base-200 transition-all duration-200'
-  highlightBtn.title = '背景高亮'
-  highlightBtn.dataset.action = 'highlight'
-  highlightBtn.addEventListener('click', (e) => {
+  // 加粗按钮
+  const boldBtn = document.createElement('button')
+  boldBtn.className = 'w-7 h-7 rounded-md flex items-center justify-center text-base-content/50 hover:text-base-content hover:bg-base-200 transition-all duration-200'
+  boldBtn.title = '加粗'
+  boldBtn.dataset.action = 'bold'
+  boldBtn.addEventListener('click', (e) => {
     e.preventDefault()
-    props.editor.chain().focus().toggleHighlight().run()
-    // 更新按钮状态
-    setTimeout(() => highlightBtn.updateState(), 10)
+    props.editor.chain().focus().toggleBold().run()
+    setTimeout(() => boldBtn.updateState(), 10)
   })
 
+  // 斜体按钮
+  const italicBtn = document.createElement('button')
+  italicBtn.className = 'w-7 h-7 rounded-md flex items-center justify-center text-base-content/50 hover:text-base-content hover:bg-base-200 transition-all duration-200'
+  italicBtn.title = '斜体'
+  italicBtn.dataset.action = 'italic'
+  italicBtn.addEventListener('click', (e) => {
+    e.preventDefault()
+    props.editor.chain().focus().toggleItalic().run()
+    setTimeout(() => italicBtn.updateState(), 10)
+  })
+
+  // 下划线按钮
   const underlineBtn = document.createElement('button')
   underlineBtn.className = 'w-7 h-7 rounded-md flex items-center justify-center text-base-content/50 hover:text-base-content hover:bg-base-200 transition-all duration-200'
   underlineBtn.title = '下划线'
@@ -151,25 +192,58 @@ function createSelectionMenu() {
   underlineBtn.addEventListener('click', (e) => {
     e.preventDefault()
     props.editor.chain().focus().toggleUnderline().run()
-    // 更新按钮状态
     setTimeout(() => underlineBtn.updateState(), 10)
   })
 
+  // 背景高亮按钮
+  const highlightBtn = document.createElement('button')
+  highlightBtn.className = 'w-7 h-7 rounded-md flex items-center justify-center text-base-content/50 hover:text-base-content hover:bg-base-200 transition-all duration-200'
+  highlightBtn.title = '背景高亮'
+  highlightBtn.dataset.action = 'highlight'
+  highlightBtn.addEventListener('click', (e) => {
+    e.preventDefault()
+    props.editor.chain().focus().toggleHighlight().run()
+    setTimeout(() => highlightBtn.updateState(), 10)
+  })
+
+  // 链接按钮
+  const linkBtn = document.createElement('button')
+  linkBtn.className = 'w-7 h-7 rounded-md flex items-center justify-center text-base-content/50 hover:text-base-content hover:bg-base-200 transition-all duration-200'
+  linkBtn.title = '设为链接'
+  linkBtn.dataset.action = 'link'
+  linkBtn.addEventListener('click', (e) => {
+    e.preventDefault()
+    setLink()
+    setTimeout(() => linkBtn.updateState(), 10)
+  })
+
   // 渲染图标
-  render(h(Highlighter, { size: 14 }), highlightBtn)
+  render(h(Bold, { size: 14 }), boldBtn)
+  render(h(Italic, { size: 14 }), italicBtn)
   render(h(Underline, { size: 14 }), underlineBtn)
+  render(h(Highlighter, { size: 14 }), highlightBtn)
+  render(h(LinkIcon, { size: 14 }), linkBtn)
 
   // 更新按钮选中状态的函数
   const updateButtonStates = () => {
     if (!props.editor) return
 
-    const isHighlightActive = props.editor.isActive('highlight')
+    const isBoldActive = props.editor.isActive('bold')
+    const isItalicActive = props.editor.isActive('italic')
     const isUnderlineActive = props.editor.isActive('underline')
+    const isHighlightActive = props.editor.isActive('highlight')
+    const isLinkActive = props.editor.isActive('link')
 
-    if (isHighlightActive) {
-      highlightBtn.className = 'w-7 h-7 rounded-md flex items-center justify-center text-primary bg-primary/10 transition-all duration-200'
+    if (isBoldActive) {
+      boldBtn.className = 'w-7 h-7 rounded-md flex items-center justify-center text-primary bg-primary/10 transition-all duration-200'
     } else {
-      highlightBtn.className = 'w-7 h-7 rounded-md flex items-center justify-center text-base-content/50 hover:text-base-content hover:bg-base-200 transition-all duration-200'
+      boldBtn.className = 'w-7 h-7 rounded-md flex items-center justify-center text-base-content/50 hover:text-base-content hover:bg-base-200 transition-all duration-200'
+    }
+
+    if (isItalicActive) {
+      italicBtn.className = 'w-7 h-7 rounded-md flex items-center justify-center text-primary bg-primary/10 transition-all duration-200'
+    } else {
+      italicBtn.className = 'w-7 h-7 rounded-md flex items-center justify-center text-base-content/50 hover:text-base-content hover:bg-base-200 transition-all duration-200'
     }
 
     if (isUnderlineActive) {
@@ -177,14 +251,32 @@ function createSelectionMenu() {
     } else {
       underlineBtn.className = 'w-7 h-7 rounded-md flex items-center justify-center text-base-content/50 hover:text-base-content hover:bg-base-200 transition-all duration-200'
     }
+
+    if (isHighlightActive) {
+      highlightBtn.className = 'w-7 h-7 rounded-md flex items-center justify-center text-primary bg-primary/10 transition-all duration-200'
+    } else {
+      highlightBtn.className = 'w-7 h-7 rounded-md flex items-center justify-center text-base-content/50 hover:text-base-content hover:bg-base-200 transition-all duration-200'
+    }
+
+    if (isLinkActive) {
+      linkBtn.className = 'w-7 h-7 rounded-md flex items-center justify-center text-primary bg-primary/10 transition-all duration-200'
+    } else {
+      linkBtn.className = 'w-7 h-7 rounded-md flex items-center justify-center text-base-content/50 hover:text-base-content hover:bg-base-200 transition-all duration-200'
+    }
   }
 
   // 将更新函数存储到按钮上，以便后续调用
-  highlightBtn.updateState = updateButtonStates
+  boldBtn.updateState = updateButtonStates
+  italicBtn.updateState = updateButtonStates
   underlineBtn.updateState = updateButtonStates
+  highlightBtn.updateState = updateButtonStates
+  linkBtn.updateState = updateButtonStates
 
-  menu.appendChild(highlightBtn)
+  menu.appendChild(boldBtn)
+  menu.appendChild(italicBtn)
   menu.appendChild(underlineBtn)
+  menu.appendChild(highlightBtn)
+  menu.appendChild(linkBtn)
 
   // 创建一个虚拟的 reference 元素
   const reference = document.createElement('div')
