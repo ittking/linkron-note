@@ -58,7 +58,7 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="iterm-root border h-full w-full flex items-center justify-center !bg-transparent" :data-theme="currentTheme">
+  <div class="iterm-root h-full w-full flex items-center justify-center !bg-transparent" :data-theme="currentTheme">
     <FloatingBall @click="handleBallClick" />
   </div>
 </template>

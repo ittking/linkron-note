@@ -23,6 +23,7 @@ function handleClick() {
   cursor: pointer;
   position: relative;
   transition: all 0.3s ease-in-out;
+  border: 1px solid var(--color-base-100);
   box-shadow:
     0 4px 20px rgba(0, 0, 0, 0.5),
     0 0 0 1px rgba(255, 255, 255, 0.05),
