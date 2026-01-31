@@ -12,7 +12,18 @@ import 'xterm/css/xterm.css'
 
 const props = defineProps({
   sessionId: { type: String, required: true },
-  shell: { type: String, default: 'powershell.exe' },
+  shell: { type: String, default: () => {
+    const platform = window.navigator.platform.toLowerCase()
+    if (platform.includes('win')) {
+      return 'powershell.exe'
+    } else if (platform.includes('mac')) {
+      return '/bin/zsh'
+    } else if (platform.includes('linux')) {
+      return '/bin/bash'
+    } else {
+      return '/bin/bash'
+    }
+  }},
   workingDir: { type: String, default: null }
 })
 

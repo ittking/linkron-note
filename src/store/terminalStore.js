@@ -2,6 +2,24 @@ import { reactive, computed, toRefs } from 'vue'
 import { ulid } from 'ulid'
 
 /**
+ * 获取当前操作系统的默认 shell
+ */
+function getDefaultShell() {
+  const platform = window.navigator.platform.toLowerCase()
+  
+  if (platform.includes('win')) {
+    return 'powershell.exe'
+  } else if (platform.includes('mac')) {
+    return '/bin/zsh'
+  } else if (platform.includes('linux')) {
+    return '/bin/bash'
+  } else {
+    // 其他平台默认使用 bash
+    return '/bin/bash'
+  }
+}
+
+/**
  * 终端会话状态管理
  * 管理多个终端 Tab 的创建、切换和关闭
  */
@@ -58,7 +76,7 @@ function createTab() {
   const newTab = {
     id: `terminal-${ulid()}`,
     title: `T${tabNumber}`,
-    shell: 'powershell.exe'
+    shell: getDefaultShell()
   }
   state.tabs.push(newTab)
   state.activeTabId = newTab.id
