@@ -12,7 +12,6 @@ export {}
 declare module 'vue' {
   export interface GlobalComponents {
     Capsule: typeof import('./components/Capsule.vue')['default']
-    FloatingBall: typeof import('./components/FloatingBall.vue')['default']
     ImageViewer: typeof import('./components/ImageViewer.vue')['default']
     MainContent: typeof import('./components/MainContent.vue')['default']
     ModelSetting: typeof import('./components/ModelSetting.vue')['default']

@@ -45,17 +45,19 @@ fn set_window_on_all_desktops_windows(window: &WebviewWindow) {
 }
 
 #[cfg(target_os = "macos")]
+#[allow(unexpected_cfgs)]
 fn set_window_on_all_desktops_macos(window: &WebviewWindow) {
     // macOS 使用 NSWindow 的 collectionBehavior
-    // 设置 NSWindowCollectionBehaviorCanJoinAllSpaces 使窗口在所有空间显示
-    use cocoa::appkit::{NSWindow, NSWindowCollectionBehaviorCanJoinAllSpaces};
+    // NSWindowCollectionBehaviorCanJoinAllSpaces = 1 << 0
+    use cocoa::appkit::NSWindowCollectionBehavior;
     use objc::runtime::Object;
     use objc::{msg_send, sel, sel_impl};
-    
+
     if let Ok(ns_window) = window.ns_window() {
+        let ns_window: *mut Object = ns_window as *mut Object;
+        let behavior = NSWindowCollectionBehavior::NSWindowCollectionBehaviorCanJoinAllSpaces;
         unsafe {
-            let ns_window: *mut Object = ns_window as *mut Object;
-            let _: () = msg_send![ns_window, setCollectionBehavior: NSWindowCollectionBehaviorCanJoinAllSpaces];
+            let _: () = msg_send![ns_window, setCollectionBehavior: behavior];
         }
     }
 }
