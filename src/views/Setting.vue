@@ -21,14 +21,14 @@ function setActiveTab(tabId) {
 <template>
   <div class="h-full flex flex-col max-w-200 mx-auto">
     <!-- Tab 导航 -->
-    <div class="flex gap-2 px-4 pt-4 pb-2">
-      <button v-for="tab in tabs" :key="tab.id" @click="setActiveTab(tab.id)" :class="[
-        'btn btn-sm gap-2',
-        activeTab === tab.id ? 'btn-primary' : 'btn-ghost'
+    <div role="tablist" class="tabs tabs-boxed px-4 pt-4 pb-2">
+      <a v-for="tab in tabs" :key="tab.id" role="tab" @click="setActiveTab(tab.id)" :class="[
+        'tab gap-2',
+        activeTab === tab.id ? 'tab-active' : ''
       ]">
         <component :is="tab.icon" :size="14" />
         <span>{{ tab.label }}</span>
-      </button>
+      </a>
     </div>
 
     <!-- Tab 内容 -->
