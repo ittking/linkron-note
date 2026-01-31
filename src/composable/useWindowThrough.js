@@ -33,11 +33,20 @@ export function useWindowThrough() {
       await initWindow();
       const pos = await currentWindow.value.outerPosition();
       const scale = await currentWindow.value.scaleFactor();
-      
+
+      console.log('[WindowThrough] updateWindowInfo - 窗口位置:', { x: pos.x, y: pos.y });
+      console.log('[WindowThrough] updateWindowInfo - 缩放比例:', scale);
+      console.log('[WindowThrough] updateWindowInfo - 屏幕信息:', {
+        screenX: window.screenX,
+        screenY: window.screenY,
+        innerWidth: window.innerWidth,
+        innerHeight: window.innerHeight
+      });
+
       windowPosition.value = { x: pos.x, y: pos.y };
       scaleFactor.value = scale;
     } catch (error) {
-      console.error("获取窗口信息失败:", error);
+      console.error("[WindowThrough] 获取窗口信息失败:", error);
     }
   }
 
@@ -48,9 +57,13 @@ export function useWindowThrough() {
   async function setWindowIgnore(ignore) {
     try {
       await initWindow();
+      console.log('[WindowThrough] setWindowIgnore - 设置状态:', {
+        ignore,
+        meaning: ignore ? '穿透（鼠标事件穿透到下方窗口）' : '不穿透（窗口接收鼠标事件）'
+      });
       await currentWindow.value.setIgnoreCursorEvents(ignore);
     } catch (error) {
-      console.error("设置窗口穿透失败:", error);
+      console.error("[WindowThrough] 设置窗口穿透失败:", error);
     }
   }
 
@@ -64,13 +77,30 @@ export function useWindowThrough() {
     const scale = scaleFactor.value;
     const winX = windowPosition.value.x;
     const winY = windowPosition.value.y;
-    
+
     // 将元素相对坐标转换为屏幕绝对坐标，并应用缩放比例
     const screenX = winX + rect.left * scale;
     const screenY = winY + rect.top * scale;
     const screenWidth = rect.width * scale;
     const screenHeight = rect.height * scale;
-    
+
+    console.log('[WindowThrough] getElementScreenBounds - 元素:', element.tagName, element.id || element.className);
+    console.log('[WindowThrough] getElementScreenBounds - getBoundingClientRect:', {
+      left: rect.left,
+      top: rect.top,
+      width: rect.width,
+      height: rect.height,
+      right: rect.right,
+      bottom: rect.bottom
+    });
+    console.log('[WindowThrough] getElementScreenBounds - 计算结果:', {
+      winX, winY, scale,
+      screenX, screenY,
+      screenWidth, screenHeight,
+      right: screenX + screenWidth,
+      bottom: screenY + screenHeight
+    });
+
     return {
       x: screenX,
       y: screenY,
@@ -89,12 +119,26 @@ export function useWindowThrough() {
    * @returns {boolean} 是否在范围内
    */
   function isMouseInBounds(mouseX, mouseY, bounds) {
-    return (
+    const inBounds = (
       mouseX >= bounds.x &&
       mouseX <= bounds.right &&
       mouseY >= bounds.y &&
       mouseY <= bounds.bottom
     );
+
+    console.log('[WindowThrough] isMouseInBounds - 判断结果:', {
+      mouseX, mouseY,
+      bounds,
+      conditions: {
+        xCheck: mouseX >= bounds.x,
+        rightCheck: mouseX <= bounds.right,
+        yCheck: mouseY >= bounds.y,
+        bottomCheck: mouseY <= bounds.bottom
+      },
+      inBounds
+    });
+
+    return inBounds;
   }
 
   /**
@@ -102,11 +146,20 @@ export function useWindowThrough() {
    */
   function scanThroughElements() {
     const elements = document.querySelectorAll("[through-listener]");
+    console.log('[WindowThrough] scanThroughElements - 找到的所有带 through-listener 属性的元素:', elements.length);
+
     registeredElements.value.clear();
 
     elements.forEach((element) => {
       // 只处理 through-listener 属性值为 true 的元素
       const listenerValue = element.getAttribute("through-listener");
+      console.log('[WindowThrough] scanThroughElements - 元素属性值:', {
+        tag: element.tagName,
+        id: element.id,
+        className: element.className,
+        listenerValue
+      });
+
       if (listenerValue !== "true" && listenerValue !== true) {
         return;
       }
@@ -116,12 +169,20 @@ export function useWindowThrough() {
         `through-${Date.now()}-${Math.random()}`;
       const bounds = getElementScreenBounds(element);
 
+      console.log('[WindowThrough] scanThroughElements - 注册元素:', {
+        id,
+        tag: element.tagName,
+        className: element.className
+      });
+
       registeredElements.value.set(id, {
         element,
         bounds,
         id,
       });
     });
+
+    console.log('[WindowThrough] scanThroughElements - 最终注册的元素数量:', registeredElements.value.size);
   }
 
   /**
@@ -130,6 +191,9 @@ export function useWindowThrough() {
    */
   async function handleMouseMove(event) {
     const { x, y } = event.payload;
+
+    console.log('[WindowThrough] handleMouseMove - 鼠标位置:', { x, y });
+    console.log('[WindowThrough] handleMouseMove - 已注册元素数量:', registeredElements.value.size);
 
     // 实时更新窗口位置（处理窗口拖拽后的位置变化）
     await updateWindowInfo();
@@ -141,12 +205,26 @@ export function useWindowThrough() {
 
     // 检查鼠标是否在任何注册的元素范围内
     let inAnyElement = false;
+    let matchedElementId = null;
     for (const [id, data] of registeredElements.value) {
+      console.log('[WindowThrough] handleMouseMove - 检查元素:', id, {
+        mouseX: x, mouseY: y,
+        bounds: data.bounds,
+        inBounds: isMouseInBounds(x, y, data.bounds)
+      });
+
       if (isMouseInBounds(x, y, data.bounds)) {
         inAnyElement = true;
+        matchedElementId = id;
         break;
       }
     }
+
+    console.log('[WindowThrough] handleMouseMove - 检测结果:', {
+      inAnyElement,
+      matchedElementId,
+      willSetIgnore: !inAnyElement
+    });
 
     // 设置窗口穿透状态
     // 在元素范围内：不穿透（可以交互）

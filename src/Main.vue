@@ -1,7 +1,6 @@
 <script setup>
 import { onMounted, onUnmounted, ref, watch } from 'vue'
 import { getCurrentWindow, LogicalSize } from '@tauri-apps/api/window'
-import { useWindowThrough } from './composable/useWindowThrough'
 import MainContent from './components/MainContent.vue'
 import { useSettingStore } from './store/settingStore'
 import { useNoteStore } from './store/noteStore'
@@ -9,7 +8,6 @@ import Capsule from './components/Capsule.vue'
 
 const settingStore = useSettingStore()
 const noteStore = useNoteStore()
-const { register, unregister } = useWindowThrough()
 const appWindow = getCurrentWindow()
 const isMaximized = ref(true)
 
@@ -121,9 +119,6 @@ onMounted(async () => {
 
     // 设置窗口大小变化监听
     await setupWindowResizeListener()
-
-    // 注册穿透监听
-    await register()
   }
 })
 
@@ -132,8 +127,6 @@ onUnmounted(async () => {
   if (unlistenResize) {
     unlistenResize()
   }
-  // 清理穿透监听
-  await unregister()
 })
 </script>
 

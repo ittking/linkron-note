@@ -26,7 +26,8 @@
         "hiddenTitle": true,
         "alwaysOnTop": true,
         "decorations": false,
-        "dragDropEnabled": false
+        "dragDropEnabled": false,
+        "devtools": true
       }
     ],
     "security": {
