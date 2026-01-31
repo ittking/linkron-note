@@ -1,5 +1,7 @@
 // 窗口管理模块 - 实现跨虚拟桌面置顶
 // 支持 Windows 和 macOS
+#![allow(unexpected_cfgs)]
+#![allow(deprecated)]
 
 use tauri::{App, Manager, WebviewWindow};
 
@@ -45,13 +47,13 @@ fn set_window_on_all_desktops_windows(window: &WebviewWindow) {
 }
 
 #[cfg(target_os = "macos")]
-#[allow(unexpected_cfgs)]
 fn set_window_on_all_desktops_macos(window: &WebviewWindow) {
     // macOS 使用 NSWindow 的 collectionBehavior
     // NSWindowCollectionBehaviorCanJoinAllSpaces = 1 << 0
     // NSWindowCollectionBehaviorFullScreenAuxiliary = 1 << 8
     // NSWindowCollectionBehaviorIgnoresCycle = 1 << 10
     // NSWindowLevel: kCGFloatingWindowLevel = 3
+    use cocoa::base;
     use cocoa::foundation::NSUInteger;
     use objc::runtime::Object;
     use objc::{msg_send, sel, sel_impl};
@@ -72,10 +74,11 @@ fn set_window_on_all_desktops_macos(window: &WebviewWindow) {
             // 忽略 Cmd+Tab 切换
             behavior |= 1 << 10;
 
+            // 设置 collectionBehavior
             let _: () = msg_send![ns_window, setCollectionBehavior: behavior];
 
             // 强制窗口保持在最前面
-            let _: () = msg_send![ns_window, setHidesOnDeactivate: cocoa::base::NO];
+            let _: () = msg_send![ns_window, setHidesOnDeactivate: base::NO];
         }
     }
 }
