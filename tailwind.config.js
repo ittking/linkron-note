@@ -5,9 +5,19 @@ export default {
     "./src/**/*.{vue,js,ts,jsx,tsx}",
   ],
   theme: {
-    extend: {},
+    extend: {
+      screens: {
+        'mn': '320px',
+        'xs': '480px',
+        'smx': '720px',
+      },
+    },
   },
   plugins: [
     require('daisyui'),
   ],
+  daisyui: {
+    root: ".iterm-root",
+    themes: ["light", "dark", "cupcake", "bumblebee", "emerald", "corporate", "synthwave", "retro", "cyberpunk", "valentine", "halloween", "garden", "forest", "aquarium", "lofi", "pastel", "fantasy", "wireframe", "black", "luxury", "dracula", "cmyk", "autumn", "business", "acid", "lemonade", "night", "coffee", "winter", "dim", "nord", "sunset", "caramellatte", "abyss", "silk"],
+  },
 }
