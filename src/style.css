@@ -13,7 +13,7 @@
 html,
 body,
 #app {
-  @apply h-full w-full;
+  @apply h-full w-full bg-transparent;
 }
 
 /* 隐藏滚动条但保持滚动功能 */
