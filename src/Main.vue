@@ -99,11 +99,8 @@ onMounted(async () => {
     // 应用启动时加载并应用主题
     try {
       const theme = await settingStore.get('theme', 'light')
-      // 由于使用了命名空间 .iterm-root，data-theme 需要设置在这个元素上
-      const itermPanel = document.querySelector('.iterm-root')
-      if (itermPanel) {
-        itermPanel.setAttribute('data-theme', theme)
-      }
+      // 将 data-theme 设置在 html 元素上
+      document.documentElement.setAttribute('data-theme', theme)
     } catch (error) {
       console.error('Failed to load theme:', error)
     }
@@ -131,7 +128,7 @@ onUnmounted(async () => {
 </script>
 
 <template>
-  <div class="iterm-root h-full flex flex-col overflow-hidden bg-transparent">
+  <div class="h-full flex flex-col overflow-hidden bg-transparent">
     <!-- 胶囊组件 -->
     <Capsule v-show="isMaximized" @expand="expandWindow" />
 

@@ -3,7 +3,15 @@
     "allow": [
       "Bash(cargo check:*)",
       "WebSearch",
-      "Bash(git checkout:*)"
+      "Bash(git checkout:*)",
+      "Bash(grep:*)",
+      "Bash(pnpm install)",
+      "Bash(npm run build:*)",
+      "Bash(head:*)",
+      "Bash(ls:*)",
+      "Bash(tr:*)",
+      "Bash(pnpm list:*)",
+      "Bash(cat:*)"
     ]
   }
 }

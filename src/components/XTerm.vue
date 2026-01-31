@@ -48,23 +48,13 @@ onMounted(async () => {
     temp.style.color = `var(${varName})`
     temp.style.display = 'none'
 
-    // 由于使用了命名空间，需要将临时元素添加到 .iterm-root 内部
-    const itermPanel = document.querySelector('.iterm-root')
-    if (itermPanel) {
-      itermPanel.appendChild(temp)
-    } else {
-      // 如果找不到 iterm-root，降级到 body
-      document.body.appendChild(temp)
-    }
+    // 将临时元素添加到 body 中
+    document.body.appendChild(temp)
 
     const computed = getComputedStyle(temp).color
 
     // 移除临时元素
-    if (itermPanel && temp.parentNode === itermPanel) {
-      itermPanel.removeChild(temp)
-    } else {
-      document.body.removeChild(temp)
-    }
+    document.body.removeChild(temp)
 
     return computed || ''
   }
@@ -114,14 +104,11 @@ onMounted(async () => {
     updateTerminalTheme()
   })
 
-  // 监听 .iterm-root 元素的 data-theme 属性变化
-  const itermPanel = document.querySelector('.iterm-root')
-  if (itermPanel) {
-    observer.observe(itermPanel, {
-      attributes: true,
-      attributeFilter: ['data-theme']
-    })
-  }
+  // 监听 html 元素的 data-theme 属性变化
+  observer.observe(document.documentElement, {
+    attributes: true,
+    attributeFilter: ['data-theme']
+  })
 
   // 调色板（16色）
   const palette = [

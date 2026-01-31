@@ -16,7 +16,7 @@ export default defineConfig(async () => ({
   },
   plugins: [
     vue(),
-    tailwindcss(), 
+    tailwindcss(),
     AutoImport({
       imports: ["vue", "vue-router", {
         "@tauri-apps/api/core": ["invoke"],
