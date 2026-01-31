@@ -16,6 +16,19 @@ fn greet(name: &str) -> String {
     format!("Hello, {}! You've been greeted from Rust!", name)
 }
 
+#[tauri::command]
+fn get_os() -> String {
+    if cfg!(target_os = "windows") {
+        "windows".to_string()
+    } else if cfg!(target_os = "macos") {
+        "macos".to_string()
+    } else if cfg!(target_os = "linux") {
+        "linux".to_string()
+    } else {
+        "unknown".to_string()
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -26,6 +39,7 @@ pub fn run() {
         .setup(|app| window_manager::setup_window_manager(app))
         .invoke_handler(tauri::generate_handler![
             greet,
+            get_os,
             mouse::start_mouse_listener,
             mouse::stop_mouse_listener,
             mouse::is_mouse_listener_running,

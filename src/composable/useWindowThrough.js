@@ -15,6 +15,7 @@ export function useWindowThrough() {
   const windowPosition = ref({ x: 0, y: 0 });
   const scaleFactor = ref(1);
   const mutationObserver = ref(null);
+  const isMacOS = ref(false);
 
   /**
    * 初始化窗口
@@ -46,7 +47,7 @@ export function useWindowThrough() {
       windowPosition.value = { x: pos.x, y: pos.y };
       scaleFactor.value = scale;
     } catch (error) {
-      console.error("[WindowThrough] 获取窗口信息失败:", error);
+      console.error('[WindowThrough] 获取窗口信息失败:', error);
     }
   }
 
@@ -63,7 +64,7 @@ export function useWindowThrough() {
       });
       await currentWindow.value.setIgnoreCursorEvents(ignore);
     } catch (error) {
-      console.error("[WindowThrough] 设置窗口穿透失败:", error);
+      console.error('[WindowThrough] 设置窗口穿透失败:', error);
     }
   }
 
@@ -164,9 +165,7 @@ export function useWindowThrough() {
         return;
       }
 
-      const id =
-        element.id ||
-        `through-${Date.now()}-${Math.random()}`;
+      const id = element.id || `through-${Date.now()}-${Math.random()}`;
       const bounds = getElementScreenBounds(element);
 
       console.log('[WindowThrough] scanThroughElements - 注册元素:', {
@@ -242,13 +241,25 @@ export function useWindowThrough() {
 
     try {
       await updateWindowInfo();
-      await invoke("start_mouse_listener");
+      // 只有在非 macOS 平台才使用 rdev 库监听鼠标事件
+      // 在 macOS 平台上，我们使用 Tauri 的内置事件系统
+      if (!isMacOS.value) {
+        await invoke("start_mouse_listener");
 
-      unlistenFn.value = await listen("mouse-event", (event) => {
-        if (event.payload.event_type === "Move") {
-          handleMouseMove(event);
-        }
-      });
+        unlistenFn.value = await listen("mouse-event", (event) => {
+          if (event.payload.event_type === "Move") {
+            handleMouseMove(event);
+          }
+        });
+      } else {
+        // 在 macOS 平台上，使用 Tauri 的内置事件系统
+        console.log('[WindowThrough] 启动 macOS 特定的鼠标事件监听');
+        // 添加窗口鼠标移动事件监听
+        const window = getCurrentWindow();
+        unlistenFn.value = await window.onMouseMove((event) => {
+          handleMouseMoveMacOS(event);
+        });
+      }
 
       isListening.value = true;
     } catch (error) {
@@ -265,17 +276,72 @@ export function useWindowThrough() {
     }
 
     try {
-      await invoke("stop_mouse_listener");
+      if (!isMacOS.value) {
+        await invoke("stop_mouse_listener");
 
-      if (unlistenFn.value) {
-        unlistenFn.value();
-        unlistenFn.value = null;
+        if (unlistenFn.value) {
+          unlistenFn.value();
+          unlistenFn.value = null;
+        }
+      } else {
+        // 在 macOS 平台上，停止 Tauri 的内置事件监听
+        if (unlistenFn.value) {
+          unlistenFn.value();
+          unlistenFn.value = null;
+        }
       }
 
       isListening.value = false;
     } catch (error) {
       console.error("停止窗口穿透监听失败:", error);
     }
+  }
+
+  /**
+   * 处理 macOS 平台上的鼠标移动事件
+   * @param {Object} event - 鼠标事件对象
+   */
+  async function handleMouseMoveMacOS(event) {
+    const { x, y } = event;
+
+    console.log('[WindowThrough] handleMouseMoveMacOS - 鼠标位置:', { x, y });
+    console.log('[WindowThrough] handleMouseMoveMacOS - 已注册元素数量:', registeredElements.value.size);
+
+    // 实时更新窗口位置（处理窗口拖拽后的位置变化）
+    await updateWindowInfo();
+
+    // 重新计算所有元素的屏幕边界
+    for (const [id, data] of registeredElements.value) {
+      data.bounds = getElementScreenBounds(data.element);
+    }
+
+    // 检查鼠标是否在任何注册的元素范围内
+    let inAnyElement = false;
+    let matchedElementId = null;
+    for (const [id, data] of registeredElements.value) {
+      console.log('[WindowThrough] handleMouseMoveMacOS - 检查元素:', id, {
+        mouseX: x, mouseY: y,
+        bounds: data.bounds,
+        inBounds: isMouseInBounds(x, y, data.bounds)
+      });
+
+      if (isMouseInBounds(x, y, data.bounds)) {
+        inAnyElement = true;
+        matchedElementId = id;
+        break;
+      }
+    }
+
+    console.log('[WindowThrough] handleMouseMoveMacOS - 检测结果:', {
+      inAnyElement,
+      matchedElementId,
+      willSetIgnore: !inAnyElement
+    });
+
+    // 设置窗口穿透状态
+    // 在元素范围内：不穿透（可以交互）
+    // 不在元素范围内：穿透（点击穿透到下方窗口）
+    await setWindowIgnore(!inAnyElement);
   }
 
   /**
@@ -374,6 +440,21 @@ export function useWindowThrough() {
     // 确保窗口重置为非穿透状态，可以接收点击
     await setWindowIgnore(false);
   }
+
+  // 初始化时检测操作系统
+  async function init() {
+    try {
+      const os = await invoke('get_os');
+      isMacOS.value = os === 'macos';
+      console.log('[WindowThrough] 检测到操作系统:', os);
+    } catch (error) {
+      console.error('[WindowThrough] 检测操作系统失败:', error);
+      isMacOS.value = false;
+    }
+  }
+
+  // 初始化
+  init();
 
   return {
     isListening,
