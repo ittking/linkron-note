@@ -3,6 +3,7 @@ import vue from "@vitejs/plugin-vue";
 import AutoImport from "unplugin-auto-import/vite";
 import Components from "unplugin-vue-components/vite";
 import { AntDesignVueResolver } from "unplugin-vue-components/resolvers";
+import tailwindcss from "@tailwindcss/vite";
 
 const host = process.env.TAURI_DEV_HOST;
 
@@ -15,6 +16,7 @@ export default defineConfig(async () => ({
   },
   plugins: [
     vue(),
+    tailwindcss(), 
     AutoImport({
       imports: ["vue", "vue-router", {
         "@tauri-apps/api/core": ["invoke"],

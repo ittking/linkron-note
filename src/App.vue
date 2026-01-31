@@ -2,7 +2,7 @@
 </script>
 
 <template>
-  <div class="iterm-root h-full">
+  <div class="h-full">
     <router-view />
   </div>
 
