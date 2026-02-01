@@ -2,6 +2,8 @@
 import { ref, watch, onBeforeUnmount, h, render, nextTick } from 'vue'
 import { Highlighter, Underline, Italic, Bold, Link as LinkIcon } from 'lucide-vue-next'
 import tippy from 'tippy.js'
+import Input from './ui/Input.vue'
+import Button from './ui/Button.vue'
 
 const props = defineProps({
   editor: {
@@ -375,23 +377,8 @@ function setupEditorListeners(newEditor) {
 
     const view = newEditor.view
 
-    // 监听所有事务变化
-    newEditor.on('update', ({ transaction }) => {
-      if (isUnmounting.value || !tippyInstance.value) return
-
-      try {
-        const { view, state } = newEditor
-        if (view && view.dom && state && shouldShow({ view, state })) {
-          tippyInstance.value.show()
-        } else {
-          tippyInstance.value.hide()
-        }
-      } catch {
-        // 忽略错误，可能编辑器已销毁
-      }
-    })
-
-    // 同时监听选择变化事件
+    // 只监听选择变化事件，不监听 update 事件
+    // update 事件在输入时也会触发，而 selectionUpdate 只在选择变化时触发
     newEditor.on('selectionUpdate', ({ view, state }) => {
       if (isUnmounting.value || !tippyInstance.value) return
 
@@ -487,27 +474,25 @@ onBeforeUnmount(() => {
     <div class="modal-box bg-base-200 border border-base-300">
       <h3 class="font-bold text-lg text-base-content">设置链接</h3>
       <div class="py-4">
-        <input
+        <Input
           ref="linkInputRef"
           v-model="linkDialog.url"
           type="text"
           placeholder="请输入链接地址"
-          class="input input-bordered w-full"
           @keyup.enter="confirmLink"
           @keydown="handleLinkKeyDown"
-          autocomplete="off"
         />
       </div>
       <div class="modal-action">
-        <button class="btn btn-ghost text-base-content/60 hover:text-base-content" @click="cancelLink">
+        <Button variant="ghost" size="sm" @click="cancelLink">
           取消
-        </button>
-        <button class="btn btn-ghost text-error hover:text-error/80" @click="removeLink">
+        </Button>
+        <Button variant="error" size="sm" @click="removeLink">
           移除链接
-        </button>
-        <button class="btn btn-primary text-primary-content" @click="confirmLink">
+        </Button>
+        <Button variant="primary" size="sm" @click="confirmLink">
           确定
-        </button>
+        </Button>
       </div>
     </div>
     <form method="dialog" class="modal-backdrop bg-black/50" @click="cancelLink">
