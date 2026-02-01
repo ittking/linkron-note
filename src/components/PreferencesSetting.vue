@@ -1,9 +1,11 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
 import { open } from '@tauri-apps/plugin-dialog'
 import { useSettingStore } from '../store/settingStore'
 import { Power, Folder } from 'lucide-vue-next'
+import Toggle from './ui/Toggle.vue'
+import Input from './ui/Input.vue'
 
 const settingStore = useSettingStore()
 
@@ -29,18 +31,16 @@ async function loadAutoStartStatus() {
   }
 }
 
-// 切换开机启动
-async function toggleAutoStart() {
+// 监听开机启动状态变化
+watch(autoStartEnabled, async (newValue) => {
   try {
-    const newState = !autoStartEnabled.value
-    await invoke('set_autostart', { enable: newState })
-    autoStartEnabled.value = newState
+    await invoke('set_autostart', { enable: newValue })
   } catch (error) {
     console.error('Failed to toggle autostart:', error)
     // 恢复状态
     await loadAutoStartStatus()
   }
-}
+})
 
 // 加载工作目录
 async function loadWorkDirectory() {
@@ -114,15 +114,15 @@ async function saveWorkDirectory() {
   <div class="space-y-4">
     <!-- 开机启动 -->
     <div class="card bg-base-200 shadow-sm">
-      <div class="card-body p-4">
+      <div class="card-body p-4 ">
         <h2 class="card-title text-sm font-medium">
           <Power :size="16" />
           开机启动
         </h2>
         <div class="form-control">
-          <label class="label cursor-pointer">
+          <label class="label cursor-pointer flex justify-between gap-4">
             <span class="label-text">开机自动启动</span>
-            <input type="checkbox" class="toggle toggle-sm" :checked="autoStartEnabled" @change="toggleAutoStart" />
+            <Toggle v-model="autoStartEnabled" size="sm" />
           </label>
         </div>
       </div>
@@ -140,7 +140,7 @@ async function saveWorkDirectory() {
             <label class="label">
               <span class="label-text text-xs">工作目录路径</span>
             </label>
-            <input type="text" v-model="workDirectory" placeholder="留空使用默认路径" class="input input-bordered input-sm w-full" />
+            <Input type="text" v-model="workDirectory" placeholder="留空使用默认路径" size="sm" />
           </div>
           <div class="flex gap-2">
             <button class="btn btn-sm btn-primary flex-1" @click="saveWorkDirectory">

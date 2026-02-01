@@ -2,6 +2,7 @@
 import { ref, onMounted } from 'vue'
 import { useSettingStore } from '../store/settingStore'
 import { Bot } from 'lucide-vue-next'
+import Input from './ui/Input.vue'
 
 const settingStore = useSettingStore()
 
@@ -57,19 +58,19 @@ async function saveModelSettings() {
           <label class="label">
             <span class="label-text text-xs">API Key</span>
           </label>
-          <input type="password" v-model="modelSettings.apiKey" placeholder="请输入 API Key" class="input input-bordered input-sm w-full" />
+          <Input type="password" v-model="modelSettings.apiKey" placeholder="请输入 API Key" size="sm" />
         </div>
         <div class="form-control">
           <label class="label">
             <span class="label-text text-xs">API URL</span>
           </label>
-          <input type="text" v-model="modelSettings.apiUrl" placeholder="请输入 API URL" class="input input-bordered input-sm w-full" />
+          <Input type="text" v-model="modelSettings.apiUrl" placeholder="请输入 API URL" size="sm" />
         </div>
         <div class="form-control">
           <label class="label">
             <span class="label-text text-xs">模型名称</span>
           </label>
-          <input type="text" v-model="modelSettings.model" placeholder="请输入模型名称" class="input input-bordered input-sm w-full" />
+          <Input type="text" v-model="modelSettings.model" placeholder="请输入模型名称" size="sm" />
         </div>
         <button class="btn btn-primary btn-sm w-full" :class="{ 'loading': isLoading }" @click="saveModelSettings">
           保存模型设置
