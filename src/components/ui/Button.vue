@@ -42,11 +42,11 @@ function handleClick(e) {
 const sizeClasses = computed(() => {
   switch (props.size) {
     case 'sm':
-      return 'px-3 py-1.5 text-sm min-h-[32px] gap-1.5'
+      return 'px-2.5 py-1 text-xs min-h-[26px] gap-1'
     case 'lg':
-      return 'px-6 py-3 text-lg min-h-[48px] gap-2'
+      return 'px-5 py-2 text-base min-h-[40px] gap-1.5'
     default: // md
-      return 'px-4 py-2 text-sm min-h-[38px] gap-2'
+      return 'px-3 py-1.5 text-sm min-h-[32px] gap-1.5'
   }
 })
 
@@ -74,7 +74,7 @@ const variantClasses = computed(() => {
     :class="[
       'inline-flex items-center justify-center font-medium rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-base-100',
       'disabled:cursor-not-allowed disabled:opacity-50',
-      'border my-2',
+      'border',
       'whitespace-nowrap',
       sizeClasses,
       variantClasses,
@@ -90,7 +90,7 @@ const variantClasses = computed(() => {
     <svg
       v-if="loading"
       class="animate-spin flex-shrink-0"
-      :class="size === 'sm' ? 'w-4 h-4' : size === 'lg' ? 'w-6 h-6' : 'w-5 h-5'"
+      :class="size === 'sm' ? 'w-3 h-3' : size === 'lg' ? 'w-4 h-4' : 'w-3.5 h-3.5'"
       xmlns="http://www.w3.org/2000/svg"
       fill="none"
       viewBox="0 0 24 24"

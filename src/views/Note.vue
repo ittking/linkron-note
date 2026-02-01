@@ -5,6 +5,7 @@ import { invoke } from '@tauri-apps/api/core'
 import { Download, FileText, ChevronUp } from 'lucide-vue-next'
 import NoteCard from '@/components/NoteCard.vue'
 import NoteEditor from '@/components/NoteEditor.vue'
+import Button from '@/components/ui/Button.vue'
 import { useNoteStore } from '@/store/noteStore'
 import { saveFile } from '@/utils/fileUpload'
 import { extractTextFromFile, isSupportedFileType, getFileTypeDescription } from '@/utils/textExtraction'
@@ -652,9 +653,8 @@ function handleCancelEdit() {
                 <h3 class="font-bold text-lg text-base-content">{{ confirmTitle }}</h3>
                 <p class="py-4 text-base-content/60">{{ confirmContent }}</p>
                 <div class="modal-action">
-                    <button @click="confirmVisible = false"
-                        class="btn btn-ghost text-base-content/60 hover:text-base-content">取消</button>
-                    <button @click="handleConfirmOk" class="btn btn-error text-error-content">删除</button>
+                    <Button variant="ghost" size="sm" @click="confirmVisible = false">取消</Button>
+                    <Button variant="error" size="sm" @click="handleConfirmOk">删除</Button>
                 </div>
             </div>
             <form method="dialog" class="modal-backdrop bg-black/50">

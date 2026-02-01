@@ -44,7 +44,7 @@ onUnmounted(() => {
         </div>
       </div>
 
-      <button class="btn btn-primary btn-circle btn-xs flex items-center justify-center w-8 h-8 min-h-0 p-0"
+      <button class="bg-primary text-primary-content rounded-full flex items-center justify-center w-8 h-8 min-h-0 p-0"
         @click="emit('expand')" title="展开">
         <Maximize2 :size="12" />
       </button>
