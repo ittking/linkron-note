@@ -90,10 +90,10 @@
         />
       </div>
       <div class="modal-action">
-        <Button variant="ghost" @click="cancelRename">
+        <Button variant="ghost" size="sm" @click="cancelRename">
           取消
         </Button>
-        <Button variant="primary" @click="confirmRename">
+        <Button variant="primary" size="sm" @click="confirmRename">
           确定
         </Button>
       </div>
