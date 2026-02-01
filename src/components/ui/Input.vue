@@ -87,7 +87,7 @@ defineExpose({
       'w-full rounded-lg border transition-all duration-200 outline-none',
       'focus:ring-2 focus:ring-offset-2 focus:ring-offset-base-100',
       'placeholder:text-base-content/50',
-      'disabled:cursor-not-allowed disabled:opacity-50',
+      'disabled:cursor-not-allowed disabled:opacity-50 my-2',
       sizeClasses,
       error
         ? 'border-error focus:border-error focus:ring-error'

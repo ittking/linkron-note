@@ -127,7 +127,7 @@ onUnmounted(() => {
         'relative w-full rounded-lg border text-left transition-all duration-200 outline-none',
         'focus:ring-2 focus:ring-offset-2 focus:ring-offset-base-100',
         'disabled:cursor-not-allowed disabled:opacity-50',
-        'flex items-center justify-between',
+        'flex items-center justify-between my-2',
         sizeClasses,
         isOpen ? 'border-primary ring-2 ring-primary ring-offset-2 ring-offset-base-100' : 'border-base-300',
         'bg-base-100 text-base-content hover:border-primary/50'

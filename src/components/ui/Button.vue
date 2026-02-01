@@ -74,7 +74,7 @@ const variantClasses = computed(() => {
     :class="[
       'inline-flex items-center justify-center font-medium rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-base-100',
       'disabled:cursor-not-allowed disabled:opacity-50',
-      'border',
+      'border my-2',
       'whitespace-nowrap',
       sizeClasses,
       variantClasses,

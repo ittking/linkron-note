@@ -21,7 +21,7 @@ function setActiveTab(tabId) {
 <template>
   <div class="h-full flex flex-col max-w-200 mx-auto">
     <!-- Tab 导航 -->
-    <div role="tablist" class="tabs tabs-boxed px-4 pt-4 pb-2">
+    <div role="tablist" class="tabs tabs-boxed px-4 pt-4">
       <a v-for="tab in tabs" :key="tab.id" role="tab" @click="setActiveTab(tab.id)" :class="[
         'tab gap-2',
         activeTab === tab.id ? 'tab-active' : ''
@@ -32,7 +32,7 @@ function setActiveTab(tabId) {
     </div>
 
     <!-- Tab 内容 -->
-    <div class="flex-1 p-4 overflow-y-auto no-scrollbar w-full">
+    <div class="flex-1 p-4 pt-2 overflow-y-auto no-scrollbar w-full">
       <PreferencesSetting v-if="activeTab === 'preferences'" />
       <ModelSetting v-if="activeTab === 'model'" />
       <ThemeSetting v-if="activeTab === 'theme'" />
