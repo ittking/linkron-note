@@ -2,12 +2,13 @@
 import { ref, onMounted } from 'vue'
 import { useSettingStore } from '../store/settingStore'
 import { Palette } from 'lucide-vue-next'
+import Select from './ui/Select.vue'
 
 const settingStore = useSettingStore()
 
 // 主题
 const currentTheme = ref('light')
-const themes = [
+const themeNames = [
   'light',
   'dark',
   'cupcake',
@@ -44,6 +45,11 @@ const themes = [
   'abyss',
   'silk'
 ]
+
+const themes = themeNames.map(name => ({
+  label: name,
+  value: name
+}))
 
 // 初始化
 onMounted(async () => {
@@ -89,13 +95,16 @@ function applyTheme(theme) {
           <label class="label">
             <span class="label-text text-xs">当前主题</span>
           </label>
-          <select v-model="currentTheme" @change="changeTheme(currentTheme)" class="select select-bordered select-sm w-full">
-            <option v-for="theme in themes" :key="theme" :value="theme">{{ theme }}</option>
-          </select>
+          <Select
+            v-model="currentTheme"
+            :options="themes"
+            size="sm"
+            @change="changeTheme"
+          />
         </div>
         <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2">
           <div
-            v-for="theme in themes"
+            v-for="theme in themeNames"
             :key="theme"
             @click="changeTheme(theme)"
             :class="[

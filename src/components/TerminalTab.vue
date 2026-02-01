@@ -81,11 +81,10 @@
     <div class="modal-box bg-base-200 border border-base-300">
       <h3 class="font-bold text-lg text-base-content">重命名终端</h3>
       <div class="py-4">
-        <input
+        <Input
           v-model="renameDialog.newTitle"
           type="text"
           placeholder="输入新的名称"
-          class="input input-bordered w-full"
           @keyup.enter="confirmRename"
           ref="renameInputRef"
         />
@@ -108,6 +107,7 @@
 <script setup>
 import { ref, reactive, onMounted, onUnmounted, nextTick } from 'vue'
 import { ExternalLink, Edit2, X } from 'lucide-vue-next'
+import Input from './ui/Input.vue'
 
 const props = defineProps({
   tabs: { type: Array, required: true },

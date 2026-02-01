@@ -1,5 +1,5 @@
 <script setup>
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 
 const props = defineProps({
   modelValue: {
@@ -62,10 +62,19 @@ const sizeClasses = computed(() => {
       return 'px-3 py-2 text-sm min-h-[38px]'
   }
 })
+
+// 暴露 input 元素引用
+const inputRef = ref(null)
+
+defineExpose({
+  focus: () => inputRef.value?.focus(),
+  select: () => inputRef.value?.select()
+})
 </script>
 
 <template>
   <input
+    ref="inputRef"
     :type="type"
     v-model="value"
     :placeholder="placeholder"
