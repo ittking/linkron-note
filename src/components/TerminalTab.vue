@@ -90,12 +90,12 @@
         />
       </div>
       <div class="modal-action">
-        <button class="btn btn-ghost text-base-content/60 hover:text-base-content" @click="cancelRename">
+        <Button variant="ghost" @click="cancelRename">
           取消
-        </button>
-        <button class="btn btn-primary text-primary-content" @click="confirmRename">
+        </Button>
+        <Button variant="primary" @click="confirmRename">
           确定
-        </button>
+        </Button>
       </div>
     </div>
     <form method="dialog" class="modal-backdrop bg-black/50" @click="cancelRename">
@@ -108,6 +108,7 @@
 import { ref, reactive, onMounted, onUnmounted, nextTick } from 'vue'
 import { ExternalLink, Edit2, X } from 'lucide-vue-next'
 import Input from './ui/Input.vue'
+import Button from './ui/Button.vue'
 
 const props = defineProps({
   tabs: { type: Array, required: true },

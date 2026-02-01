@@ -6,6 +6,7 @@ import { useSettingStore } from '../store/settingStore'
 import { Power, Folder } from 'lucide-vue-next'
 import Toggle from './ui/Toggle.vue'
 import Input from './ui/Input.vue'
+import Button from './ui/Button.vue'
 
 const settingStore = useSettingStore()
 
@@ -143,12 +144,12 @@ async function saveWorkDirectory() {
             <Input type="text" v-model="workDirectory" placeholder="留空使用默认路径" size="sm" />
           </div>
           <div class="flex gap-2">
-            <button class="btn btn-sm btn-primary flex-1" @click="saveWorkDirectory">
+            <Button variant="primary" size="sm" block @click="saveWorkDirectory">
               保存工作目录
-            </button>
-            <button class="btn btn-sm btn-ghost" @click="selectWorkDirectory">
+            </Button>
+            <Button variant="ghost" size="sm" @click="selectWorkDirectory">
               选择目录
-            </button>
+            </Button>
           </div>
           <div v-if="workDirectoryStatus" :class="['text-xs', workDirectoryStatus.type === 'success' ? 'text-success' : 'text-error']">
             {{ workDirectoryStatus.message }}

@@ -11,6 +11,7 @@ export {}
 /* prettier-ignore */
 declare module 'vue' {
   export interface GlobalComponents {
+    Button: typeof import('./components/ui/Button.vue')['default']
     Capsule: typeof import('./components/Capsule.vue')['default']
     ImageViewer: typeof import('./components/ImageViewer.vue')['default']
     Input: typeof import('./components/ui/Input.vue')['default']

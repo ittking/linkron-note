@@ -3,6 +3,7 @@ import { ref, onMounted } from 'vue'
 import { useSettingStore } from '../store/settingStore'
 import { Bot } from 'lucide-vue-next'
 import Input from './ui/Input.vue'
+import Button from './ui/Button.vue'
 
 const settingStore = useSettingStore()
 
@@ -72,9 +73,9 @@ async function saveModelSettings() {
           </label>
           <Input type="text" v-model="modelSettings.model" placeholder="请输入模型名称" size="sm" />
         </div>
-        <button class="btn btn-primary btn-sm w-full" :class="{ 'loading': isLoading }" @click="saveModelSettings">
+        <Button variant="primary" size="sm" block :loading="isLoading" @click="saveModelSettings">
           保存模型设置
-        </button>
+        </Button>
       </div>
     </div>
   </div>
