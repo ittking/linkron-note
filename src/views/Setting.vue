@@ -24,7 +24,7 @@ function setActiveTab(tabId) {
     <div role="tablist" class="tabs tabs-boxed px-4 pt-4">
       <a v-for="tab in tabs" :key="tab.id" role="tab" @click="setActiveTab(tab.id)" :class="[
         'tab gap-2',
-        activeTab === tab.id ? 'tab-active' : ''
+        activeTab === tab.id ? 'text-primary' : ''
       ]">
         <component :is="tab.icon" :size="14" />
         <span>{{ tab.label }}</span>
