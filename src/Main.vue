@@ -4,7 +4,6 @@ import { getCurrentWindow, LogicalSize } from '@tauri-apps/api/window'
 import MainContent from './components/MainContent.vue'
 import { useSettingStore } from './store/settingStore'
 import { useNoteStore } from './store/noteStore'
-import Capsule from './components/Capsule.vue'
 
 const settingStore = useSettingStore()
 const noteStore = useNoteStore()
@@ -74,21 +73,6 @@ async function setupWindowResizeListener() {
   }
 }
 
-// 最小化窗口
-async function minimizeWindow() {
-  isMaximized.value = true
-}
-
-// 展开窗口
-async function expandWindow() {
-  isMaximized.value = false
-}
-
-// 监听窗口状态变化，控制窗口是否可调整大小
-watch(isMaximized, async (value) => {
-  await appWindow.setResizable(!value)
-})
-
 onMounted(async () => {
   // 获取当前窗口标签
   const currentWindow = getCurrentWindow()
@@ -129,11 +113,7 @@ onUnmounted(async () => {
 
 <template>
   <div class="h-full flex flex-col overflow-hidden bg-transparent">
-    <!-- 胶囊组件 -->
-    <Capsule v-show="isMaximized" @expand="expandWindow" />
-
-    <!-- 主页内容 -->
-    <MainContent v-show="!isMaximized" :on-minimize="minimizeWindow" class="w-full h-full bg-base-100" />
+    <MainContent class="w-full h-full bg-base-100" />
   </div>
 
 </template>
