@@ -42,11 +42,11 @@ function handleClick(e) {
 const sizeClasses = computed(() => {
   switch (props.size) {
     case 'sm':
-      return 'px-2.5 py-1 text-xs min-h-[26px] gap-1'
+      return 'px-2.5 py-1 text-xs min-h-[28px] gap-1'
     case 'lg':
-      return 'px-5 py-2 text-base min-h-[40px] gap-1.5'
+      return 'px-5 py-2 text-base min-h-[42px] gap-1.5'
     default: // md
-      return 'px-3 py-1.5 text-sm min-h-[32px] gap-1.5'
+      return 'px-3 py-1.5 text-sm min-h-[36px] gap-1.5'
   }
 })
 
