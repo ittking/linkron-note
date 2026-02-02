@@ -7,6 +7,7 @@ import Highlight from '@tiptap/extension-highlight'
 import Placeholder from '@tiptap/extension-placeholder'
 import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight'
 import Link from '@tiptap/extension-link'
+import Image from '@tiptap/extension-image'
 import { common, createLowlight } from 'lowlight'
 import { TagExtension } from '@/extensions/tag-extension'
 import tippy from 'tippy.js'
@@ -132,6 +133,13 @@ const editor = useEditor({
     CodeBlockLowlight.configure({
       lowlight,
       defaultLanguage: null,
+    }),
+    Image.configure({
+      inline: false,
+      allowBase64: true,
+      HTMLAttributes: {
+        class: 'max-w-full h-auto rounded-lg',
+      },
     }),
     Placeholder.configure({
       placeholder: props.placeholder,
