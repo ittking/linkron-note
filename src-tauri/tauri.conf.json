@@ -21,7 +21,7 @@
         "minWidth": 360,
         "center": true,
         "shadow": false,
-        "skipTaskbar": true,
+        "skipTaskbar": false,
         "transparent": true,
         "hiddenTitle": true,
         "alwaysOnTop": true,
@@ -36,7 +36,8 @@
         "enable": true,
         "scope": ["**"]
       }
-    }
+    },
+    "withGlobalTauri": true
   },
   "bundle": {
     "active": true,
