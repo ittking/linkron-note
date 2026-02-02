@@ -5,6 +5,7 @@ import { useEditor, EditorContent } from '@tiptap/vue-3'
 import { openUrl } from '@tauri-apps/plugin-opener'
 import { useNoteStore } from '@/store/noteStore'
 import { revealFile } from '@/utils/fileUpload'
+import { useWorkDirectory } from '@/composables/useWorkDirectory'
 import ImageViewer from './ImageViewer.vue'
 import StarterKit from '@tiptap/starter-kit'
 import Highlight from '@tiptap/extension-highlight'
@@ -35,7 +36,9 @@ const emit = defineEmits(['click', 'edit', 'delete', 'expand', 'collapse'])
 
 const noteStore = useNoteStore()
 
-const workDirectoryCache = ref(null) // 工作目录缓存
+// 使用 useWorkDirectory composable
+const { getWorkDirectory } = useWorkDirectory()
+
 const menuVisible = ref(false)
 const isExpanded = ref(false)
 const contentRef = ref(null)
@@ -70,11 +73,6 @@ const isFileNote = computed(() => noteType.value === 'file')
 
 // 附件 URL
 const attachmentUrl = ref('')
-
-// 监听 noteStore 变化，清空工作目录缓存
-watch(() => noteStore.$state, () => {
-  workDirectoryCache.value = null
-}, { deep: true })
 
 // 监听附件路径变化，更新 URL
 watch(() => props.note.extractUrl, async (newExtractUrl) => {

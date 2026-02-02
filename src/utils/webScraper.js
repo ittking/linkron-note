@@ -1,4 +1,5 @@
 import { invoke } from '@tauri-apps/api/core'
+import { isValidUrl } from './validator'
 
 export async function scrapeWebPage(input) {
   let url = input
@@ -85,13 +86,4 @@ function extractImages(doc) {
     }
   })
   return images
-}
-
-export function isValidUrl(string) {
-  try {
-    const url = new URL(string)
-    return url.protocol === 'http:' || url.protocol === 'https:'
-  } catch (_) {
-    return false
-  }
 }

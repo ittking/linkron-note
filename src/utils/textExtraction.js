@@ -4,6 +4,7 @@
  */
 
 import { invoke } from '@tauri-apps/api/core'
+import { isSupportedFileType } from './validator'
 
 /**
  * 从文件提取文本内容
@@ -77,17 +78,6 @@ function getFullPath(filePath, workDirectory) {
   // 否则拼接工作目录（相对路径格式）
   const separator = workDirectory.endsWith('/') || workDirectory.endsWith('\\') ? '' : '/'
   return `${workDirectory}${separator}${filePath}`
-}
-
-/**
- * 检查文件类型是否支持
- * @param {string} fileName - 文件名
- * @returns {boolean} 是否支持
- */
-export function isSupportedFileType(fileName) {
-  const extension = fileName.split('.').pop().toLowerCase()
-  const supportedExtensions = ['txt', 'md', 'markdown']
-  return supportedExtensions.includes(extension)
 }
 
 /**

@@ -13,7 +13,11 @@
       "Bash(pnpm list:*)",
       "Bash(cat:*)",
       "Bash(pkill:*)",
-      "Bash(cargo clean:*)"
+      "Bash(cargo clean:*)",
+      "Bash(tree:*)",
+      "Bash(lsof:*)",
+      "Bash(xargs:*)",
+      "Bash(npm run dev:*)"
     ]
   }
 }

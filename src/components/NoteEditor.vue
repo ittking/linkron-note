@@ -12,6 +12,7 @@ import { TagExtension } from '@/extensions/tag-extension'
 import tippy from 'tippy.js'
 import { useSettingStore } from '@/store/settingStore'
 import { saveImage, deleteResource } from '@/utils/fileUpload'
+import { useWorkDirectory } from '@/composables/useWorkDirectory'
 import SelectionMenu from './SelectionMenu.vue'
 import ImageViewer from './ImageViewer.vue'
 import {
@@ -64,9 +65,11 @@ const settingStore = useSettingStore()
 const imageInputRef = ref(null)
 const images = ref([])
 const deletedImages = ref([]) // 追踪编辑模式下被删除的图片
-const workDirectoryCache = ref(null) // 工作目录缓存
 const isSettingContent = ref(false) // 标志：是否正在从外部设置内容
 const isUnmounting = ref(false) // 标志：组件是否正在卸载
+
+// 使用 useWorkDirectory composable（从 settingStore 获取）
+const { getWorkDirectory } = useWorkDirectory('setting')
 
 // 监听 props.images 变化，同步到本地状态
 watch(() => props.images, (newImages) => {
@@ -79,15 +82,6 @@ watch(() => props.images, (newImages) => {
     images.value = [...newImages]
   }
 })
-
-// 获取工作目录（带缓存）
-async function getWorkDirectory() {
-  if (workDirectoryCache.value) {
-    return workDirectoryCache.value
-  }
-  workDirectoryCache.value = await settingStore.get('workDirectory', '')
-  return workDirectoryCache.value
-}
 
 // 组件挂载时初始化编辑器内容
 onMounted(() => {
@@ -448,11 +442,6 @@ watch(() => props.shouldClear, (shouldClear) => {
     images.value = []
   }
 })
-
-// 监听 settingStore 变化，清空工作目录缓存
-watch(() => settingStore.$state, () => {
-  workDirectoryCache.value = null
-}, { deep: true })
 
 // 监听 modelValue 变化
 watch(() => props.modelValue, (newValue) => {

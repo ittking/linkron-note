@@ -8,29 +8,22 @@ import NoteEditor from '@/components/NoteEditor.vue'
 import Button from '@/components/ui/Button.vue'
 import { useNoteStore } from '@/store/noteStore'
 import { saveFile } from '@/utils/fileUpload'
-import { extractTextFromFile, isSupportedFileType, getFileTypeDescription } from '@/utils/textExtraction'
-import { scrapeWebPage, isValidUrl } from '@/utils/webScraper'
+import { extractTextFromFile, getFileTypeDescription } from '@/utils/textExtraction'
+import { isSupportedFileType } from '@/utils/validator'
+import { scrapeWebPage } from '@/utils/webScraper'
+import { isValidUrl } from '@/utils/validator'
 import { extractUrlFromUrlFile } from '@/utils/urlFileParser'
 import { isUrlFile } from '@/utils/validator'
+import { useWorkDirectory } from '@/composables/useWorkDirectory'
+import { useToast } from '@/composables/useToast'
+import { useConfirmDialog } from '@/composables/useConfirmDialog'
 
 const noteStore = useNoteStore()
 
-// 工作目录缓存
-const workDirectoryCache = ref(null)
-
-// 获取工作目录（带缓存）
-async function getWorkDirectory() {
-  if (workDirectoryCache.value) {
-    return workDirectoryCache.value
-  }
-  workDirectoryCache.value = await noteStore.getWorkDirectory()
-  return workDirectoryCache.value
-}
-
-// 监听 noteStore 变化，清空工作目录缓存
-watch(() => noteStore.$state, () => {
-  workDirectoryCache.value = null
-}, { deep: true })
+// 使用 composables
+const { getWorkDirectory } = useWorkDirectory()
+const { toastVisible, toastMessage, toastType, showToast } = useToast()
+const { confirmVisible, confirmTitle, confirmContent, showConfirm, handleConfirmOk } = useConfirmDialog()
 
 // 编辑器引用
 const noteEditorRef = ref(null)
@@ -95,9 +88,6 @@ const notes = ref([])
 const editorContent = ref('')
 const isDragging = ref(false)
 const isProcessing = ref(false)
-const toastMessage = ref('')
-const toastVisible = ref(false)
-const toastType = ref('info')
 
 // 分页相关状态
 const currentPage = ref(1)
@@ -109,12 +99,6 @@ const isLoading = ref(false)
 const editingNote = ref(null)
 const isEditing = ref(false)
 const shouldClearEditor = ref(false)
-
-// 确认对话框
-const confirmVisible = ref(false)
-const confirmTitle = ref('')
-const confirmContent = ref('')
-const confirmOnOk = ref(null)
 
 // 路由离开前保存滚动位置
 onBeforeRouteLeave((to, from, next) => {
@@ -256,16 +240,6 @@ onBeforeUnmount(() => {
         cancelAnimationFrame(rafId)
     }
 })
-
-// 显示提示
-function showToast(message, type = 'info') {
-    toastMessage.value = message
-    toastType.value = type
-    toastVisible.value = true
-    setTimeout(() => {
-        toastVisible.value = false
-    }, 3000)
-}
 
 // 加载笔记
 async function loadNotes(reset = false) {
@@ -624,22 +598,11 @@ function handleMenuEdit(note) {
 }
 
 function handleMenuDelete(note) {
-    confirmTitle.value = '确认删除'
-    confirmContent.value = '确定要删除这条笔记吗？'
-    confirmOnOk.value = async () => {
+    showConfirm('确认删除', '确定要删除这条笔记吗？', async () => {
         await noteStore.deleteNote(note.id)
         notes.value = notes.value.filter(n => n.id !== note.id)
         showToast('笔记已删除', 'success')
-    }
-    confirmVisible.value = true
-}
-
-// 确认对话框回调
-function handleConfirmOk() {
-    if (confirmOnOk.value) {
-        confirmOnOk.value()
-    }
-    confirmVisible.value = false
+    })
 }
 
 // 取消编辑
