@@ -1,4 +1,4 @@
-use portable_pty::{native_pty_system, CommandBuilder, MasterPty, PtySize};
+use portable_pty::{native_pty_system, CommandBuilder, MasterPty, PtySize, Child};
 use std::collections::HashMap;
 use std::env;
 use std::io::{Read, Write};
@@ -6,10 +6,11 @@ use std::sync::{Arc, Mutex};
 use tauri::{AppHandle, Emitter};
 use lazy_static::lazy_static;
 
-// 使用 RwMutex 而不是 Mutex，允许多读单写
+// PTY 会话结构，保存所有必要的资源
 struct PtySession {
     writer: Arc<Mutex<Box<dyn Write + Send>>>,
     master: Box<dyn MasterPty + Send>,
+    child: Box<dyn Child + Send>, // 保存子进程句柄
 }
 
 struct TerminalManager {
@@ -49,7 +50,7 @@ impl TerminalManager {
         // 暂时不设置工作目录，先让终端能正常启动
         // TODO: 后续添加工作目录支持
 
-        let _child = pty_pair
+        let child = pty_pair
             .slave
             .spawn_command(cmd)
             .map_err(|e| format!("Failed to spawn shell: {}", e))?;
@@ -60,6 +61,7 @@ impl TerminalManager {
         let session = PtySession {
             writer: Arc::new(Mutex::new(Box::new(writer))),
             master: pty_pair.master,
+            child, // 保存子进程句柄
         };
 
         {
@@ -127,7 +129,13 @@ impl TerminalManager {
 
     fn close_session(&self, session_id: &str) -> Result<(), String> {
         let mut sessions = self.sessions.lock().unwrap();
-        sessions.remove(session_id);
+
+        // 先移除会话，这样会获取 session 的所有权
+        if let Some(mut session) = sessions.remove(session_id) {
+            // 杀死子进程，这会导致 PTY 读取线程收到 EOF 并退出
+            let _ = session.child.kill();
+        }
+
         Ok(())
     }
 }

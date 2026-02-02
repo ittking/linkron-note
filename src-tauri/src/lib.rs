@@ -1,5 +1,4 @@
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
-mod mouse;
 mod autostart;
 mod filesystem;
 mod terminal;
@@ -40,9 +39,6 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             greet,
             get_os,
-            mouse::start_mouse_listener,
-            mouse::stop_mouse_listener,
-            mouse::is_mouse_listener_running,
             autostart::set_autostart,
             autostart::is_autostart_enabled,
             filesystem::check_directory_exists,

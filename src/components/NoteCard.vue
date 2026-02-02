@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref, onMounted, onBeforeUnmount, watch, nextTick } from 'vue'
+import { computed, ref, watch, nextTick, onMounted, onBeforeUnmount } from 'vue'
 import { MoreHorizontal, Edit, Trash2, ChevronDown, ChevronUp } from 'lucide-vue-next'
 import { useEditor, EditorContent } from '@tiptap/vue-3'
 import { openUrl } from '@tauri-apps/plugin-opener'
@@ -8,10 +8,10 @@ import { revealFile } from '@/utils/fileUpload'
 import ImageViewer from './ImageViewer.vue'
 import StarterKit from '@tiptap/starter-kit'
 import Highlight from '@tiptap/extension-highlight'
-import Image from '@tiptap/extension-image'
 import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight'
 import { common, createLowlight } from 'lowlight'
 import { TagExtension } from '@/extensions/tag-extension'
+import Image from '@tiptap/extension-image'
 import dayjs from 'dayjs'
 import 'dayjs/locale/zh-cn'
 
@@ -91,6 +91,11 @@ const extractFileName = computed(() => {
   return props.note.extractUrl.split('/').pop()
 })
 
+// 简单的 HTML 内容渲染（使用 v-html）
+const renderedContent = computed(() => {
+  return props.note.content || ''
+})
+
 // 创建只读编辑器实例
 const editor = useEditor({
   content: props.note.content || '',
@@ -124,6 +129,7 @@ const editor = useEditor({
   },
 })
 
+// 监听内容变化，更新编辑器
 watch([editor, () => props.note.content], ([newEditor, newContent]) => {
   if (newEditor && newContent && newContent !== newEditor.getHTML()) {
     newEditor.commands.setContent(newContent, false)
@@ -138,13 +144,14 @@ const formattedDate = computed(() => {
 
 // 检查内容是否溢出
 function checkOverflow() {
-  if (!contentRef.value || !editor.value) return
+  if (!contentRef.value) return
 
   // 等待 DOM 完全渲染
   nextTick(() => {
     if (!contentRef.value) return
 
     const scrollHeight = contentRef.value.scrollHeight
+    const clientHeight = MAX_HEIGHT
 
     // 如果 scrollHeight 为 0，说明元素还没有渲染，延迟后再检查
     if (scrollHeight === 0) {
@@ -152,7 +159,8 @@ function checkOverflow() {
       return
     }
 
-    isOverflowing.value = scrollHeight > MAX_HEIGHT
+    // 只有当内容高度超过 MAX_HEIGHT 时才认为溢出
+    isOverflowing.value = scrollHeight > clientHeight
   })
 }
 
@@ -278,19 +286,19 @@ defineExpose({
       </div>
     </div>
 
-    <!-- 笔记内容：TipTap 编辑器渲染（所有类型统一） -->
+    <!-- 笔记内容：TipTap 编辑器渲染 -->
     <div v-if="note.content" class="relative">
-      <div ref="contentRef" class="text-base-content leading-relaxed break-words" :class="{
-        'line-clamp-5': !isExpanded && isOverflowing,
+      <div ref="contentRef" class="text-base-content leading-relaxed break-words transition-all duration-200" :class="{
         'max-h-[120px] overflow-hidden': !isExpanded && isOverflowing
       }">
-        <EditorContent class="ProseMirror" :editor="editor" />
+        <EditorContent class="ProseMirror prose prose-sm max-w-none" :editor="editor" />
       </div>
 
       <!-- 展开/收起按钮 -->
       <div class="relative select-none">
+        <!-- 渐变遮罩 -->
         <div v-if="!isExpanded && isOverflowing"
-          class="absolute -top-15 left-0 right-0 h-15 bg-gradient-to-b from-transparent to-base-100 pointer-events-none">
+          class="absolute -top-8 left-0 right-0 h-8 bg-gradient-to-b from-transparent to-base-100 pointer-events-none">
         </div>
         <button v-if="isOverflowing" @click="toggleExpand" :class="[
           'mt-2 text-xs text-primary hover:text-primary/80 flex items-center gap-1',

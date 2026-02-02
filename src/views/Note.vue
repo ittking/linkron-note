@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, onActivated, nextTick, computed } from 'vue'
+import { ref, onMounted, onBeforeUnmount, onActivated, nextTick, computed } from 'vue'
 import { onBeforeRouteLeave } from 'vue-router'
 import { invoke } from '@tauri-apps/api/core'
 import { Download, FileText, ChevronUp } from 'lucide-vue-next'
@@ -68,6 +68,13 @@ const EDITOR_THRESHOLD = 150
 let lastScrollTop = 0
 let isScrollingDown = false
 
+// 滚动优化状态
+let rafId = null
+let lastScrollTime = 0
+const SCROLL_THROTTLE = 16 // ~60fps
+let isScrolling = false
+let scrollEndTimer = null
+
 // 优化的编辑器高度更新逻辑
 function updateEditorHeight(scrollTop) {
     isScrollingDown = scrollTop > lastScrollTop
@@ -127,21 +134,110 @@ onActivated(async () => {
     }, 50)
 })
 
-// 监听笔记列表滚动
+// 监听笔记列表滚动（优化版本）
 function handleNoteListScroll() {
-    if (noteListRef.value) {
-        const scrollTop = noteListRef.value.scrollTop
+    if (!noteListRef.value) return
 
+    const now = Date.now()
+    const timeSinceLastScroll = now - lastScrollTime
+
+    // 标记正在滚动
+    isScrolling = true
+
+    // 清除之前的定时器
+    if (scrollEndTimer) {
+        clearTimeout(scrollEndTimer)
+    }
+
+    // 设置滚动结束检测
+    scrollEndTimer = setTimeout(() => {
+        isScrolling = false
+        // 滚动结束后再执行一次精确检测
+        requestAnimationFrame(() => {
+            detectCroppedNote()
+        })
+    }, 150)
+
+    // 节流 + RAF 优化
+    if (timeSinceLastScroll < SCROLL_THROTTLE) {
+        if (rafId) return
+        rafId = requestAnimationFrame(() => {
+            rafId = null
+        })
+        lastScrollTime = now
+        return
+    }
+
+    if (rafId) return
+
+    rafId = requestAnimationFrame(() => {
+        const scrollTop = noteListRef.value.scrollTop
         const { scrollHeight, clientHeight } = noteListRef.value
         const distanceToBottom = scrollHeight - scrollTop - clientHeight
 
-        if (distanceToBottom < 100 && hasMore.value && !isLoading.value) {
+        // 提前加载：200px 距离时触发
+        if (distanceToBottom < 200 && hasMore.value && !isLoading.value) {
             loadNotes()
         }
 
         updateEditorHeight(scrollTop)
-        detectCroppedNote()
+
+        // 滚动时简化检测，只检测可见区域附近的笔记
+        detectCroppedNoteOptimized()
+
+        lastScrollTime = now
+        rafId = null
+    })
+}
+
+// 优化的被切割笔记检测（滚动时使用，减少查询范围）
+function detectCroppedNoteOptimized() {
+    if (!noteListRef.value) return
+
+    const containerRect = noteListRef.value.getBoundingClientRect()
+    const containerBottom = containerRect.bottom
+
+    // 只查询可见区域的元素，使用 for 循环比 forEach 更快
+    const noteElements = noteListRef.value.querySelectorAll('[data-note-id]')
+    let croppedId = null
+
+    for (let i = 0; i < noteElements.length; i++) {
+        const element = noteElements[i]
+        const elementRect = element.getBoundingClientRect()
+        const elementTop = elementRect.top
+        const elementBottom = elementRect.bottom
+
+        if (elementTop < containerBottom && elementBottom > containerBottom) {
+            croppedId = element.getAttribute('data-note-id')
+            break
+        }
     }
+
+    croppedNoteId.value = croppedId
+}
+
+// 原始检测方法（保留用于精确场景）
+function detectCroppedNote() {
+    if (!noteListRef.value) return
+
+    const containerRect = noteListRef.value.getBoundingClientRect()
+    const containerBottom = containerRect.bottom
+
+    const noteElements = noteListRef.value.querySelectorAll('[data-note-id]')
+    let croppedId = null
+
+    noteElements.forEach(element => {
+        const noteId = element.getAttribute('data-note-id')
+        const elementRect = element.getBoundingClientRect()
+        const elementTop = elementRect.top
+        const elementBottom = elementRect.bottom
+
+        if (elementTop < containerBottom && elementBottom > containerBottom) {
+            croppedId = noteId
+        }
+    })
+
+    croppedNoteId.value = croppedId
 }
 
 // 初始化
@@ -149,6 +245,16 @@ onMounted(async () => {
     await loadNotes()
     await nextTick()
     detectCroppedNote()
+})
+
+// 清理定时器和 RAF
+onBeforeUnmount(() => {
+    if (scrollEndTimer) {
+        clearTimeout(scrollEndTimer)
+    }
+    if (rafId) {
+        cancelAnimationFrame(rafId)
+    }
 })
 
 // 显示提示
@@ -490,30 +596,6 @@ function handleNoteCollapse(noteId) {
     nextTick(() => {
         detectCroppedNote()
     })
-}
-
-// 检测被底部边缘切割的笔记
-function detectCroppedNote() {
-    if (!noteListRef.value) return
-
-    const containerRect = noteListRef.value.getBoundingClientRect()
-    const containerBottom = containerRect.bottom
-
-    const noteElements = noteListRef.value.querySelectorAll('[data-note-id]')
-    let croppedId = null
-
-    noteElements.forEach(element => {
-        const noteId = element.getAttribute('data-note-id')
-        const elementRect = element.getBoundingClientRect()
-        const elementTop = elementRect.top
-        const elementBottom = elementRect.bottom
-
-        if (elementTop < containerBottom && elementBottom > containerBottom) {
-            croppedId = noteId
-        }
-    })
-
-    croppedNoteId.value = croppedId
 }
 
 // 判断是否显示浮动收起按钮

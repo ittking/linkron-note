@@ -11,7 +11,9 @@
       "Bash(ls:*)",
       "Bash(tr:*)",
       "Bash(pnpm list:*)",
-      "Bash(cat:*)"
+      "Bash(cat:*)",
+      "Bash(pkill:*)",
+      "Bash(cargo clean:*)"
     ]
   }
 }
