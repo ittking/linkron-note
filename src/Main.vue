@@ -76,7 +76,7 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="h-full flex flex-col overflow-hidden bg-transparent">
+  <div class="h-full flex flex-col overflow-hidden bg-transparent select-none">
     <div class="main-content h-full flex flex-col overflow-hidden border border-base-300 rounded bg-base-100">
       <!-- 顶部控制栏 -->
       <div data-tauri-drag-region
