@@ -3,15 +3,20 @@ import { ref, onMounted, watch } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
 import { open } from '@tauri-apps/plugin-dialog'
 import { useSettingStore } from '../store/settingStore'
-import { Power, Folder } from 'lucide-vue-next'
+import { useConfig } from '../store/configStore'
+import { Power, Folder, Image } from 'lucide-vue-next'
 import Toggle from './ui/Toggle.vue'
 import Input from './ui/Input.vue'
 import Button from './ui/Button.vue'
 
 const settingStore = useSettingStore()
+const configStore = useConfig()
 
 // 开机启动
 const autoStartEnabled = ref(false)
+
+// 笔记图片最大展示数
+const noteImageMaxCount = ref(4)
 
 // 工作目录
 const workDirectory = ref('')
@@ -21,6 +26,7 @@ const workDirectoryStatus = ref(null)
 onMounted(async () => {
   await loadAutoStartStatus()
   await loadWorkDirectory()
+  await loadNoteImageMaxCount()
 })
 
 // 加载开机启动状态
@@ -72,12 +78,12 @@ async function selectWorkDirectory() {
 // 保存工作目录
 async function saveWorkDirectory() {
   workDirectoryStatus.value = null
-  
+
   try {
     if (workDirectory.value.trim()) {
       // 检查目录是否存在
       const exists = await invoke('check_directory_exists', { path: workDirectory.value.trim() })
-      
+
       if (!exists) {
         // 创建目录
         await invoke('create_directory', { path: workDirectory.value.trim() })
@@ -91,7 +97,7 @@ async function saveWorkDirectory() {
           message: '工作目录已保存'
         }
       }
-      
+
       await settingStore.set('workDirectory', workDirectory.value.trim())
     } else {
       // 清空工作目录
@@ -109,6 +115,31 @@ async function saveWorkDirectory() {
     }
   }
 }
+
+// 加载笔记图片最大展示数
+async function loadNoteImageMaxCount() {
+  try {
+    const savedValue = await settingStore.get('noteImageMaxCount', 4)
+    noteImageMaxCount.value = Number(savedValue)
+    configStore.noteImageMaxCount.value = noteImageMaxCount.value
+  } catch (error) {
+    console.error('Failed to load note image max count:', error)
+  }
+}
+
+// 监听笔记图片最大展示数变化
+watch(noteImageMaxCount, async (newValue) => {
+  const count = Number(newValue)
+  if (count >= 1 && count <= 20) {
+    try {
+      await settingStore.set('noteImageMaxCount', count)
+      configStore.noteImageMaxCount.value = count
+    } catch (error) {
+      console.error('Failed to save note image max count:', error)
+    }
+  }
+})
+
 </script>
 
 <template>
@@ -154,6 +185,29 @@ async function saveWorkDirectory() {
           <div v-if="workDirectoryStatus" :class="['text-xs', workDirectoryStatus.type === 'success' ? 'text-success' : 'text-error']">
             {{ workDirectoryStatus.message }}
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 笔记图片最大展示数 -->
+    <div class="card bg-base-200 shadow-sm">
+      <div class="card-body p-4">
+        <h2 class="card-title text-sm font-medium">
+          <Image :size="16" />
+          笔记图片
+        </h2>
+        <div class="form-control">
+          <label class="label">
+            <span class="label-text text-xs">笔记卡片图片列表最大展示数量 (1-20)</span>
+          </label>
+          <Input
+            type="number"
+            v-model.number="noteImageMaxCount"
+            min="1"
+            max="20"
+            placeholder="默认为 4"
+            size="sm"
+          />
         </div>
       </div>
     </div>

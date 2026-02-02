@@ -3,35 +3,27 @@
  * 专门用于应用配置状态管理
  */
 export function useConfigStore() {
-  const isMaximized = ref(false)
+  const noteImageMaxCount = ref(4)
 
   /**
    * 初始化配置
    */
   async function initConfig() {
-    isMaximized.value = false
+    noteImageMaxCount.value = 4
   }
 
   /**
-   * 设置窗口状态
-   * @param {boolean} maximized - 是否最大化
+   * 设置笔记图片最大展示数
+   * @param {number} count - 最大展示数量
    */
-  async function setMaximized(maximized) {
-    isMaximized.value = maximized
-  }
-
-  /**
-   * 切换窗口状态
-   */
-  async function toggleMaximized() {
-    await setMaximized(!isMaximized.value)
+  async function setNoteImageMaxCount(count) {
+    noteImageMaxCount.value = count
   }
 
   return {
-    isMaximized,
+    noteImageMaxCount,
     initConfig,
-    setMaximized,
-    toggleMaximized,
+    setNoteImageMaxCount,
   }
 }
 

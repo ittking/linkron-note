@@ -1,15 +1,17 @@
 <script setup>
 import { onMounted, onUnmounted, ref } from 'vue'
-import { getCurrentWindow, LogicalSize } from '@tauri-apps/api/window'
+import { getCurrentWindow } from '@tauri-apps/api/window'
 import { useRouter, useRoute } from 'vue-router'
 import { BookOpen, Terminal, Settings, CheckSquare, Minus } from 'lucide-vue-next'
 import { useSettingStore } from './store/settingStore'
 import { useNoteStore } from './store/noteStore'
+import { useConfig } from './store/configStore'
 
 const router = useRouter()
 const route = useRoute()
 const settingStore = useSettingStore()
 const noteStore = useNoteStore()
+const configStore = useConfig()
 const appWindow = getCurrentWindow()
 
 const tabs = [
@@ -36,68 +38,6 @@ async function minimizeWindow() {
   }
 }
 
-// 防抖函数
-function debounce(func, wait) {
-  let timeout
-  return function executedFunction(...args) {
-    const later = () => {
-      clearTimeout(timeout)
-      func(...args)
-    }
-    clearTimeout(timeout)
-    timeout = setTimeout(later, wait)
-  }
-}
-
-// 保存窗口大小
-async function saveWindowSize() {
-  try {
-    const size = await appWindow.innerSize()
-    // 转换为 LogicalSize 以处理 DPI 缩放
-    const scaleFactor = await appWindow.scaleFactor()
-    const logicalWidth = size.width / scaleFactor
-    const logicalHeight = size.height / scaleFactor
-
-    // 确保值有效
-    if (logicalWidth > 0 && logicalHeight > 0) {
-      await settingStore.set('windowWidth', logicalWidth)
-      await settingStore.set('windowHeight', logicalHeight)
-    }
-  } catch (error) {
-    console.error('Failed to save window size:', error)
-  }
-}
-
-// 防抖的保存函数
-const debouncedSaveWindowSize = debounce(saveWindowSize, 300)
-
-// 恢复窗口大小
-async function restoreWindowSize() {
-  try {
-    const width = await settingStore.get('windowWidth', 800)
-    const height = await settingStore.get('windowHeight', 600)
-
-    // 确保值有效
-    if (width && height && width > 0 && height > 0) {
-      await appWindow.setSize(new LogicalSize(width, height))
-    }
-  } catch (error) {
-    console.error('Failed to restore window size:', error)
-  }
-}
-
-// 监听窗口大小变化
-let unlistenResize = null
-
-async function setupWindowResizeListener() {
-  try {
-    unlistenResize = await appWindow.onResized(() => {
-      debouncedSaveWindowSize()
-    })
-  } catch (error) {
-    console.error('Failed to setup window resize listener:', error)
-  }
-}
 
 onMounted(async () => {
   // 获取当前窗口标签
@@ -121,20 +61,18 @@ onMounted(async () => {
       console.error('Failed to init database:', error)
     }
 
-    // 恢复窗口大小
-    await restoreWindowSize()
-
-    // 设置窗口大小变化监听
-    await setupWindowResizeListener()
+    // 初始化配置
+    try {
+      await configStore.initConfig()
+      // 加载笔记图片最大展示数
+      const savedMaxCount = await settingStore.get('noteImageMaxCount', 4)
+      configStore.noteImageMaxCount.value = Number(savedMaxCount)
+    } catch (error) {
+      console.error('Failed to init config:', error)
+    }
   }
 })
 
-// 组件卸载时清理监听器
-onUnmounted(async () => {
-  if (unlistenResize) {
-    unlistenResize()
-  }
-})
 </script>
 
 <template>

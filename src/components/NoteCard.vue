@@ -4,6 +4,7 @@ import { MoreHorizontal, Edit, Trash2, ChevronDown, ChevronUp } from 'lucide-vue
 import { useEditor, EditorContent } from '@tiptap/vue-3'
 import { openUrl } from '@tauri-apps/plugin-opener'
 import { useNoteStore } from '@/store/noteStore'
+import { useConfig } from '@/store/configStore'
 import { revealFile } from '@/utils/fileUpload'
 import { useWorkDirectory } from '@/composables/useWorkDirectory'
 import ImageViewer from './ImageViewer.vue'
@@ -35,6 +36,7 @@ const props = defineProps({
 const emit = defineEmits(['click', 'edit', 'delete', 'expand', 'collapse'])
 
 const noteStore = useNoteStore()
+const configStore = useConfig()
 
 // 使用 useWorkDirectory composable
 const { getWorkDirectory } = useWorkDirectory()
@@ -43,6 +45,7 @@ const menuVisible = ref(false)
 const isExpanded = ref(false)
 const contentRef = ref(null)
 const isOverflowing = ref(false)
+const showAllImages = ref(false) // 控制是否显示所有图片
 const MAX_HEIGHT = 120 // 最大高度，超过这个高度显示展开按钮
 
 // 笔记类型判断
@@ -70,6 +73,36 @@ const noteType = computed(() => {
 
 const isLinkNote = computed(() => noteType.value === 'link')
 const isFileNote = computed(() => noteType.value === 'file')
+
+// 图片列表展示（根据配置限制数量）
+const displayImages = computed(() => {
+  if (!props.note.images || props.note.images.length === 0) {
+    return []
+  }
+  // 如果显示所有图片，返回全部
+  if (showAllImages.value) {
+    return props.note.images
+  }
+  // 否则返回配置的数量
+  const maxCount = configStore.noteImageMaxCount.value || 4
+  return props.note.images.slice(0, maxCount)
+})
+
+// 是否显示切换占位图（始终显示，只要有超过配置数量的图片）
+const showTogglePlaceholder = computed(() => {
+  if (!props.note.images || props.note.images.length === 0) {
+    return false
+  }
+  return props.note.images.length > (configStore.noteImageMaxCount.value || 4)
+})
+
+// 额外图片数量
+const remainingImageCount = computed(() => {
+  if (!props.note.images) {
+    return 0
+  }
+  return Math.max(0, props.note.images.length - (configStore.noteImageMaxCount.value || 4))
+})
 
 // 附件 URL
 const attachmentUrl = ref('')
@@ -174,6 +207,12 @@ function toggleExpand(event) {
     isExpanded.value = true
     emit('expand', props.note.id)
   }
+}
+
+// 切换图片显示数量
+function toggleImageDisplay(event) {
+  event.stopPropagation()
+  showAllImages.value = !showAllImages.value
 }
 
 // 菜单项点击处理
@@ -315,10 +354,23 @@ defineExpose({
     </div>
 
     <!-- 图片列表 -->
-    <div v-if="note.images && note.images.length > 0"
+    <div v-if="displayImages.length > 0"
       class="grid mn:grid-cols-5 xs:grid-cols-6 sm:grid-cols-7 sm:grid-cols-8 md:grid-cols-10 gap-2 mt-3">
-      <ImageViewer v-for="(imageUrl, index) in note.images" :key="index" :src="imageUrl" :alt="`笔记图片 ${index + 1}`"
+      <ImageViewer v-for="(imageUrl, index) in displayImages" :key="index" :src="imageUrl" :alt="`笔记图片 ${index + 1}`"
         :images="note.images" />
+      <!-- 展开/收起切换占位图 -->
+      <div v-if="showTogglePlaceholder"
+        class="relative aspect-square rounded bg-base-200 flex flex-col items-center justify-center gap-1 cursor-pointer hover:bg-base-300 transition-colors"
+        @click="toggleImageDisplay">
+        <template v-if="!showAllImages">
+          <span class="text-xs text-base-content/60">+{{ remainingImageCount }}</span>
+          <ChevronDown :size="12" class="text-base-content/40" />
+        </template>
+        <template v-else>
+          <span class="text-xs text-base-content/60">收起</span>
+          <ChevronUp :size="12" class="text-base-content/40" />
+        </template>
+      </div>
     </div>
 
     <!-- 底部信息 -->
