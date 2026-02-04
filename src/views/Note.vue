@@ -648,8 +648,12 @@ function handleTagFilter(notes) {
     if (notes === null) {
         // 清除筛选，恢复原笔记列表
         filteredNotes.value = null
-    } else {
+    } else if (Array.isArray(notes)) {
         filteredNotes.value = notes
+        // 如果结果为空数组，显示提示
+        if (notes.length === 0) {
+            showToast('没有找到匹配的笔记', 'info')
+        }
     }
 }
 

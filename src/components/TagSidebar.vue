@@ -120,6 +120,8 @@ async function filterNotes() {
     emit('filter', filteredNotes)
   } catch (error) {
     console.error('Failed to filter notes:', error)
+    // 返回空数组表示筛选失败
+    emit('filter', [])
   }
 }
 
