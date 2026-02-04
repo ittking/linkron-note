@@ -1,6 +1,6 @@
 import { Node, mergeAttributes } from '@tiptap/core'
 import Suggestion from '@tiptap/suggestion'
-import { PluginKey } from '@tiptap/pm/state'
+import { PluginKey, Plugin } from '@tiptap/pm/state'
 import tippy from 'tippy.js'
 
 export const TagExtension = Node.create({
@@ -206,6 +206,72 @@ export const TagExtension = Node.create({
             .run()
         },
       }),
+
+      // 空格键触发标签转换插件
+      new Plugin({
+        key: new PluginKey('tag-space-trigger'),
+        props: {
+          handleKeyDown: (view, event) => {
+            // 检测空格键
+            if (event.key !== ' ') return false
+
+            const { state } = view
+            const { selection } = state
+            const { $from } = selection
+
+            // 获取当前行文本
+            let textBefore = ''
+            let pos = $from.pos
+            while (pos > 0) {
+              const node = state.doc.nodeAt(pos - 1)
+              if (!node || node.type.name !== 'text') break
+              textBefore = node.textContent.slice(0, $from.pos - pos + 1) + textBefore
+              pos -= node.nodeSize
+            }
+
+            // 检查是否以 # 开头
+            const match = textBefore.match(/#([a-zA-Z0-9_\u4e00-\u9fa5/]+)$/)
+            if (!match) return false
+
+            const tagPath = match[1]
+            const fromPos = $from.pos - match[0].length
+            const toPos = $from.pos
+
+            // 异步处理标签创建
+            ;(async () => {
+              try {
+                const { useNoteStore } = await import('@/store/noteStore')
+                const noteStore = useNoteStore()
+
+                // 创建或获取标签
+                await noteStore.createOrGetTag(tagPath)
+
+                // 插入标签节点 + 空格
+                const { tr } = view.state
+                tr.delete(fromPos, toPos)
+                tr.insertText(tagPath, fromPos, fromPos)
+
+                // 创建标签节点
+                const tagNode = view.state.schema.nodes.tag.create({
+                  name: tagPath,
+                  displayName: tagPath.split('/').pop(),
+                  path: tagPath.substring(0, tagPath.lastIndexOf('/')) || '',
+                  level: tagPath.split('/').length
+                })
+
+                tr.insert(tagNode, fromPos + tagPath.length)
+                tr.insertText(' ', fromPos + tagPath.length + 1)
+
+                view.dispatch(tr)
+              } catch (error) {
+                console.error('Failed to create tag:', error)
+              }
+            })()
+
+            return true
+          }
+        }
+      })
     ]
   },
 })
