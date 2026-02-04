@@ -593,7 +593,7 @@ impl Database {
                     };
 
                     // 创建或获取标签
-                    if let Ok(_tag) = self.create_or_get_tag(&full_name, None) {
+                    if let Ok(_tag) = self.create_or_get_tag(&full_name) {
                         // 只将最末级的标签与笔记关联
                         if i == parts.len() - 1 {
                             self.conn.execute(
@@ -611,9 +611,14 @@ impl Database {
         Ok(())
     }
 
-    /// 创建或获取标签
-    pub fn create_or_get_tag(&self, name: &str, _color: Option<&str>) -> SqliteResult<Tag> {
-        // 解析标签名
+    /// 创建或获取标签（支持多级路径）
+    pub fn create_or_get_tag(&self, name: &str) -> SqliteResult<Tag> {
+        // 检查是否已存在
+        if let Some(tag) = self.get_tag_by_name(name)? {
+            return Ok(tag);
+        }
+
+        // 解析标签路径
         let parts: Vec<&str> = name.split('/').collect();
         let level = parts.len() as i32;
         let display_name = parts.last().unwrap_or(&name).to_string();
@@ -625,15 +630,10 @@ impl Database {
             String::new()
         };
 
-        let now = chrono::Utc::now().to_rfc3339();
-
-        // 尝试获取已存在的标签
-        if let Some(tag) = self.get_tag_by_name(name)? {
-            return Ok(tag);
-        }
-
         // 创建新标签
         let id = Ulid::new().to_string();
+        let now = chrono::Utc::now().to_rfc3339();
+
         self.conn.execute(
             "INSERT INTO tags (id, name, display_name, path, level, created_at, updated_at)
              VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
@@ -756,7 +756,7 @@ impl Database {
     /// 为笔记添加标签
     pub fn add_tag_to_note(&self, note_id: &str, tag_name: &str) -> SqliteResult<Tag> {
         // 创建或获取标签
-        let tag = self.create_or_get_tag(tag_name, None)?;
+        let tag = self.create_or_get_tag(tag_name)?;
 
         // 检查是否已关联
         let exists: i64 = self.conn.query_row(
