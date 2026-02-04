@@ -788,9 +788,31 @@ impl Database {
         Ok(())
     }
 
-    /// 删除标签
-    pub fn delete_tag(&self, tag_id: &str) -> SqliteResult<()> {
-        self.conn.execute("DELETE FROM tags WHERE id = ?", params![tag_id])?;
+    /// 递归删除标签
+    pub fn delete_tag_recursive(&self, tag_name: &str, delete_children: bool) -> SqliteResult<()> {
+        if delete_children {
+            // 删除所有子标签（级联删除 note_tags）
+            self.conn.execute(
+                "DELETE FROM tags WHERE name = ? OR path = ?",
+                params![tag_name, tag_name]
+            )?;
+        } else {
+            // 将子标签提升到父级
+            let tag = self.get_tag_by_name(tag_name)?
+                .ok_or_else(|| rusqlite::Error::QueryReturnedNoRows)?;
+
+            self.conn.execute(
+                "UPDATE tags SET path = ? WHERE path = ?",
+                params![&tag.path, tag_name]
+            )?;
+
+            // 删除当前标签
+            self.conn.execute(
+                "DELETE FROM tags WHERE name = ?",
+                params![tag_name]
+            )?;
+        }
+
         Ok(())
     }
 
@@ -958,10 +980,10 @@ pub async fn remove_tag_from_note(note_id: String, tag_id: String, work_director
 
 /// Tauri 命令：删除标签
 #[tauri::command]
-pub async fn delete_tag(tag_id: String, work_directory: Option<String>) -> Result<(), String> {
+pub async fn delete_tag(tag_name: String, delete_children: bool, work_directory: Option<String>) -> Result<(), String> {
     let db_path = get_database_path(work_directory)?;
     let db = Database::new(&db_path).map_err(|e| format!("Failed to open database: {}", e))?;
-    db.delete_tag(&tag_id).map_err(|e| format!("Failed to delete tag: {}", e))
+    db.delete_tag_recursive(&tag_name, delete_children).map_err(|e| format!("Failed to delete tag: {}", e))
 }
 
 /// Tauri 命令：按标签获取笔记
