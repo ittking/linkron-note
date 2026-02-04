@@ -851,6 +851,28 @@ impl Database {
 
         tags.collect()
     }
+
+    /// 按路径模式获取标签（用于重命名/删除操作）
+    fn get_tags_by_path_pattern(&self, pattern: &str) -> SqliteResult<Vec<Tag>> {
+        let mut stmt = self.conn.prepare(
+            "SELECT id, name, display_name, path, level, created_at, updated_at
+         FROM tags WHERE name LIKE ? ESCAPE '\' OR path LIKE ? ESCAPE '\'"
+        )?;
+
+        let tags = stmt.query_map(params![pattern, pattern], |row| {
+            Ok(Tag {
+                id: row.get(0)?,
+                name: row.get(1)?,
+                display_name: row.get(2)?,
+                path: row.get(3)?,
+                level: row.get(4)?,
+                created_at: row.get(5)?,
+                updated_at: row.get(6)?,
+            })
+        })?;
+
+        tags.collect()
+    }
 }
 
 /// Tauri 命令：获取所有标签
