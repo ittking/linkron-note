@@ -271,7 +271,18 @@ impl Database {
             ],
         )?;
 
-        self.parse_and_create_tags(&id, &note_data.content)?;
+        // 从 HTML 中提取标签并创建关联
+        let tags = self.extract_tags_from_html(&note_data.content);
+        for tag_path in tags {
+            if let Ok(tag) = self.create_or_get_tag(&tag_path) {
+                let relation_id = Ulid::new().to_string();
+                self.conn.execute(
+                    "INSERT OR IGNORE INTO note_tags (id, note_id, tag_id, created_at)
+                     VALUES (?1, ?2, ?3, ?4)",
+                    params![&relation_id, &id, &tag.id, &now],
+                )?;
+            }
+        }
 
         Ok(Note {
             id,
@@ -591,46 +602,6 @@ impl Database {
         }
 
         tags
-    }
-
-    /// 解析内容中的标签并创建关联（直接匹配文本中的 #标签名 格式）
-    fn parse_and_create_tags(&self, note_id: &str, content: &str) -> SqliteResult<()> {
-        // 直接在内容中查找标签：#标签名 或 #标签名/子标签
-        let tag_re = Regex::new(r"#([a-zA-Z0-9_\u4e00-\u9fa5/]+)").unwrap();
-
-        for tag_cap in tag_re.captures_iter(content) {
-            if let Some(tag_name) = tag_cap.get(1) {
-                let tag_name_str = tag_name.as_str();
-
-                // 解析多级标签
-                let parts: Vec<&str> = tag_name_str.split('/').collect();
-
-                // 创建或获取所有层级的标签（从父级到子级）
-                let mut current_path = String::new();
-                for (i, part) in parts.iter().enumerate() {
-                    let full_name = if i == 0 {
-                        part.to_string()
-                    } else {
-                        format!("{}/{}", current_path, part)
-                    };
-
-                    // 创建或获取标签
-                    if let Ok(_tag) = self.create_or_get_tag(&full_name) {
-                        // 只将最末级的标签与笔记关联
-                        if i == parts.len() - 1 {
-                            self.conn.execute(
-                                "INSERT OR IGNORE INTO note_tags (note_id, tag_id) VALUES (?1, ?2)",
-                                params![note_id, &_tag.id],
-                            )?;
-                        }
-                    }
-
-                    // 更新当前路径
-                    current_path = full_name;
-                }
-            }
-        }
-        Ok(())
     }
 
     /// 创建或获取标签（支持多级路径）
