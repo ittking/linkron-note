@@ -17,7 +17,12 @@
       "Bash(tree:*)",
       "Bash(lsof:*)",
       "Bash(xargs:*)",
-      "Bash(npm run dev:*)"
+      "Bash(npm run dev:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(cargo build:*)",
+      "Bash(npm install:*)",
+      "Bash(wait:*)"
     ]
   }
 }
