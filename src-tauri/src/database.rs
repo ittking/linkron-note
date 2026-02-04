@@ -1052,3 +1052,19 @@ pub async fn get_notes_by_tags(tag_names: Vec<String>, page: u32, page_size: u32
     let db = Database::new(&db_path).map_err(|e| format!("Failed to open database: {}", e))?;
     db.get_notes_by_tags(&tag_names, page, page_size).map_err(|e| format!("Failed to get notes: {}", e))
 }
+
+/// Tauri 命令：创建或获取标签
+#[tauri::command]
+pub async fn create_or_get_tag(tag_path: String, work_directory: Option<String>) -> Result<Tag, String> {
+    let db_path = get_database_path(work_directory)?;
+    let db = Database::new(&db_path).map_err(|e| format!("Failed to open database: {}", e))?;
+    db.create_or_get_tag(&tag_path).map_err(|e| format!("Failed to create tag: {}", e))
+}
+
+/// Tauri 命令：重命名标签
+#[tauri::command]
+pub async fn rename_tag(old_name: String, new_name: String, rename_children: bool, work_directory: Option<String>) -> Result<(), String> {
+    let db_path = get_database_path(work_directory)?;
+    let db = Database::new(&db_path).map_err(|e| format!("Failed to open database: {}", e))?;
+    db.rename_tag(&old_name, &new_name, rename_children).map_err(|e| format!("Failed to rename tag: {}", e))
+}

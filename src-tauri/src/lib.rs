@@ -69,6 +69,8 @@ pub fn run() {
             database::get_notes_by_tag,
             database::get_notes_by_tags,
             database::search_tags,
+            database::create_or_get_tag,
+            database::rename_tag,
             file_reader::read_text_file,
             file_reader::read_file_text,
             file_reader::get_file_metadata,
