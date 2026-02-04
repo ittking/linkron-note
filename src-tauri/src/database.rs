@@ -873,6 +873,47 @@ impl Database {
 
         tags.collect()
     }
+
+    /// 重命名标签
+    pub fn rename_tag(&self, old_name: &str, new_name: &str, rename_children: bool) -> SqliteResult<()> {
+        let now = chrono::Utc::now().to_rfc3339();
+
+        // 解析新旧路径
+        let new_parts: Vec<&str> = new_name.split('/').collect();
+        let new_display_name = new_parts.last().unwrap_or(&new_name);
+
+        // 更新当前标签
+        self.conn.execute(
+            "UPDATE tags SET name = ?1, display_name = ?2, updated_at = ?3 WHERE name = ?4",
+            params![new_name, new_display_name, &now, old_name]
+        )?;
+
+        // 如果需要重命名子标签
+        if rename_children {
+            let pattern = format!("{}%", old_name.replace("%", "\\%").replace("_", "\\_"));
+
+            for tag in self.get_tags_by_path_pattern(&pattern)? {
+                // 跳过自己（已经更新过）
+                if tag.name == old_name {
+                    continue;
+                }
+
+                let new_child_name = tag.name.replacen(old_name, new_name, 1);
+                let new_child_path = if tag.path.is_empty() {
+                    new_name.to_string()
+                } else {
+                    tag.path.replacen(old_name, new_name, 1)
+                };
+
+                self.conn.execute(
+                    "UPDATE tags SET name = ?1, path = ?2, updated_at = ?3 WHERE id = ?4",
+                    params![&new_child_name, &new_child_path, &now, &tag.id]
+                )?;
+            }
+        }
+
+        Ok(())
+    }
 }
 
 /// Tauri 命令：获取所有标签
