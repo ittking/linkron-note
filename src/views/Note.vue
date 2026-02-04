@@ -2,10 +2,11 @@
 import { ref, onMounted, onBeforeUnmount, onActivated, nextTick, computed } from 'vue'
 import { onBeforeRouteLeave } from 'vue-router'
 import { invoke } from '@tauri-apps/api/core'
-import { Download, FileText, ChevronUp } from 'lucide-vue-next'
+import { Download, FileText, ChevronUp, Tags } from 'lucide-vue-next'
 import NoteCard from '@/components/NoteCard.vue'
 import NoteEditor from '@/components/NoteEditor.vue'
 import Button from '@/components/ui/Button.vue'
+import TagSidebar from '@/components/TagSidebar.vue'
 import { useNoteStore } from '@/store/noteStore'
 import { saveFile } from '@/utils/fileUpload'
 import { extractTextFromFile, getFileTypeDescription } from '@/utils/textExtraction'
@@ -99,6 +100,10 @@ const isLoading = ref(false)
 const editingNote = ref(null)
 const isEditing = ref(false)
 const shouldClearEditor = ref(false)
+
+// 标签侧边栏
+const tagSidebarVisible = ref(false)
+const filteredNotes = ref(null)
 
 // 路由离开前保存滚动位置
 onBeforeRouteLeave((to, from, next) => {
@@ -226,9 +231,25 @@ function detectCroppedNote() {
 
 // 初始化
 onMounted(async () => {
+    // 快捷键监听
+    const handleKeydown = (e) => {
+        // Cmd+Shift+T 切换标签侧边栏
+        if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === 't') {
+            e.preventDefault()
+            toggleTagSidebar()
+        }
+    }
+
+    window.addEventListener('keydown', handleKeydown)
+
     await loadNotes()
     await nextTick()
     detectCroppedNote()
+
+    // 清理快捷键监听
+    onBeforeUnmount(() => {
+        window.removeEventListener('keydown', handleKeydown)
+    })
 })
 
 // 清理定时器和 RAF
@@ -616,13 +637,53 @@ function handleCancelEdit() {
     editorContent.value = ''
     showToast('已取消编辑', 'info')
 }
+
+// 切换标签侧边栏
+function toggleTagSidebar() {
+    tagSidebarVisible.value = !tagSidebarVisible.value
+}
+
+// 处理标签筛选
+function handleTagFilter(notes) {
+    if (notes === null) {
+        // 清除筛选，恢复原笔记列表
+        filteredNotes.value = null
+    } else {
+        filteredNotes.value = notes
+    }
+}
+
+// 计算显示的笔记列表
+const displayNotes = computed(() => {
+    return filteredNotes.value || notes.value
+})
 </script>
 
 <template>
-    <div class="h-full flex flex-col max-w-200 mx-auto" @dragenter="handleDragEnter" @dragleave="handleDragLeave"
+    <div class="h-full flex" @dragenter="handleDragEnter" @dragleave="handleDragLeave"
         @dragover="handleDragOver" @drop="handleDrop">
-        <!-- 编辑器区域 -->
-        <div ref="editorContainerRef" class="px-4 py-3 relative">
+        <!-- 标签侧边栏 -->
+        <TagSidebar
+            :visible="tagSidebarVisible"
+            @close="tagSidebarVisible = false"
+            @filter="handleTagFilter"
+        />
+
+        <!-- 主内容 -->
+        <div class="flex-1 flex flex-col max-w-200 mx-auto">
+            <!-- 工具栏 -->
+            <div class="px-4 py-2 border-b border-base-200 flex items-center gap-2">
+                <button
+                    @click="toggleTagSidebar"
+                    class="p-2 hover:bg-base-200 rounded-md transition-colors"
+                    title="标签 (Cmd+Shift+T)"
+                >
+                    <Tags :size="18" class="text-base-content/60" />
+                </button>
+            </div>
+
+            <!-- 编辑器区域 -->
+            <div ref="editorContainerRef" class="px-4 py-3 relative">
             <!-- 编辑器拖拽遮罩 -->
             <div v-if="isDragging"
                 class="absolute inset-0 bg-primary/2 border-2 border-dashed border-primary flex flex-col items-center justify-center z-10 transition-opacity duration-200 pointer-events-none">
@@ -662,7 +723,7 @@ function handleCancelEdit() {
                     <div class="text-sm leading-relaxed max-w-[240px]">拖拽链接或文字到这里创建笔记</div>
                 </div>
 
-                <NoteCard v-for="note in notes" :key="note.id" :ref="(ref) => setNoteCardRef(note.id, ref)" :note="note"
+                <NoteCard v-for="note in displayNotes" :key="note.id" :ref="(ref) => setNoteCardRef(note.id, ref)" :note="note"
                     @click="handleCardClick" @edit="handleMenuEdit" @delete="handleMenuDelete"
                     @expand="handleNoteExpand" @collapse="handleNoteCollapse" />
 
@@ -706,5 +767,6 @@ function handleCancelEdit() {
                 <button @click="confirmVisible = false"></button>
             </form>
         </dialog>
+        </div>
     </div>
 </template>
