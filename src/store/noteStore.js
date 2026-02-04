@@ -157,9 +157,13 @@ export function useNoteStore() {
   /**
    * 删除标签
    */
-  async function deleteTag(tagId) {
+  async function deleteTag(tagName, deleteChildren = false) {
     const workDirectory = await getWorkDirectory()
-    return await invoke('delete_tag', { tagId, workDirectory })
+    return await invoke('delete_tag', {
+      tagName,
+      deleteChildren,
+      workDirectory
+    })
   }
 
   /**
@@ -176,6 +180,45 @@ export function useNoteStore() {
   async function searchTags(keyword) {
     const workDirectory = await getWorkDirectory()
     return await invoke('search_tags', { keyword, workDirectory })
+  }
+
+  // ========== 标签管理相关函数 ==========
+
+  /**
+   * 按多个标签筛选笔记（OR 逻辑）
+   */
+  async function getNotesByTags(tagNames, page = 1, pageSize = 20) {
+    const workDirectory = await getWorkDirectory()
+    return await invoke('get_notes_by_tags', {
+      tagNames,
+      page,
+      pageSize,
+      workDirectory
+    })
+  }
+
+  /**
+   * 创建或获取标签
+   */
+  async function createOrGetTag(tagPath) {
+    const workDirectory = await getWorkDirectory()
+    return await invoke('create_or_get_tag', {
+      tagPath,
+      workDirectory
+    })
+  }
+
+  /**
+   * 重命名标签
+   */
+  async function renameTag(oldName, newName, renameChildren = false) {
+    const workDirectory = await getWorkDirectory()
+    return await invoke('rename_tag', {
+      oldName,
+      newName,
+      renameChildren,
+      workDirectory
+    })
   }
 
   return {
@@ -197,6 +240,9 @@ export function useNoteStore() {
     removeTagFromNote,
     deleteTag,
     getNotesByTag,
-    searchTags
+    searchTags,
+    getNotesByTags,
+    createOrGetTag,
+    renameTag
   }
 }
