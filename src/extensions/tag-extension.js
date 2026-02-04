@@ -1,6 +1,6 @@
 import { Node, mergeAttributes } from '@tiptap/core'
 import Suggestion from '@tiptap/suggestion'
-import { PluginKey, Plugin } from '@tiptap/pm/state'
+import { PluginKey, Plugin } from 'prosemirror-state'
 import tippy from 'tippy.js'
 
 export const TagExtension = Node.create({
