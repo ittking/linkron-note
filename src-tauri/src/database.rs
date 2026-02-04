@@ -62,7 +62,6 @@ pub struct Tag {
     pub display_name: String,
     pub path: String,
     pub level: i32,
-    pub color: Option<String>,
     #[serde(rename = "createdAt")]
     pub created_at: String,
     #[serde(rename = "updatedAt")]
@@ -128,7 +127,6 @@ impl Database {
                 display_name TEXT NOT NULL,
                 path TEXT NOT NULL,
                 level INTEGER NOT NULL DEFAULT 1,
-                color TEXT,
                 created_at TEXT NOT NULL,
                 updated_at TEXT NOT NULL
             )",
@@ -614,7 +612,7 @@ impl Database {
     }
 
     /// 创建或获取标签
-    pub fn create_or_get_tag(&self, name: &str, color: Option<&str>) -> SqliteResult<Tag> {
+    pub fn create_or_get_tag(&self, name: &str, _color: Option<&str>) -> SqliteResult<Tag> {
         // 解析标签名
         let parts: Vec<&str> = name.split('/').collect();
         let level = parts.len() as i32;
@@ -637,9 +635,9 @@ impl Database {
         // 创建新标签
         let id = Ulid::new().to_string();
         self.conn.execute(
-            "INSERT INTO tags (id, name, display_name, path, level, color, created_at, updated_at)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
-            params![&id, &name, &display_name, &path, level, color, &now, &now],
+            "INSERT INTO tags (id, name, display_name, path, level, created_at, updated_at)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+            params![&id, &name, &display_name, &path, level, &now, &now],
         )?;
 
         Ok(Tag {
@@ -648,7 +646,6 @@ impl Database {
             display_name,
             path,
             level,
-            color: color.map(|c| c.to_string()),
             created_at: now.clone(),
             updated_at: now,
         })
@@ -657,7 +654,7 @@ impl Database {
     /// 根据名称获取标签
     pub fn get_tag_by_name(&self, name: &str) -> SqliteResult<Option<Tag>> {
         let mut stmt = self.conn.prepare(
-            "SELECT id, name, display_name, path, level, color, created_at, updated_at
+            "SELECT id, name, display_name, path, level, created_at, updated_at
              FROM tags WHERE name = ?"
         )?;
 
@@ -668,9 +665,8 @@ impl Database {
                 display_name: row.get(2)?,
                 path: row.get(3)?,
                 level: row.get(4)?,
-                color: row.get(5)?,
-                created_at: row.get(6)?,
-                updated_at: row.get(7)?,
+                created_at: row.get(5)?,
+                updated_at: row.get(6)?,
             })
         })?;
 
@@ -683,7 +679,7 @@ impl Database {
     /// 获取所有标签
     pub fn get_all_tags(&self) -> SqliteResult<Vec<Tag>> {
         let mut stmt = self.conn.prepare(
-            "SELECT id, name, display_name, path, level, color, created_at, updated_at
+            "SELECT id, name, display_name, path, level, created_at, updated_at
              FROM tags ORDER BY name ASC"
         )?;
 
@@ -694,9 +690,8 @@ impl Database {
                 display_name: row.get(2)?,
                 path: row.get(3)?,
                 level: row.get(4)?,
-                color: row.get(5)?,
-                created_at: row.get(6)?,
-                updated_at: row.get(7)?,
+                created_at: row.get(5)?,
+                updated_at: row.get(6)?,
             })
         })?;
 
@@ -706,7 +701,7 @@ impl Database {
     /// 获取标签统计（带使用次数）
     pub fn get_tags_with_stats(&self) -> SqliteResult<Vec<TagStats>> {
         let mut stmt = self.conn.prepare(
-            "SELECT t.id, t.name, t.display_name, t.path, t.level, t.color,
+            "SELECT t.id, t.name, t.display_name, t.path, t.level,
                 t.created_at, t.updated_at, COUNT(nt.note_id) as count
          FROM tags t
          LEFT JOIN note_tags nt ON t.id = nt.tag_id
@@ -722,11 +717,10 @@ impl Database {
                     display_name: row.get(2)?,
                     path: row.get(3)?,
                     level: row.get(4)?,
-                    color: row.get(5)?,
-                    created_at: row.get(6)?,
-                    updated_at: row.get(7)?,
+                    created_at: row.get(5)?,
+                    updated_at: row.get(6)?,
                 },
-                count: row.get(8)?,
+                count: row.get(7)?,
             })
         })?;
 
@@ -736,7 +730,7 @@ impl Database {
     /// 获取笔记的所有标签
     pub fn get_note_tags(&self, note_id: &str) -> SqliteResult<Vec<Tag>> {
         let mut stmt = self.conn.prepare(
-            "SELECT t.id, t.name, t.display_name, t.path, t.level, t.color,
+            "SELECT t.id, t.name, t.display_name, t.path, t.level,
                 t.created_at, t.updated_at
          FROM tags t
          INNER JOIN note_tags nt ON t.id = nt.tag_id
@@ -751,9 +745,8 @@ impl Database {
                 display_name: row.get(2)?,
                 path: row.get(3)?,
                 level: row.get(4)?,
-                color: row.get(5)?,
-                created_at: row.get(6)?,
-                updated_at: row.get(7)?,
+                created_at: row.get(5)?,
+                updated_at: row.get(6)?,
             })
         })?;
 
@@ -837,7 +830,7 @@ impl Database {
         let search_pattern = format!("{}%", keyword);
 
         let mut stmt = self.conn.prepare(
-            "SELECT id, name, display_name, path, level, color, created_at, updated_at
+            "SELECT id, name, display_name, path, level, created_at, updated_at
          FROM tags
          WHERE name LIKE ?1 OR display_name LIKE ?1
          ORDER BY created_at DESC
@@ -851,9 +844,8 @@ impl Database {
                 display_name: row.get(2)?,
                 path: row.get(3)?,
                 level: row.get(4)?,
-                color: row.get(5)?,
-                created_at: row.get(6)?,
-                updated_at: row.get(7)?,
+                created_at: row.get(5)?,
+                updated_at: row.get(6)?,
             })
         })?;
 
