@@ -936,6 +936,49 @@ impl Database {
 
         Ok(())
     }
+
+    /// 按多个标签筛选笔记（OR 逻辑）
+    pub fn get_notes_by_tags(&self, tag_names: &[String], page: u32, page_size: u32) -> SqliteResult<Vec<Note>> {
+        let offset = (page - 1) * page_size;
+
+        // 构建占位符
+        let placeholders = tag_names.iter().map(|_| "?").collect::<Vec<_>>().join(",");
+        let query = format!(
+            "SELECT DISTINCT n.id, n.type, n.content, n.source_url, n.extract_url,
+                COALESCE(n.images, '[]') as images,
+                n.created_at, n.updated_at
+         FROM notes n
+         INNER JOIN note_tags nt ON n.id = nt.note_id
+         INNER JOIN tags t ON nt.tag_id = t.id
+         WHERE t.name IN ({})
+         ORDER BY n.updated_at DESC
+         LIMIT ? OFFSET ?",
+            placeholders
+        );
+
+        let mut stmt = self.conn.prepare(&query)?;
+
+        // 构建参数：标签名 + 分页参数
+        let mut params_list: Vec<&dyn rusqlite::ToSql> = tag_names.iter().map(|s| s as &dyn rusqlite::ToSql).collect();
+        params_list.push(&page_size);
+        params_list.push(&offset);
+
+        let notes = stmt.query_map(params_list.as_slice(), |row| {
+            let images_str: String = row.get(5)?;
+            Ok(Note {
+                id: row.get(0)?,
+                note_type: row.get(1)?,
+                content: row.get(2)?,
+                source_url: row.get(3)?,
+                extract_url: row.get(4)?,
+                images: deserialize_images(&images_str),
+                created_at: row.get(6)?,
+                updated_at: row.get(7)?,
+            })
+        })?;
+
+        notes.collect()
+    }
 }
 
 /// Tauri 命令：获取所有标签
@@ -1000,4 +1043,12 @@ pub async fn search_tags(keyword: String, work_directory: Option<String>) -> Res
     let db_path = get_database_path(work_directory)?;
     let db = Database::new(&db_path).map_err(|e| format!("Failed to open database: {}", e))?;
     db.search_tags(&keyword).map_err(|e| format!("Failed to search tags: {}", e))
+}
+
+/// Tauri 命令：按多个标签筛选笔记
+#[tauri::command]
+pub async fn get_notes_by_tags(tag_names: Vec<String>, page: u32, page_size: u32, work_directory: Option<String>) -> Result<Vec<Note>, String> {
+    let db_path = get_database_path(work_directory)?;
+    let db = Database::new(&db_path).map_err(|e| format!("Failed to open database: {}", e))?;
+    db.get_notes_by_tags(&tag_names, page, page_size).map_err(|e| format!("Failed to get notes: {}", e))
 }

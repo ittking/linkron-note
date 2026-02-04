@@ -67,6 +67,7 @@ pub fn run() {
             database::remove_tag_from_note,
             database::delete_tag,
             database::get_notes_by_tag,
+            database::get_notes_by_tags,
             database::search_tags,
             file_reader::read_text_file,
             file_reader::read_file_text,
