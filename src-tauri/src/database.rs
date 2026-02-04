@@ -293,33 +293,39 @@ impl Database {
 
         let now = chrono::Utc::now().to_rfc3339();
 
-        // 根据提供的字段构建更新语句
         if let Some(content) = &updates.content {
             if let Some(images) = &updates.images {
-                // 同时更新 content 和 images
                 let images_json = serialize_images(images);
                 self.conn.execute(
                     "UPDATE notes SET content = ?1, images = ?2, updated_at = ?3 WHERE id = ?4",
                     params![content, &images_json, &now, id],
                 )?;
             } else {
-                // 只更新 content
                 self.conn.execute(
                     "UPDATE notes SET content = ?1, updated_at = ?2 WHERE id = ?3",
                     params![content, &now, id],
                 )?;
             }
-            
+
             // 删除旧的标签关联
             self.conn.execute(
                 "DELETE FROM note_tags WHERE note_id = ?1",
                 params![id],
             )?;
-            
-            // 解析并创建新的标签关联
-            self.parse_and_create_tags(id, content)?;
+
+            // 从 HTML 中提取标签并创建关联
+            let tags = self.extract_tags_from_html(content);
+            for tag_path in tags {
+                if let Ok(tag) = self.create_or_get_tag(&tag_path) {
+                    let relation_id = Ulid::new().to_string();
+                    self.conn.execute(
+                        "INSERT OR IGNORE INTO note_tags (id, note_id, tag_id, created_at)
+                         VALUES (?1, ?2, ?3, ?4)",
+                        params![&relation_id, id, &tag.id, &now],
+                    )?;
+                }
+            }
         } else if let Some(images) = &updates.images {
-            // 只更新 images
             let images_json = serialize_images(images);
             self.conn.execute(
                 "UPDATE notes SET images = ?1, updated_at = ?2 WHERE id = ?3",
@@ -571,6 +577,22 @@ pub async fn migrate_from_json(work_directory: Option<String>) -> Result<usize, 
 // ========== 标签相关函数 ==========
 
 impl Database {
+    /// 从 HTML 内容中提取标签路径
+    fn extract_tags_from_html(&self, html: &str) -> Vec<String> {
+        let mut tags = Vec::new();
+
+        // 使用正则表达式提取 data-name 属性
+        let re = Regex::new(r#"<span[^>]*data-type="tag"[^>]*data-name="([^"]+)""#).unwrap();
+
+        for caps in re.captures_iter(html) {
+            if let Some(tag_name) = caps.get(1) {
+                tags.push(tag_name.as_str().to_string());
+            }
+        }
+
+        tags
+    }
+
     /// 解析内容中的标签并创建关联（直接匹配文本中的 #标签名 格式）
     fn parse_and_create_tags(&self, note_id: &str, content: &str) -> SqliteResult<()> {
         // 直接在内容中查找标签：#标签名 或 #标签名/子标签
