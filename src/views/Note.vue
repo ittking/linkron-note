@@ -2,11 +2,10 @@
 import { ref, onMounted, onBeforeUnmount, onActivated, nextTick, computed } from 'vue'
 import { onBeforeRouteLeave } from 'vue-router'
 import { invoke } from '@tauri-apps/api/core'
-import { Download, FileText, ChevronUp, Tags } from 'lucide-vue-next'
+import { Download, FileText, ChevronUp } from 'lucide-vue-next'
 import NoteCard from '@/components/NoteCard.vue'
 import NoteEditor from '@/components/NoteEditor.vue'
 import Button from '@/components/ui/Button.vue'
-import TagSidebar from '@/components/TagSidebar.vue'
 import { useNoteStore } from '@/store/noteStore'
 import { saveFile } from '@/utils/fileUpload'
 import { extractTextFromFile, getFileTypeDescription } from '@/utils/textExtraction'
@@ -100,10 +99,6 @@ const isLoading = ref(false)
 const editingNote = ref(null)
 const isEditing = ref(false)
 const shouldClearEditor = ref(false)
-
-// 标签侧边栏
-const tagSidebarVisible = ref(false)
-const filteredNotes = ref(null)
 
 // 路由离开前保存滚动位置
 onBeforeRouteLeave((to, from, next) => {
@@ -231,25 +226,9 @@ function detectCroppedNote() {
 
 // 初始化
 onMounted(async () => {
-    // 快捷键监听
-    const handleKeydown = (e) => {
-        // Cmd+Shift+T 切换标签侧边栏
-        if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === 't') {
-            e.preventDefault()
-            toggleTagSidebar()
-        }
-    }
-
-    window.addEventListener('keydown', handleKeydown)
-
     await loadNotes()
     await nextTick()
     detectCroppedNote()
-
-    // 清理快捷键监听
-    onBeforeUnmount(() => {
-        window.removeEventListener('keydown', handleKeydown)
-    })
 })
 
 // 清理定时器和 RAF
@@ -638,41 +617,15 @@ function handleCancelEdit() {
     showToast('已取消编辑', 'info')
 }
 
-// 切换标签侧边栏
-function toggleTagSidebar() {
-    tagSidebarVisible.value = !tagSidebarVisible.value
-}
-
-// 处理标签筛选
-function handleTagFilter(notes) {
-    if (notes === null) {
-        // 清除筛选，恢复原笔记列表
-        filteredNotes.value = null
-    } else if (Array.isArray(notes)) {
-        filteredNotes.value = notes
-        // 如果结果为空数组，显示提示
-        if (notes.length === 0) {
-            showToast('没有找到匹配的笔记', 'info')
-        }
-    }
-}
-
 // 计算显示的笔记列表
 const displayNotes = computed(() => {
-    return filteredNotes.value || notes.value
+    return notes.value
 })
 </script>
 
 <template>
     <div class="h-full flex" @dragenter="handleDragEnter" @dragleave="handleDragLeave"
         @dragover="handleDragOver" @drop="handleDrop">
-        <!-- 标签侧边栏 -->
-        <TagSidebar
-            :visible="tagSidebarVisible"
-            @close="tagSidebarVisible = false"
-            @filter="handleTagFilter"
-        />
-
         <!-- 主内容 -->
         <div class="flex-1 flex flex-col max-w-200 mx-auto">
 
@@ -746,16 +699,6 @@ const displayNotes = computed(() => {
             <span class="loading loading-spinner loading-sm text-primary"></span>
             <span class="text-sm text-base-content/80">处理中...</span>
         </div>
-
-        <!-- 悬浮标签按钮 -->
-        <button
-            @click="toggleTagSidebar"
-            class="fixed bottom-6 right-6 z-[290] w-12 h-12 bg-base-100 border border-base-300 rounded-full shadow-lg flex items-center justify-center transition-all duration-200 hover:bg-base-200 hover:scale-110"
-            :class="{ 'ring-2 ring-primary ring-offset-2': tagSidebarVisible }"
-            title="标签 (Cmd+Shift+T)"
-        >
-            <Tags :size="20" :class="tagSidebarVisible ? 'text-primary' : 'text-base-content/60'" />
-        </button>
 
         <!-- 确认对话框 -->
         <dialog :open="confirmVisible" class="modal">

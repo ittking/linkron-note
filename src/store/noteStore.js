@@ -112,114 +112,6 @@ export function useNoteStore() {
     return await invoke('migrate_from_json', { workDirectory })
   }
 
-  // ========== 标签相关函数 ==========
-
-  /**
-   * 获取所有标签
-   */
-  async function getAllTags() {
-    const workDirectory = await getWorkDirectory()
-    return await invoke('get_all_tags', { workDirectory })
-  }
-
-  /**
-   * 获取标签统计（带使用次数）
-   */
-  async function getTagsWithStats() {
-    const workDirectory = await getWorkDirectory()
-    return await invoke('get_tags_with_stats', { workDirectory })
-  }
-
-  /**
-   * 获取笔记的标签
-   */
-  async function getNoteTags(noteId) {
-    const workDirectory = await getWorkDirectory()
-    return await invoke('get_note_tags', { noteId, workDirectory })
-  }
-
-  /**
-   * 为笔记添加标签
-   */
-  async function addTagToNote(noteId, tagName) {
-    const workDirectory = await getWorkDirectory()
-    return await invoke('add_tag_to_note', { noteId, tagName, workDirectory })
-  }
-
-  /**
-   * 从笔记移除标签
-   */
-  async function removeTagFromNote(noteId, tagId) {
-    const workDirectory = await getWorkDirectory()
-    return await invoke('remove_tag_from_note', { noteId, tagId, workDirectory })
-  }
-
-  /**
-   * 删除标签
-   */
-  async function deleteTag(tagName, deleteChildren = false) {
-    const workDirectory = await getWorkDirectory()
-    return await invoke('delete_tag', {
-      tagName,
-      deleteChildren,
-      workDirectory
-    })
-  }
-
-  /**
-   * 按标签获取笔记
-   */
-  async function getNotesByTag(tagId, page = 1, pageSize = 20) {
-    const workDirectory = await getWorkDirectory()
-    return await invoke('get_notes_by_tag', { tagId, page, pageSize, workDirectory })
-  }
-
-  /**
-   * 搜索标签
-   */
-  async function searchTags(keyword) {
-    const workDirectory = await getWorkDirectory()
-    return await invoke('search_tags', { keyword, workDirectory })
-  }
-
-  // ========== 标签管理相关函数 ==========
-
-  /**
-   * 按多个标签筛选笔记（OR 逻辑）
-   */
-  async function getNotesByTags(tagNames, page = 1, pageSize = 20) {
-    const workDirectory = await getWorkDirectory()
-    return await invoke('get_notes_by_tags', {
-      tagNames,
-      page,
-      pageSize,
-      workDirectory
-    })
-  }
-
-  /**
-   * 创建或获取标签
-   */
-  async function createOrGetTag(tagPath) {
-    const workDirectory = await getWorkDirectory()
-    return await invoke('create_or_get_tag', {
-      tagPath,
-      workDirectory
-    })
-  }
-
-  /**
-   * 重命名标签
-   */
-  async function renameTag(oldName, newName, renameChildren = false) {
-    const workDirectory = await getWorkDirectory()
-    return await invoke('rename_tag', {
-      oldName,
-      newName,
-      renameChildren,
-      workDirectory
-    })
-  }
 
   return {
     getWorkDirectory,
@@ -232,17 +124,6 @@ export function useNoteStore() {
     deleteNote,
     searchNotes,
     clearNotes,
-    migrateFromJson,
-    getAllTags,
-    getTagsWithStats,
-    getNoteTags,
-    addTagToNote,
-    removeTagFromNote,
-    deleteTag,
-    getNotesByTag,
-    searchTags,
-    getNotesByTags,
-    createOrGetTag,
-    renameTag
+    migrateFromJson
   }
 }
