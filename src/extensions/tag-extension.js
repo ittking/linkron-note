@@ -219,22 +219,18 @@ export const TagExtension = Node.create({
             const { selection } = state
             const { $from } = selection
 
-            // 获取当前行文本
-            let textBefore = ''
-            let pos = $from.pos
-            while (pos > 0) {
-              const node = state.doc.nodeAt(pos - 1)
-              if (!node || node.type.name !== 'text') break
-              textBefore = node.textContent.slice(0, $from.pos - pos + 1) + textBefore
-              pos -= node.nodeSize
-            }
+            // 获取当前段落开始到光标位置的文本
+            const $pos = state.doc.resolve($from.pos)
+            const startOfBlock = $pos.start($pos.depth)
+            const textBefore = state.doc.textBetween(startOfBlock, $from.pos)
 
             // 检查是否以 # 开头
             const match = textBefore.match(/#([a-zA-Z0-9_\u4e00-\u9fa5/]+)$/)
             if (!match) return false
 
             const tagPath = match[1]
-            const fromPos = $from.pos - match[0].length
+            // 计算标签在文档中的绝对位置
+            const fromPos = startOfBlock + textBefore.lastIndexOf(match[0])
             const toPos = $from.pos
 
             // 异步处理标签创建

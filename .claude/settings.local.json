@@ -22,7 +22,8 @@
       "Bash(git commit:*)",
       "Bash(cargo build:*)",
       "Bash(npm install:*)",
-      "Bash(wait:*)"
+      "Bash(wait:*)",
+      "Bash(npm run tauri dev:*)"
     ]
   }
 }

@@ -675,16 +675,6 @@ const displayNotes = computed(() => {
 
         <!-- 主内容 -->
         <div class="flex-1 flex flex-col max-w-200 mx-auto">
-            <!-- 工具栏 -->
-            <div class="px-4 py-2 border-b border-base-200 flex items-center gap-2">
-                <button
-                    @click="toggleTagSidebar"
-                    class="p-2 hover:bg-base-200 rounded-md transition-colors"
-                    title="标签 (Cmd+Shift+T)"
-                >
-                    <Tags :size="18" class="text-base-content/60" />
-                </button>
-            </div>
 
             <!-- 编辑器区域 -->
             <div ref="editorContainerRef" class="px-4 py-3 relative">
@@ -756,6 +746,16 @@ const displayNotes = computed(() => {
             <span class="loading loading-spinner loading-sm text-primary"></span>
             <span class="text-sm text-base-content/80">处理中...</span>
         </div>
+
+        <!-- 悬浮标签按钮 -->
+        <button
+            @click="toggleTagSidebar"
+            class="fixed bottom-6 right-6 z-[290] w-12 h-12 bg-base-100 border border-base-300 rounded-full shadow-lg flex items-center justify-center transition-all duration-200 hover:bg-base-200 hover:scale-110"
+            :class="{ 'ring-2 ring-primary ring-offset-2': tagSidebarVisible }"
+            title="标签 (Cmd+Shift+T)"
+        >
+            <Tags :size="20" :class="tagSidebarVisible ? 'text-primary' : 'text-base-content/60'" />
+        </button>
 
         <!-- 确认对话框 -->
         <dialog :open="confirmVisible" class="modal">
