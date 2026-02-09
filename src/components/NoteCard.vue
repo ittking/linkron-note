@@ -13,6 +13,7 @@ import Highlight from '@tiptap/extension-highlight'
 import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight'
 import { common, createLowlight } from 'lowlight'
 import Image from '@tiptap/extension-image'
+import { TagMark } from '@/extensions/tag-mark'
 import dayjs from 'dayjs'
 import 'dayjs/locale/zh-cn'
 
@@ -149,6 +150,7 @@ const editor = useEditor({
       defaultLanguage: null,
     }),
     Image,
+    TagMark,
   ],
   editable: false,
   editorProps: {
