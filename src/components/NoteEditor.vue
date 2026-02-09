@@ -15,6 +15,7 @@ import { saveImage, deleteResource } from '@/utils/fileUpload'
 import { useWorkDirectory } from '@/composables/useWorkDirectory'
 import SelectionMenu from './SelectionMenu.vue'
 import ImageViewer from './ImageViewer.vue'
+import { TagMark, TagInputRuleExtension } from '@/extensions/tag-mark'
 import {
   Hash,
   Image as ImageIcon,
@@ -143,6 +144,8 @@ const editor = useEditor({
     Placeholder.configure({
       placeholder: props.placeholder,
     }),
+    TagMark,
+    TagInputRuleExtension,
   ],
   autofocus: props.autofocus,
   editorProps: {

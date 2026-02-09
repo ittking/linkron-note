@@ -97,3 +97,21 @@
   border-radius: 3px;
   font-size: 0.85em;
 }
+
+/* ========== 标签样式 ========== */
+.ProseMirror .tag {
+  display: inline-block;
+  padding: 0.15em 0.5em;
+  margin: 0.1em 0.2em;
+  background-color: color-mix(in srgb, var(--color-primary) 15%, transparent);
+  color: var(--color-primary);
+  border-radius: 0.25rem;
+  font-size: 0.85em;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.ProseMirror .tag:hover {
+  background-color: color-mix(in srgb, var(--color-primary) 25%, transparent);
+}
