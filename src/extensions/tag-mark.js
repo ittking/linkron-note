@@ -36,17 +36,69 @@ export const TagInputRuleExtension = Mark.create({
       new Plugin({
         key: pluginKey,
         props: {
+          // 拦截键盘事件
+          handleKeyDown: (view, event) => {
+            const { state } = view
+            const { from, to } = state.selection
+
+            // 检查光标是否在标签 mark 内
+            const tagMark = state.schema.marks.tag
+            let isInTag = false
+
+            // 检查光标位置是否在标签 mark 内
+            state.doc.nodesBetween(from, to, (node, pos) => {
+              if (node.marks.some(mark => mark.type === tagMark)) {
+                isInTag = true
+                return false
+              }
+            })
+
+            // 如果在标签内，拦截回车键
+            if (isInTag && event.key === 'Enter') {
+              event.preventDefault()
+              return true
+            }
+
+            return false
+          },
+          // 处理文本输入
           handleTextInput: (view, from, to, text) => {
-            // 只处理空格和回车
-            if (text !== ' ' && text !== '\n') {
+            const { state } = view
+            const $from = state.doc.resolve(from)
+
+            // 检查光标是否在标签 mark 内
+            const tagMark = state.schema.marks.tag
+            let isInTag = false
+
+            // 检查光标位置是否在标签 mark 内
+            state.doc.nodesBetween(from, to, (node, pos) => {
+              if (node.marks.some(mark => mark.type === tagMark)) {
+                isInTag = true
+                return false
+              }
+            })
+
+            // 如果在标签内，检查输入的内容
+            if (isInTag) {
+              // 如果输入的是空格，则退出标签
+              if (text === ' ') {
+                const { tr } = state
+                // 移除光标位置的标签 mark
+                const newTr = tr.removeMark(from, to, tagMark)
+                view.dispatch(newTr.insertText(text, from))
+                return true
+              }
+              // 其他字符正常输入，不拦截
               return false
             }
 
-            const { state } = view
-            const { tr } = state
+            // 如果不在标签内，检查是否需要创建新标签
+            // 只处理空格（不再支持回车创建标签）
+            if (text !== ' ') {
+              return false
+            }
 
             // 获取光标前的文本
-            const $from = state.doc.resolve(from)
             const textBefore = state.doc.textBetween(
               Math.max(0, $from.start() - 50),
               from,
@@ -58,6 +110,7 @@ export const TagInputRuleExtension = Mark.create({
             const tagMatch = textBefore.match(/(#\S+)$/)
 
             if (tagMatch) {
+              const { tr } = state
               const tag = tagMatch[1]
               const tagStart = from - tag.length
 
@@ -65,7 +118,7 @@ export const TagInputRuleExtension = Mark.create({
               const newTr = tr
                 .addMark(tagStart, from, state.schema.marks.tag.create())
 
-              // 插入空格或回车
+              // 插入空格
               newTr.insertText(text, from)
 
               view.dispatch(newTr)
