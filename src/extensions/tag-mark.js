@@ -69,24 +69,40 @@ export const TagInputRuleExtension = Mark.create({
             // 检查光标是否在标签 mark 内
             const tagMark = state.schema.marks.tag
             let isInTag = false
+            let tagRange = null
 
-            // 检查光标位置是否在标签 mark 内
+            // 检查光标位置是否在标签 mark 内，并找到标签的范围
             state.doc.nodesBetween(from, to, (node, pos) => {
               if (node.marks.some(mark => mark.type === tagMark)) {
                 isInTag = true
+                // 找到标签的起始和结束位置
+                const $pos = state.doc.resolve(pos)
+                const tagMarkIndex = node.marks.findIndex(mark => mark.type === tagMark)
+                if (tagMarkIndex !== -1) {
+                  tagRange = {
+                    from: pos,
+                    to: pos + node.nodeSize
+                  }
+                }
                 return false
               }
             })
 
             // 如果在标签内，检查输入的内容
             if (isInTag) {
-              // 如果输入的是空格，则退出标签
+              // 如果输入的是空格，则将空格后面的内容移出标签
               if (text === ' ') {
                 const { tr } = state
-                // 移除光标位置的标签 mark
-                const newTr = tr.removeMark(from, to, tagMark)
-                view.dispatch(newTr.insertText(text, from))
-                return true
+
+                // 找到标签的结束位置
+                if (tagRange) {
+                  // 移除从光标位置到标签结束位置的标签 mark
+                  const newTr = tr.removeMark(from, tagRange.to, tagMark)
+                  // 插入空格
+                  newTr.insertText(' ', from)
+                  view.dispatch(newTr)
+                  return true
+                }
               }
               // 其他字符正常输入，不拦截
               return false
