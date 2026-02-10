@@ -724,7 +724,7 @@ async function filterNotesByTags() {
         </div>
 
         <!-- 标签筛选栏 -->
-        <div v-if="isTagFilterMode" class="px-4 py-2 border-t border-base-200 bg-base-100">
+        <div v-if="isTagFilterMode" class="px-4 pt-3 border-t border-base-200 bg-base-100">
             <div class="flex items-center justify-between gap-2">
                 <!-- 左侧：标签列表 -->
                 <div class="flex items-center gap-2 flex-1 flex-wrap">
