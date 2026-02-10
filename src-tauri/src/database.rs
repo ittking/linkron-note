@@ -143,6 +143,12 @@ impl Database {
             [],
         ).ok(); // 忽略列已存在的错误
 
+        // 检查并添加 display_name 列（兼容旧版本数据库）
+        self.conn.execute(
+            "ALTER TABLE tags ADD COLUMN display_name TEXT",
+            [],
+        ).ok(); // 忽略列已存在的错误
+
         self.conn.execute(
             "ALTER TABLE tags ADD COLUMN pinned INTEGER DEFAULT 0",
             [],
@@ -260,7 +266,17 @@ impl Database {
         // 解析并同步标签
         let tags = self.parse_tags_from_content(&note_data.content);
         if !tags.is_empty() {
-            let _ = self.create_or_update_tags(tags);
+            println!("[创建笔记] 准备创建标签...");
+            let result = self.create_or_update_tags(tags);
+            match result {
+                Ok(created_tags) => {
+                    println!("[创建笔记] 标签创建成功，共 {} 个", created_tags.len());
+                }
+                Err(e) => {
+                    println!("[创建笔记] 标签创建失败: {}", e);
+                    return Err(e);
+                }
+            }
         }
 
         Ok(Note {
@@ -294,7 +310,17 @@ impl Database {
                 // 解析并同步标签
                 let tags = self.parse_tags_from_content(content);
                 if !tags.is_empty() {
-                    let _ = self.create_or_update_tags(tags);
+                    println!("[更新笔记] 准备创建标签...");
+                    let result = self.create_or_update_tags(tags);
+                    match result {
+                        Ok(created_tags) => {
+                            println!("[更新笔记] 标签创建成功，共 {} 个", created_tags.len());
+                        }
+                        Err(e) => {
+                            println!("[更新笔记] 标签创建失败: {}", e);
+                            return Err(e);
+                        }
+                    }
                 }
             } else {
                 self.conn.execute(
@@ -305,7 +331,17 @@ impl Database {
                 // 解析并同步标签
                 let tags = self.parse_tags_from_content(content);
                 if !tags.is_empty() {
-                    let _ = self.create_or_update_tags(tags);
+                    println!("[更新笔记] 准备创建标签...");
+                    let result = self.create_or_update_tags(tags);
+                    match result {
+                        Ok(created_tags) => {
+                            println!("[更新笔记] 标签创建成功，共 {} 个", created_tags.len());
+                        }
+                        Err(e) => {
+                            println!("[更新笔记] 标签创建失败: {}", e);
+                            return Err(e);
+                        }
+                    }
                 }
             }
         } else if let Some(images) = &updates.images {
@@ -562,16 +598,26 @@ pub async fn migrate_from_json(work_directory: Option<String>) -> Result<usize, 
 impl Database {
     /// 解析笔记内容中的标签
     pub fn parse_tags_from_content(&self, content: &str) -> Vec<String> {
-        let tag_regex = Regex::new(r#"<span class="tag">#([^<]+)</span>"#).unwrap();
         let mut tags = std::collections::HashSet::new();
 
-        for caps in tag_regex.captures_iter(content) {
+        // 只匹配 HTML 格式的标签 <span class="tag">#标签名</span>
+        let html_tag_regex = Regex::new(r#"<span class="tag">#([^<]+)</span>"#).unwrap();
+
+        println!("[标签解析] 开始解析标签内容...");
+        println!("[标签解析] 内容: {}", content);
+
+        for caps in html_tag_regex.captures_iter(content) {
             if let Some(tag_name) = caps.get(1) {
-                tags.insert(tag_name.as_str().to_string());
+                let tag = tag_name.as_str().to_string();
+                println!("[标签解析] 找到标签: {}", tag);
+                tags.insert(tag);
             }
         }
 
-        tags.into_iter().collect()
+        let tags_vec: Vec<String> = tags.into_iter().collect();
+        println!("[标签解析] 共解析到 {} 个标签: {:?}", tags_vec.len(), tags_vec);
+
+        tags_vec
     }
 
     /// 创建或更新标签（处理多级标签结构）
@@ -579,7 +625,10 @@ impl Database {
         let mut created_tags = Vec::new();
         let now = chrono::Utc::now().to_rfc3339();
 
+        println!("[标签创建] 开始处理标签，共 {} 个", tags.len());
+
         for tag_full_name in tags {
+            println!("[标签创建] 处理标签全名: {}", tag_full_name);
             // 分割标签路径，例如 "测试/子标签" -> ["测试", "子标签"]
             let parts: Vec<&str> = tag_full_name.split('/').collect();
             let mut parent_id: Option<String> = None;
@@ -598,6 +647,7 @@ impl Database {
 
                 let tag = if let Some(existing) = existing_tag {
                     // 更新标签
+                    println!("[标签创建] 标签已存在，更新: {} (name: {}, full_name: {})", current_full_name, part, current_full_name);
                     let updated_tag = Tag {
                         id: existing.id.clone(),
                         parent_id: parent_id.clone(),
@@ -616,6 +666,7 @@ impl Database {
                     updated_tag
                 } else {
                     // 创建新标签
+                    println!("[标签创建] 创建新标签: {} (name: {}, full_name: {}, parent_id: {:?})", current_full_name, part, current_full_name, parent_id);
                     let id = Ulid::new().to_string();
                     let new_tag = Tag {
                         id: id.clone(),
@@ -627,11 +678,21 @@ impl Database {
                         updated_at: now.clone(),
                     };
 
-                    self.conn.execute(
-                        "INSERT INTO tags (id, parent_id, name, full_name, pinned, created_at, updated_at)
-                         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
-                        params![&id, &parent_id, part, &current_full_name, 0, &now, &now],
-                    )?;
+                    let result = self.conn.execute(
+                        "INSERT INTO tags (id, parent_id, name, full_name, display_name, pinned, created_at, updated_at)
+                         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+                        params![&id, &parent_id, part, &current_full_name, part, 0, &now, &now],
+                    );
+
+                    match result {
+                        Ok(rows_affected) => {
+                            println!("[标签创建] 插入成功，影响行数: {}, 标签ID: {}", rows_affected, id);
+                        }
+                        Err(e) => {
+                            println!("[标签创建] 插入失败: {}", e);
+                            return Err(e);
+                        }
+                    }
 
                     new_tag
                 };
@@ -646,6 +707,7 @@ impl Database {
             }
         }
 
+        println!("[标签创建] 处理完成，共创建/更新 {} 个最终标签", created_tags.len());
         Ok(created_tags)
     }
 
@@ -677,6 +739,32 @@ impl Database {
 
     /// 获取所有标签（树状结构）
     pub fn get_all_tags(&self) -> SqliteResult<Vec<Tag>> {
+        println!("[标签查询] 开始查询所有标签...");
+
+        // 先查询所有数据（不进行过滤）
+        let mut stmt = self.conn.prepare(
+            "SELECT id, parent_id, name, full_name, pinned, created_at, updated_at FROM tags"
+        )?;
+
+        let raw_tags = stmt.query_map([], |row| {
+            let id: String = row.get(0)?;
+            let parent_id: Option<String> = row.get(1)?;
+            let name: String = row.get(2)?;
+            let full_name: Option<String> = row.get(3)?;
+            let pinned: i32 = row.get(4)?;
+            let created_at: String = row.get(5)?;
+            let updated_at: String = row.get(6)?;
+
+            println!("[标签查询] 原始数据 - ID: {}, Name: {}, Full Name: {:?}, Parent ID: {:?}, Pinned: {}",
+                id, name, full_name, parent_id, pinned);
+
+            Ok((id, parent_id, name, full_name, pinned, created_at, updated_at))
+        })?;
+
+        let raw_data: Vec<_> = raw_tags.collect::<Result<Vec<_>, _>>()?;
+        println!("[标签查询] 查询到 {} 条原始记录", raw_data.len());
+
+        // 使用 COALESCE 处理 NULL 值
         let mut stmt = self.conn.prepare(
             "SELECT id, parent_id, name, COALESCE(full_name, name) as full_name, COALESCE(pinned, 0) as pinned, created_at, updated_at
              FROM tags ORDER BY COALESCE(pinned, 0) DESC, COALESCE(full_name, name) ASC"
@@ -695,7 +783,14 @@ impl Database {
             })
         })?;
 
-        tags.collect()
+        let tags_vec: Vec<Tag> = tags.collect::<Result<Vec<_>, _>>()?;
+        println!("[标签查询] 最终查询到 {} 个标签", tags_vec.len());
+        for tag in &tags_vec {
+            println!("[标签查询] - ID: {}, Name: {}, Full Name: {}, Parent ID: {:?}, Pinned: {}",
+                tag.id, tag.name, tag.full_name, tag.parent_id, tag.pinned);
+        }
+
+        Ok(tags_vec)
     }
 
     /// 删除标签（级联删除子标签）

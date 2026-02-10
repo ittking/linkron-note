@@ -36,6 +36,7 @@ async function loadTags() {
   try {
     const workDirectory = await getWorkDirectory()
     const allTags = await invoke('get_all_tags', { workDirectory })
+    console.log('[加载标签] 获取到标签:', allTags)
     tags.value = allTags
   } catch (error) {
     console.error('加载标签失败:', error)
@@ -66,28 +67,35 @@ const tagTree = computed(() => {
     return []
   }
 
-  // 构建映射
+  // 第一步：构建映射，先创建所有节点
   const tagMap = new Map()
   tags.value.forEach(tag => {
     tagMap.set(tag.id, { ...tag, children: [] })
   })
 
-  // 构建树
+  console.log('[树形构建] tagMap 构建完成，节点数量:', tagMap.size)
+
+  // 第二步：构建树，建立父子关系
   const roots = []
   tags.value.forEach(tag => {
     const node = tagMap.get(tag.id)
-    if (tag.parent_id) {
-      const parent = tagMap.get(tag.parent_id)
+    if (tag.parentId) {
+      const parent = tagMap.get(tag.parentId)
       if (parent) {
         parent.children.push(node)
+        console.log('[树形构建] 添加子节点:', node.name, '到父节点:', parent.name)
       } else {
+        console.log('[树形构建] 父节点不存在，添加到根节点:', node.name, 'parent_id:', tag.parentId)
         roots.push(node)
       }
     } else {
+      console.log('[树形构建] 添加根节点:', node.name)
       roots.push(node)
     }
   })
 
+  console.log('[树形构建] 最终根节点数量:', roots.length, '根节点:', roots.map(n => n.name))
+  console.log('[树形构建] 根节点详情:', roots.map(n => ({ name: n.name, children: n.children.length })))
   return roots
 })
 

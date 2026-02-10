@@ -30,11 +30,11 @@ const emit = defineEmits(['toggle-node', 'toggle-menu', 'delete-tag', 'toggle-pi
       @click="emit('click', node)"
     >
       <!-- 展开/收起按钮 -->
-      <span class="w-5 h-5 flex items-center justify-center" @click.stop>
+      <span class="w-4 h-4 flex items-center justify-center" @click.stop>
         <template v-if="node.children && node.children.length > 0">
           <button
             @click="emit('toggle-node', node.full_name)"
-            class="expand-btn w-5 h-5 flex items-center justify-center text-base-content/40 hover:text-base-content transition-colors"
+            class="expand-btn w-4 h-4 flex items-center justify-center text-base-content/40 hover:text-base-content transition-colors"
           >
             <ChevronRight v-if="!expandedNodes.has(node.full_name)" :size="14" />
             <ChevronDown v-else :size="14" />
@@ -86,7 +86,7 @@ const emit = defineEmits(['toggle-node', 'toggle-menu', 'delete-tag', 'toggle-pi
     <!-- 子节点 -->
     <div
       v-if="node.children && node.children.length > 0 && expandedNodes.has(node.full_name)"
-      class="tag-tree-children ml-4 pl-2 border-l border-base-300 space-y-1"
+      class="tag-tree-children ml-5 pl-3 border-l border-base-300 space-y-1"
     >
       <TagTreeNode
         v-for="child in node.children"
@@ -112,5 +112,12 @@ const emit = defineEmits(['toggle-node', 'toggle-menu', 'delete-tag', 'toggle-pi
 
 .tag-tree-children {
   border-left-color: var(--color-base-300, #e5e5e5);
+  margin-top: 2px;
+  margin-bottom: 2px;
+}
+
+.tag-tree-children .tag-tree-item {
+  padding-top: 2px;
+  padding-bottom: 2px;
 }
 </style>
