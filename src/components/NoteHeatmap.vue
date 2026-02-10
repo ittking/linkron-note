@@ -98,7 +98,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="w-full py-3">
+  <div class="w-full flex justify-center py-3">
     <div v-if="loading" class="flex justify-center items-center h-20">
       <span class="loading loading-spinner loading-sm text-primary"></span>
     </div>

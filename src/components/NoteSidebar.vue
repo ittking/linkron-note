@@ -131,8 +131,7 @@ function handleTagClick(tag) {
 <template>
   <!-- 遮罩层 -->
   <Transition name="fade">
-    <div v-if="isOpen" @click="emit('close')"
-      class="fixed inset-0 bg-black/30 backdrop-blur-sm z-40 cursor-pointer">
+    <div v-if="isOpen" @click="emit('close')" class="fixed inset-0 bg-black/30 backdrop-blur-sm z-40 cursor-pointer">
     </div>
   </Transition>
 
@@ -154,9 +153,7 @@ function handleTagClick(tag) {
       <Statistics ref="statisticsRef" />
 
       <!-- 笔记热度图 -->
-      <div class="px-4 py-3">
-        <NoteHeatmap />
-      </div>
+      <NoteHeatmap />
 
       <!-- 标签列表 -->
       <div class="flex-1 overflow-y-auto p-2">
@@ -164,23 +161,15 @@ function handleTagClick(tag) {
           <span class="loading loading-spinner text-primary"></span>
         </div>
 
-        <div v-else-if="tagTree.length === 0" class="flex flex-col items-center justify-center py-8 text-base-content/40">
+        <div v-else-if="tagTree.length === 0"
+          class="flex flex-col items-center justify-center py-8 text-base-content/40">
           <Tag :size="48" class="mb-3 opacity-50" />
           <div class="text-sm">暂无标签</div>
         </div>
 
         <div v-else class="tag-tree space-y-1">
-          <TagTreeNode
-            v-for="node in tagTree"
-            :key="node.id"
-            :node="node"
-            :level="0"
-            :expanded-nodes="expandedNodes"
-            @toggle-node="toggleNode"
-            @delete-tag="deleteTag"
-            @toggle-pin="togglePin"
-            @click="handleTagClick"
-          />
+          <TagTreeNode v-for="node in tagTree" :key="node.id" :node="node" :level="0" :expanded-nodes="expandedNodes"
+            @toggle-node="toggleNode" @delete-tag="deleteTag" @toggle-pin="togglePin" @click="handleTagClick" />
         </div>
       </div>
     </div>
