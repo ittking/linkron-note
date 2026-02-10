@@ -193,10 +193,11 @@ onBeforeUnmount(() => {
 <template>
   <div class="fixed inset-y-0 left-0 z-50 transition-transform duration-300 ease-in-out"
     :class="isOpen ? 'translate-x-0' : '-translate-x-full'">
-    <div class="w-80 h-full bg-base-100 border-r border-base-300 flex flex-col shadow-xl">
+    <div data-tauri-drag-region class="w-80 h-full bg-base-100 border-r border-base-300 flex flex-col shadow-xl">
       <!-- 头部 -->
-      <div class="flex items-center justify-between px-4 py-3 border-b border-base-300">
-        <h2 class="text-base font-semibold text-base-content">标签</h2>
+      <div data-tauri-drag-region class="flex items-center px-4 py-3 border-b border-base-300">
+        <h2 data-tauri-drag-region class="text-base font-semibold text-base-content">ITERM</h2>
+        <div data-tauri-drag-region class="flex-1 h-full"></div>
         <button @click="emit('close')"
           class="w-7 h-7 rounded-md flex items-center justify-center text-base-content/50 hover:text-base-content hover:bg-base-200 transition-all duration-200">
           <X :size="16" />
