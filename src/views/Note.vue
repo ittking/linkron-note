@@ -727,11 +727,10 @@ async function filterNotesByTags() {
         <div v-if="isTagFilterMode" class="px-4 py-2 border-t border-base-200 bg-base-100">
             <div class="flex items-center justify-between gap-2">
                 <!-- 左侧：标签列表 -->
-                <div class="flex items-center gap-2 flex-1 overflow-x-auto">
-                    <span class="text-xs text-base-content/60 flex-shrink-0">筛选：</span>
-                    <div class="flex items-center gap-1 flex-1">
+                <div class="flex items-center gap-2 flex-1 flex-wrap">
+                    <div class="flex flex-wrap items-center gap-1">
                         <div v-for="tag in selectedTags" :key="tag"
-                            class="inline-flex items-center gap-1 px-2 py-1 bg-primary/10 text-primary rounded-md text-xs hover:bg-primary/20 transition-colors cursor-pointer group"
+                            class="inline-flex items-center gap-1 px-2 py-1 bg-primary/10 text-primary rounded-md text-xs hover:bg-primary/20 transition-colors cursor-pointer group whitespace-normal"
                             @click="removeTag(tag)">
                             <span>#{{ tag }}</span>
                             <button class="opacity-60 group-hover:opacity-100 transition-opacity">

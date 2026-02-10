@@ -756,21 +756,15 @@ impl Database {
 
     /// 根据标签筛选笔记（支持多个标签，OR 逻辑）
     pub fn get_notes_by_tags(&self, tags: Vec<String>) -> SqliteResult<Vec<Note>> {
-        println!("[标签筛选] 开始筛选笔记，输入标签: {:?}", tags);
-
         if tags.is_empty() {
-            return self.get_all_notes(1, 1000); // 返回最多1000条
+            return self.get_all_notes(1, 1000);
         }
 
-        // 构建 SQL 查询：查找包含任意一个标签的笔记
-        // 使用完整的标签路径进行匹配
         let mut where_clauses = Vec::new();
         let mut params_vec = Vec::new();
 
         for tag_full_name in &tags {
-            // 直接使用完整的标签路径进行匹配
             let tag_pattern = format!("%<span class=\"tag\">#{}</span>%", tag_full_name);
-            println!("[标签筛选] 标签 '{}' -> 匹配模式: {}", tag_full_name, tag_pattern);
             where_clauses.push("content LIKE ?");
             params_vec.push(tag_pattern);
         }
@@ -784,8 +778,6 @@ impl Database {
              FROM notes WHERE {} ORDER BY updated_at DESC",
             where_clause
         );
-
-        println!("[标签筛选] SQL 查询: {}", sql);
 
         let mut stmt = self.conn.prepare(&sql)?;
         let params_refs: Vec<&dyn rusqlite::ToSql> = params_vec.iter().map(|p| p as &dyn rusqlite::ToSql).collect();
@@ -804,25 +796,19 @@ impl Database {
             })
         })?;
 
-        let result: Vec<Note> = notes.collect::<Result<Vec<_>, _>>()?;
-        println!("[标签筛选] 找到 {} 条笔记", result.len());
-        Ok(result)
+        notes.collect::<Result<Vec<_>, _>>()
     }
 
     /// 根据标签获取笔记数量
     pub fn count_notes_by_tags(&self, tags: Vec<String>) -> SqliteResult<i64> {
-        println!("[标签筛选] 开始计数，输入标签: {:?}", tags);
-
         if tags.is_empty() {
             return self.count_notes();
         }
 
-        // 构建 SQL 查询
         let mut where_clauses = Vec::new();
         let mut params_vec = Vec::new();
 
         for tag_full_name in &tags {
-            // 直接使用完整的标签路径进行匹配
             let tag_pattern = format!("%<span class=\"tag\">#{}</span>%", tag_full_name);
             where_clauses.push("content LIKE ?");
             params_vec.push(tag_pattern);
@@ -831,14 +817,10 @@ impl Database {
         let where_clause = where_clauses.join(" OR ");
         let sql = format!("SELECT COUNT(*) FROM notes WHERE {}", where_clause);
 
-        println!("[标签筛选] 计数 SQL: {}", sql);
-
         let mut stmt = self.conn.prepare(&sql)?;
         let params_refs: Vec<&dyn rusqlite::ToSql> = params_vec.iter().map(|p| p as &dyn rusqlite::ToSql).collect();
 
-        let count = stmt.query_row(params_refs.as_slice(), |row| row.get(0))?;
-        println!("[标签筛选] 笔记数量: {}", count);
-        Ok(count)
+        stmt.query_row(params_refs.as_slice(), |row| row.get(0))
     }
 }
 
