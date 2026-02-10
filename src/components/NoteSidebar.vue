@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
 import { X, Tag } from 'lucide-vue-next'
 import { useWorkDirectory } from '@/composables/useWorkDirectory'
@@ -24,9 +24,6 @@ const loading = ref(false)
 
 // 展开的标签节点
 const expandedNodes = ref(new Set())
-
-// 下拉菜单状态
-const activeMenuTagId = ref(null)
 
 // 加载标签
 async function loadTags() {
@@ -89,21 +86,6 @@ const tagTree = computed(() => {
   return roots
 })
 
-// 切换下拉菜单
-function toggleMenu(tagId, event) {
-  event.stopPropagation()
-  if (activeMenuTagId.value === tagId) {
-    activeMenuTagId.value = null
-  } else {
-    activeMenuTagId.value = tagId
-  }
-}
-
-// 关闭所有下拉菜单
-function closeAllMenus() {
-  activeMenuTagId.value = null
-}
-
 // 删除标签
 async function deleteTag(tagId, event) {
   event.stopPropagation()
@@ -111,7 +93,6 @@ async function deleteTag(tagId, event) {
     const workDirectory = await getWorkDirectory()
     await invoke('delete_tag', { id: tagId, workDirectory })
     await loadTags()
-    activeMenuTagId.value = null
   } catch (error) {
     console.error('删除标签失败:', error)
   }
@@ -124,7 +105,6 @@ async function togglePin(tagId, event) {
     const workDirectory = await getWorkDirectory()
     await invoke('pin_tag', { id: tagId, workDirectory })
     await loadTags()
-    activeMenuTagId.value = null
   } catch (error) {
     console.error('置顶标签失败:', error)
   }
@@ -134,15 +114,6 @@ async function togglePin(tagId, event) {
 function handleTagClick(tag) {
   emit('select-tag', tag.fullName)
 }
-
-// 点击外部关闭菜单
-onMounted(() => {
-  document.addEventListener('click', closeAllMenus)
-})
-
-onBeforeUnmount(() => {
-  document.removeEventListener('click', closeAllMenus)
-})
 </script>
 
 <template>
@@ -182,9 +153,7 @@ onBeforeUnmount(() => {
             :node="node"
             :level="0"
             :expanded-nodes="expandedNodes"
-            :active-menu-tag-id="activeMenuTagId"
             @toggle-node="toggleNode"
-            @toggle-menu="toggleMenu"
             @delete-tag="deleteTag"
             @toggle-pin="togglePin"
             @click="handleTagClick"

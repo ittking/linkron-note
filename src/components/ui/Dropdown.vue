@@ -153,9 +153,7 @@ onUnmounted(() => {
 <template>
   <div ref="triggerRef" class="relative inline-block">
     <!-- 触发器插槽 -->
-    <div @click="toggle">
-      <slot name="trigger" :isOpen="isOpen" :toggle="toggle" />
-    </div>
+    <slot name="trigger" :isOpen="isOpen" :toggle="toggle" />
 
     <!-- 下拉菜单 -->
     <Teleport to="body">
