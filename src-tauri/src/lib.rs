@@ -67,6 +67,7 @@ pub fn run() {
             database::pin_tag,
             database::get_notes_by_tags,
             database::count_notes_by_tags,
+            database::count_notes,
             database::get_notes_heatmap,
             database::search_tags,
             file_reader::read_text_file,

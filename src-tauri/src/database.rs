@@ -983,6 +983,15 @@ pub fn search_tags(work_directory: String, query: String) -> Result<Vec<Tag>, St
     db.search_tags(&query).map_err(|e| format!("Failed to search tags: {}", e))
 }
 
+/// 获取笔记总数
+#[tauri::command]
+pub fn count_notes(work_directory: String) -> Result<i64, String> {
+    let db_path = get_database_path(Some(work_directory))?;
+    let db = Database::new(&db_path).map_err(|e| format!("Failed to open database: {}", e))?;
+
+    db.count_notes().map_err(|e| format!("Failed to count notes: {}", e))
+}
+
 impl Database {
     /// 搜索标签（根据名称或全名模糊匹配，最多返回5条）
     pub fn search_tags(&self, query: &str) -> SqliteResult<Vec<Tag>> {

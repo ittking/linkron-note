@@ -5,6 +5,7 @@ import { X, Tag } from 'lucide-vue-next'
 import { useWorkDirectory } from '@/composables/useWorkDirectory'
 import TagTreeNode from './TagTreeNode.vue'
 import NoteHeatmap from './NoteHeatmap.vue'
+import Statistics from './Statistics.vue'
 
 const props = defineProps({
   isOpen: {
@@ -25,6 +26,9 @@ const loading = ref(false)
 // 展开的标签节点
 const expandedNodes = ref(new Set())
 
+// 统计组件引用
+const statisticsRef = ref(null)
+
 // 加载标签
 async function loadTags() {
   loading.value = true
@@ -43,6 +47,10 @@ async function loadTags() {
 watch(() => props.isOpen, (isOpen) => {
   if (isOpen) {
     loadTags()
+    // 刷新统计数据
+    if (statisticsRef.value && statisticsRef.value.refresh) {
+      statisticsRef.value.refresh()
+    }
   }
 })
 
@@ -93,6 +101,10 @@ async function deleteTag(tagId, event) {
     const workDirectory = await getWorkDirectory()
     await invoke('delete_tag', { id: tagId, workDirectory })
     await loadTags()
+    // 刷新统计数据
+    if (statisticsRef.value && statisticsRef.value.refresh) {
+      statisticsRef.value.refresh()
+    }
   } catch (error) {
     console.error('删除标签失败:', error)
   }
@@ -137,6 +149,9 @@ function handleTagClick(tag) {
           <X :size="16" />
         </button>
       </div>
+
+      <!-- 统计数据 -->
+      <Statistics ref="statisticsRef" />
 
       <!-- 笔记热度图 -->
       <div class="px-4 py-3">

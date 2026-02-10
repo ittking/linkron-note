@@ -27,6 +27,7 @@ declare module 'vue' {
     RouterView: typeof import('vue-router')['RouterView']
     Select: typeof import('./components/ui/Select.vue')['default']
     SelectionMenu: typeof import('./components/SelectionMenu.vue')['default']
+    Statistics: typeof import('./components/Statistics.vue')['default']
     TagSidebar: typeof import('./components/TagSidebar.vue')['default']
     TagTreeNode: typeof import('./components/TagTreeNode.vue')['default']
     TerminalTab: typeof import('./components/TerminalTab.vue')['default']
