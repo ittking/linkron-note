@@ -795,7 +795,32 @@ impl Database {
 
     /// 删除标签（级联删除子标签）
     pub fn delete_tag(&self, id: &str) -> SqliteResult<()> {
-        self.conn.execute("DELETE FROM tags WHERE id = ?", params![id])?;
+        println!("[标签删除] 开始删除标签，ID: {}", id);
+        
+        // 递归删除所有子标签
+        self.delete_tag_recursive(id)?;
+        
+        Ok(())
+    }
+
+    /// 递归删除标签及其所有子标签
+    fn delete_tag_recursive(&self, id: &str) -> SqliteResult<()> {
+        // 先查找所有子标签
+        let mut stmt = self.conn.prepare("SELECT id FROM tags WHERE parent_id = ?1")?;
+        let child_ids: Vec<String> = stmt.query_map(params![id], |row| row.get(0))?
+            .collect::<Result<Vec<_>, _>>()?;
+        
+        println!("[标签删除] 标签 {} 有 {} 个子标签", id, child_ids.len());
+        
+        // 递归删除每个子标签
+        for child_id in child_ids {
+            self.delete_tag_recursive(&child_id)?;
+        }
+        
+        // 删除当前标签
+        let rows_affected = self.conn.execute("DELETE FROM tags WHERE id = ?", params![id])?;
+        println!("[标签删除] 删除标签 {}，影响 {} 行", id, rows_affected);
+        
         Ok(())
     }
 
