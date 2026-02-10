@@ -739,9 +739,9 @@ function handleSelectTag(tagPath) {
 
         <!-- 侧边栏悬浮图标 -->
         <button @click="openSidebar"
-            class="fixed bottom-6 right-6 z-50 w-12 h-12 bg-primary text-primary-content rounded-full flex items-center justify-center shadow-lg hover:bg-primary/90 hover:scale-105 transition-all duration-200"
+            class="fixed bottom-6 right-6 z-50 w-10 h-10 bg-primary text-primary-content rounded-full flex items-center justify-center shadow-lg hover:bg-primary/90 hover:scale-105 transition-all duration-200"
             title="打开标签侧边栏">
-            <Sidebar :size="20" />
+            <Sidebar :size="18" />
         </button>
 
         <!-- 侧边栏 -->
