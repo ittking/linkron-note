@@ -763,19 +763,25 @@ impl Database {
         Ok(())
     }
 
-    /// 根据标签筛选笔记（支持多个标签，OR 逻辑）
+    /// 根据标签筛选笔记（支持多个标签，OR 逻辑，支持子标签查询）
     pub fn get_notes_by_tags(&self, tags: Vec<String>) -> SqliteResult<Vec<Note>> {
+        println!("[标签筛选] 开始筛选笔记，输入标签: {:?}", tags);
+
         if tags.is_empty() {
             return self.get_all_notes(1, 1000);
         }
 
         let mut where_clauses = Vec::new();
-        let mut params_vec = Vec::new();
 
         for tag_full_name in &tags {
-            let tag_pattern = format!("%<span class=\"tag\">#{}</span>%", tag_full_name);
-            where_clauses.push("content LIKE ?");
-            params_vec.push(tag_pattern);
+            // 支持子标签查询：匹配 #测试 或 #测试/开头的标签
+            // 例如：查询"测试"会匹配"#测试"、"#测试/子标签"、"#测试/子标签/xxx"等
+            let tag_pattern_exact = format!("%<span class=\"tag\">#{}</span>%", tag_full_name);
+            let tag_pattern_with_slash = format!("%<span class=\"tag\">#{}/%</span>%", tag_full_name);
+            
+            // 构建正确的 SQL：content LIKE ? OR content LIKE ?
+            let combined_pattern = format!("content LIKE ? OR content LIKE ?");
+            where_clauses.push(combined_pattern);
         }
 
         let where_clause = where_clauses.join(" OR ");
@@ -788,8 +794,17 @@ impl Database {
             where_clause
         );
 
+        println!("[标签筛选] SQL 查询: {}", sql);
+
         let mut stmt = self.conn.prepare(&sql)?;
-        let params_refs: Vec<&dyn rusqlite::ToSql> = params_vec.iter().map(|p| p as &dyn rusqlite::ToSql).collect();
+        
+        // 构建参数：每个标签需要两个参数（精确匹配和子标签匹配）
+        let mut all_params: Vec<String> = Vec::new();
+        for tag_full_name in &tags {
+            all_params.push(format!("%<span class=\"tag\">#{}</span>%", tag_full_name));
+            all_params.push(format!("%<span class=\"tag\">#{}/%</span>%", tag_full_name));
+        }
+        let params_refs: Vec<&dyn rusqlite::ToSql> = all_params.iter().map(|p| p as &dyn rusqlite::ToSql).collect();
 
         let notes = stmt.query_map(params_refs.as_slice(), |row| {
             let images_str: String = row.get(4)?;
@@ -805,31 +820,47 @@ impl Database {
             })
         })?;
 
-        notes.collect::<Result<Vec<_>, _>>()
+        let result: Vec<Note> = notes.collect::<Result<Vec<_>, _>>()?;
+        println!("[标签筛选] 找到 {} 条笔记", result.len());
+        Ok(result)
     }
 
-    /// 根据标签获取笔记数量
+    /// 根据标签获取笔记数量（支持子标签查询）
     pub fn count_notes_by_tags(&self, tags: Vec<String>) -> SqliteResult<i64> {
+        println!("[标签筛选] 开始计数，输入标签: {:?}", tags);
+
         if tags.is_empty() {
             return self.count_notes();
         }
 
         let mut where_clauses = Vec::new();
-        let mut params_vec = Vec::new();
 
         for tag_full_name in &tags {
-            let tag_pattern = format!("%<span class=\"tag\">#{}</span>%", tag_full_name);
-            where_clauses.push("content LIKE ?");
-            params_vec.push(tag_pattern);
+            // 支持子标签查询
+            let tag_pattern_exact = format!("%<span class=\"tag\">#{}</span>%", tag_full_name);
+            let tag_pattern_with_slash = format!("%<span class=\"tag\">#{}/%</span>%", tag_full_name);
+            let combined_pattern = format!("content LIKE ? OR content LIKE ?");
+            where_clauses.push(combined_pattern);
         }
 
         let where_clause = where_clauses.join(" OR ");
         let sql = format!("SELECT COUNT(*) FROM notes WHERE {}", where_clause);
 
-        let mut stmt = self.conn.prepare(&sql)?;
-        let params_refs: Vec<&dyn rusqlite::ToSql> = params_vec.iter().map(|p| p as &dyn rusqlite::ToSql).collect();
+        println!("[标签筛选] 计数 SQL: {}", sql);
 
-        stmt.query_row(params_refs.as_slice(), |row| row.get(0))
+        let mut stmt = self.conn.prepare(&sql)?;
+        
+        // 构建参数
+        let mut all_params: Vec<String> = Vec::new();
+        for tag_full_name in &tags {
+            all_params.push(format!("%<span class=\"tag\">#{}</span>%", tag_full_name));
+            all_params.push(format!("%<span class=\"tag\">#{}/%</span>%", tag_full_name));
+        }
+        let params_refs: Vec<&dyn rusqlite::ToSql> = all_params.iter().map(|p| p as &dyn rusqlite::ToSql).collect();
+
+        let count = stmt.query_row(params_refs.as_slice(), |row| row.get(0))?;
+        println!("[标签筛选] 笔记数量: {}", count);
+        Ok(count)
     }
 
     /// 获取笔记热度图数据（最近12个月，每月5周）
