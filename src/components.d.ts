@@ -12,11 +12,9 @@ export {}
 declare module 'vue' {
   export interface GlobalComponents {
     Button: typeof import('./components/ui/Button.vue')['default']
-    Capsule: typeof import('./components/Capsule.vue')['default']
     Dropdown: typeof import('./components/ui/Dropdown.vue')['default']
     ImageViewer: typeof import('./components/ImageViewer.vue')['default']
     Input: typeof import('./components/ui/Input.vue')['default']
-    MainContent: typeof import('./components/MainContent.vue')['default']
     ModelSetting: typeof import('./components/ModelSetting.vue')['default']
     NoteCard: typeof import('./components/NoteCard.vue')['default']
     NoteEditor: typeof import('./components/NoteEditor.vue')['default']
@@ -28,7 +26,6 @@ declare module 'vue' {
     Select: typeof import('./components/ui/Select.vue')['default']
     SelectionMenu: typeof import('./components/SelectionMenu.vue')['default']
     Statistics: typeof import('./components/Statistics.vue')['default']
-    TagSidebar: typeof import('./components/TagSidebar.vue')['default']
     TagTreeNode: typeof import('./components/TagTreeNode.vue')['default']
     TerminalTab: typeof import('./components/TerminalTab.vue')['default']
     ThemeSetting: typeof import('./components/ThemeSetting.vue')['default']

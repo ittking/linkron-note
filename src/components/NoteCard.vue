@@ -1,6 +1,6 @@
 <script setup>
 import { computed, ref, watch, nextTick, onMounted, onBeforeUnmount } from 'vue'
-import { MoreHorizontal, Edit, Trash2, ChevronDown, ChevronUp } from 'lucide-vue-next'
+import { MoreHorizontal, Edit, Trash2, ChevronDown, ChevronUp, Pin, PinOff } from 'lucide-vue-next'
 import { useEditor, EditorContent } from '@tiptap/vue-3'
 import { openUrl } from '@tauri-apps/plugin-opener'
 import { useNoteStore } from '@/store/noteStore'
@@ -34,7 +34,7 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['click', 'edit', 'delete', 'expand', 'collapse'])
+const emit = defineEmits(['click', 'edit', 'delete', 'expand', 'collapse', 'pin'])
 
 const noteStore = useNoteStore()
 const configStore = useConfig()
@@ -221,6 +221,8 @@ function handleMenuClick(action) {
     emit('edit', props.note)
   } else if (action === 'delete') {
     emit('delete', props.note)
+  } else if (action === 'pin') {
+    emit('pin', props.note)
   }
 }
 
@@ -287,6 +289,10 @@ defineExpose({
     <!-- 顶部：日期 + 菜单 -->
     <div class="flex items-center justify-between mb-3 select-none">
       <div class="flex items-center gap-2">
+        <div v-if="props.note.pinned" class="flex items-center gap-1 flex-shrink-0">
+          <span class="text-xs text-primary font-medium">置顶</span>
+          <span class="w-1 h-1 rounded-full bg-primary"></span>
+        </div>
         <span class="text-xs text-base-content/50">{{ formattedDate }}</span>
       </div>
       <Dropdown position="bottom-end">
@@ -299,6 +305,14 @@ defineExpose({
 
         <!-- 下拉菜单 -->
         <template #default="{ close }">
+          <!-- 置顶/取消置顶 -->
+          <button @click.stop="handleMenuClick('pin'); close()"
+            class="w-full px-3 py-2 flex items-center gap-2 text-sm text-base-content hover:bg-base-200 transition-colors">
+            <Pin v-if="!props.note.pinned" :size="14" />
+            <PinOff v-else :size="14" />
+            <span>{{ props.note.pinned ? '取消置顶' : '置顶' }}</span>
+          </button>
+
           <!-- 编辑 -->
           <button @click.stop="handleMenuClick('edit'); close()"
             class="w-full px-3 py-2 flex items-center gap-2 text-sm text-base-content hover:bg-base-200 transition-colors">

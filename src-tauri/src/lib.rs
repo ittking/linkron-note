@@ -65,6 +65,7 @@ pub fn run() {
             database::get_all_tags,
             database::delete_tag,
             database::pin_tag,
+            database::pin_note,
             database::get_notes_by_tags,
             database::count_notes_by_tags,
             database::count_notes,

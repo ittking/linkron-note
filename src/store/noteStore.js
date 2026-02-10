@@ -105,6 +105,14 @@ export function useNoteStore() {
   }
 
   /**
+   * 置顶/取消置顶笔记
+   */
+  async function pinNote(id) {
+    const workDirectory = await getWorkDirectory()
+    await invoke('pin_note', { id, workDirectory })
+  }
+
+  /**
    * 从 JSON 迁移到 SQLite
    */
   async function migrateFromJson() {
@@ -124,6 +132,7 @@ export function useNoteStore() {
     deleteNote,
     searchNotes,
     clearNotes,
+    pinNote,
     migrateFromJson
   }
 }

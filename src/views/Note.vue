@@ -611,6 +611,24 @@ function handleMenuDelete(note) {
     })
 }
 
+function handleMenuPin(note) {
+    noteStore.pinNote(note.id).then(() => {
+        // 更新笔记的 pinned 状态
+        const index = notes.value.findIndex(n => n.id === note.id)
+        if (index !== -1) {
+            notes.value[index] = {
+                ...notes.value[index],
+                pinned: !note.pinned
+            }
+        }
+        // 重新加载笔记列表以应用正确的排序
+        loadNotes(true)
+        showToast(note.pinned ? '已取消置顶' : '已置顶', 'success')
+    }).catch(error => {
+        showToast('操作失败：' + error.message, 'error')
+    })
+}
+
 // 取消编辑
 function handleCancelEdit() {
     shouldClearEditor.value = true
@@ -773,7 +791,7 @@ async function filterNotesByTags() {
                 </div>
 
                 <NoteCard v-for="note in displayNotes" :key="note.id" :ref="(ref) => setNoteCardRef(note.id, ref)" :note="note"
-                    @click="handleCardClick" @edit="handleMenuEdit" @delete="handleMenuDelete"
+                    @click="handleCardClick" @edit="handleMenuEdit" @delete="handleMenuDelete" @pin="handleMenuPin"
                     @expand="handleNoteExpand" @collapse="handleNoteCollapse" />
 
                 <!-- Loading 组件 -->

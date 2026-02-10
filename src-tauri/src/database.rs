@@ -18,6 +18,8 @@ pub struct Note {
     pub extract_url: Option<String>,
     #[serde(default)]
     pub images: Vec<String>,
+    #[serde(default)]
+    pub pinned: bool,
     #[serde(rename = "createdAt")]
     pub created_at: String,
     #[serde(rename = "updatedAt")]
@@ -122,6 +124,12 @@ impl Database {
             [],
         ).ok(); // 忽略列已存在的错误
 
+        // 检查并添加 pinned 列（兼容旧版本数据库）
+        self.conn.execute(
+            "ALTER TABLE notes ADD COLUMN pinned INTEGER DEFAULT 0",
+            [],
+        ).ok(); // 忽略列已存在的错误
+
         // 创建 tags 表
         self.conn.execute(
             "CREATE TABLE IF NOT EXISTS tags (
@@ -193,22 +201,25 @@ impl Database {
         let mut stmt = self.conn.prepare(
             "SELECT id, type, content, source_url,
              COALESCE(images, '[]') as images,
+             COALESCE(pinned, 0) as pinned,
              created_at, updated_at,
              extract_url
-             FROM notes ORDER BY updated_at DESC LIMIT ? OFFSET ?"
+             FROM notes ORDER BY pinned DESC, updated_at DESC LIMIT ? OFFSET ?"
         )?;
 
         let notes = stmt.query_map(params![page_size, offset], |row| {
             let images_str: String = row.get(4)?;
+            let pinned: i32 = row.get(5)?;
             Ok(Note {
                 id: row.get(0)?,
                 note_type: row.get(1)?,
                 content: row.get(2)?,
                 source_url: row.get(3)?,
-                extract_url: row.get(7)?,
+                extract_url: row.get(8)?,
                 images: deserialize_images(&images_str),
-                created_at: row.get(5)?,
-                updated_at: row.get(6)?,
+                pinned: pinned == 1,
+                created_at: row.get(6)?,
+                updated_at: row.get(7)?,
             })
         })?;
 
@@ -225,6 +236,7 @@ impl Database {
         let mut stmt = self.conn.prepare(
             "SELECT id, type, content, source_url,
              COALESCE(images, '[]') as images,
+             COALESCE(pinned, 0) as pinned,
              created_at, updated_at,
              extract_url
              FROM notes WHERE id = ?"
@@ -232,15 +244,17 @@ impl Database {
 
         let mut notes = stmt.query_map(params![id], |row| {
             let images_str: String = row.get(4)?;
+            let pinned: i32 = row.get(5)?;
             Ok(Note {
                 id: row.get(0)?,
                 note_type: row.get(1)?,
                 content: row.get(2)?,
                 source_url: row.get(3)?,
-                extract_url: row.get(7)?,
+                extract_url: row.get(8)?,
                 images: deserialize_images(&images_str),
-                created_at: row.get(5)?,
-                updated_at: row.get(6)?,
+                pinned: pinned == 1,
+                created_at: row.get(6)?,
+                updated_at: row.get(7)?,
             })
         })?;
 
@@ -258,14 +272,15 @@ impl Database {
         let images_json = serialize_images(&note_data.images);
 
         self.conn.execute(
-            "INSERT INTO notes (id, type, content, source_url, images, created_at, updated_at, extract_url)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+            "INSERT INTO notes (id, type, content, source_url, images, pinned, created_at, updated_at, extract_url)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
             params![
                 &id,
                 &note_type,
                 &note_data.content,
                 &note_data.source_url,
                 &images_json,
+                0,
                 &now,
                 &now,
                 &note_data.extract_url
@@ -285,6 +300,7 @@ impl Database {
             source_url: note_data.source_url,
             extract_url: note_data.extract_url,
             images: note_data.images,
+            pinned: false,
             created_at: now.clone(),
             updated_at: now,
         })
@@ -382,13 +398,15 @@ impl Database {
         let mut stmt = self.conn.prepare(
             "SELECT id, type, content, source_url, extract_url,
              COALESCE(images, '[]') as images,
+             COALESCE(pinned, 0) as pinned,
              created_at, updated_at
              FROM notes WHERE content LIKE ?1
-             ORDER BY updated_at DESC"
+             ORDER BY pinned DESC, updated_at DESC"
         )?;
 
         let notes = stmt.query_map(params![search_pattern], |row| {
             let images_str: String = row.get(5)?;
+            let pinned: i32 = row.get(6)?;
             Ok(Note {
                 id: row.get(0)?,
                 note_type: row.get(1)?,
@@ -396,8 +414,9 @@ impl Database {
                 source_url: row.get(3)?,
                 extract_url: row.get(4)?,
                 images: deserialize_images(&images_str),
-                created_at: row.get(6)?,
-                updated_at: row.get(7)?,
+                pinned: pinned == 1,
+                created_at: row.get(7)?,
+                updated_at: row.get(8)?,
             })
         })?;
 
@@ -763,6 +782,30 @@ impl Database {
         Ok(())
     }
 
+    /// 置顶/取消置顶笔记
+    pub fn pin_note(&self, id: &str) -> SqliteResult<()> {
+        // 获取当前置顶状态
+        let mut stmt = self.conn.prepare("SELECT COALESCE(pinned, 0) FROM notes WHERE id = ?1")?;
+        let mut notes = stmt.query_map(params![id], |row| {
+            let pinned: i32 = row.get(0)?;
+            Ok(pinned == 1)
+        })?;
+
+        let current_pinned = match notes.next() {
+            Some(Ok(pinned)) => pinned,
+            _ => return Ok(()),
+        };
+
+        // 切换置顶状态
+        let new_pinned = if current_pinned { 0 } else { 1 };
+        self.conn.execute(
+            "UPDATE notes SET pinned = ?1, updated_at = ?2 WHERE id = ?3",
+            params![new_pinned, &chrono::Utc::now().to_rfc3339(), id],
+        )?;
+
+        Ok(())
+    }
+
     /// 根据标签筛选笔记（支持多个标签，OR 逻辑，支持子标签查询）
     pub fn get_notes_by_tags(&self, tags: Vec<String>) -> SqliteResult<Vec<Note>> {
         if tags.is_empty() {
@@ -786,9 +829,10 @@ impl Database {
         let sql = format!(
             "SELECT id, type, content, source_url,
              COALESCE(images, '[]') as images,
+             COALESCE(pinned, 0) as pinned,
              created_at, updated_at,
              extract_url
-             FROM notes WHERE {} ORDER BY updated_at DESC",
+             FROM notes WHERE {} ORDER BY pinned DESC, updated_at DESC",
             where_clause
         );
 
@@ -804,15 +848,17 @@ impl Database {
 
         let notes = stmt.query_map(params_refs.as_slice(), |row| {
             let images_str: String = row.get(4)?;
+            let pinned: i32 = row.get(5)?;
             Ok(Note {
                 id: row.get(0)?,
                 note_type: row.get(1)?,
                 content: row.get(2)?,
                 source_url: row.get(3)?,
-                extract_url: row.get(7)?,
+                extract_url: row.get(8)?,
                 images: deserialize_images(&images_str),
-                created_at: row.get(5)?,
-                updated_at: row.get(6)?,
+                pinned: pinned == 1,
+                created_at: row.get(6)?,
+                updated_at: row.get(7)?,
             })
         })?;
 
@@ -947,6 +993,15 @@ pub async fn pin_tag(id: String, work_directory: Option<String>) -> Result<(), S
     let db_path = get_database_path(work_directory)?;
     let db = Database::new(&db_path).map_err(|e| format!("Failed to open database: {}", e))?;
     db.pin_tag(&id).map_err(|e| format!("Failed to pin tag: {}", e))?;
+    Ok(())
+}
+
+/// Tauri 命令：置顶/取消置顶笔记
+#[tauri::command]
+pub async fn pin_note(id: String, work_directory: Option<String>) -> Result<(), String> {
+    let db_path = get_database_path(work_directory)?;
+    let db = Database::new(&db_path).map_err(|e| format!("Failed to open database: {}", e))?;
+    db.pin_note(&id).map_err(|e| format!("Failed to pin note: {}", e))?;
     Ok(())
 }
 
