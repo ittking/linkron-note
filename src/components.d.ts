@@ -19,6 +19,7 @@ declare module 'vue' {
     ModelSetting: typeof import('./components/ModelSetting.vue')['default']
     NoteCard: typeof import('./components/NoteCard.vue')['default']
     NoteEditor: typeof import('./components/NoteEditor.vue')['default']
+    NoteSidebar: typeof import('./components/NoteSidebar.vue')['default']
     PreferencesSetting: typeof import('./components/PreferencesSetting.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']

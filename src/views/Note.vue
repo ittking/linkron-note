@@ -2,9 +2,10 @@
 import { ref, onMounted, onBeforeUnmount, onActivated, nextTick, computed } from 'vue'
 import { onBeforeRouteLeave } from 'vue-router'
 import { invoke } from '@tauri-apps/api/core'
-import { Download, FileText, ChevronUp } from 'lucide-vue-next'
+import { Download, FileText, ChevronUp, Sidebar } from 'lucide-vue-next'
 import NoteCard from '@/components/NoteCard.vue'
 import NoteEditor from '@/components/NoteEditor.vue'
+import NoteSidebar from '@/components/NoteSidebar.vue'
 import Button from '@/components/ui/Button.vue'
 import { useNoteStore } from '@/store/noteStore'
 import { saveFile } from '@/utils/fileUpload'
@@ -621,6 +622,26 @@ function handleCancelEdit() {
 const displayNotes = computed(() => {
     return notes.value
 })
+
+// 侧边栏状态
+const isSidebarOpen = ref(false)
+
+// 打开侧边栏
+function openSidebar() {
+    isSidebarOpen.value = true
+}
+
+// 关闭侧边栏
+function closeSidebar() {
+    isSidebarOpen.value = false
+}
+
+// 选择标签
+function handleSelectTag(tagPath) {
+    console.log('选择标签:', tagPath)
+    // TODO: 根据标签筛选笔记
+    closeSidebar()
+}
 </script>
 
 <template>
@@ -715,5 +736,15 @@ const displayNotes = computed(() => {
             </form>
         </dialog>
         </div>
+
+        <!-- 侧边栏悬浮图标 -->
+        <button @click="openSidebar"
+            class="fixed bottom-6 right-6 z-50 w-12 h-12 bg-primary text-primary-content rounded-full flex items-center justify-center shadow-lg hover:bg-primary/90 hover:scale-105 transition-all duration-200"
+            title="打开标签侧边栏">
+            <Sidebar :size="20" />
+        </button>
+
+        <!-- 侧边栏 -->
+        <NoteSidebar :is-open="isSidebarOpen" @close="closeSidebar" @select-tag="handleSelectTag" />
     </div>
 </template>
