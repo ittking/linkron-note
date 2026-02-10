@@ -90,6 +90,11 @@ const editorContent = ref('')
 const isDragging = ref(false)
 const isProcessing = ref(false)
 
+// 标签筛选相关状态
+const selectedTags = ref([])
+const filteredNoteCount = ref(0)
+const isTagFilterMode = ref(false)
+
 // 分页相关状态
 const currentPage = ref(1)
 const pageSize = ref(20)
@@ -244,7 +249,7 @@ onBeforeUnmount(() => {
 
 // 加载笔记
 async function loadNotes(reset = false) {
-    if (isLoading.value) return
+    if (isLoading.value || isTagFilterMode.value) return
 
     if (reset) {
         currentPage.value = 1
@@ -638,8 +643,54 @@ function closeSidebar() {
 
 // 选择标签
 function handleSelectTag(tagPath) {
-    // TODO: 根据标签筛选笔记
+    // 验证标签路径有效
+    if (!tagPath || typeof tagPath !== 'string') {
+        closeSidebar()
+        return
+    }
+    // 添加标签到筛选列表
+    if (!selectedTags.value.includes(tagPath)) {
+        selectedTags.value.push(tagPath)
+        isTagFilterMode.value = true
+        filterNotesByTags()
+    }
     closeSidebar()
+}
+
+// 移除标签
+function removeTag(tagPath) {
+    selectedTags.value = selectedTags.value.filter(t => t !== tagPath)
+    if (selectedTags.value.length === 0) {
+        isTagFilterMode.value = false
+        loadNotes(true)
+    } else {
+        filterNotesByTags()
+    }
+}
+
+// 清空所有标签
+function clearAllTags() {
+    selectedTags.value = []
+    isTagFilterMode.value = false
+    loadNotes(true)
+}
+
+// 根据标签筛选笔记
+async function filterNotesByTags() {
+    isLoading.value = true
+    try {
+        const workDirectory = await getWorkDirectory()
+        const [filteredNotes, count] = await Promise.all([
+            invoke('get_notes_by_tags', { tags: selectedTags.value, workDirectory }),
+            invoke('count_notes_by_tags', { tags: selectedTags.value, workDirectory })
+        ])
+        notes.value = filteredNotes
+        filteredNoteCount.value = count
+    } catch (error) {
+        showToast('筛选笔记失败：' + error.message, 'error')
+    } finally {
+        isLoading.value = false
+    }
 }
 </script>
 
@@ -670,6 +721,38 @@ function handleSelectTag(tagPath) {
                     </button>
                 </template>
             </NoteEditor>
+        </div>
+
+        <!-- 标签筛选栏 -->
+        <div v-if="isTagFilterMode" class="px-4 py-2 border-t border-base-200 bg-base-100">
+            <div class="flex items-center justify-between gap-2">
+                <!-- 左侧：标签列表 -->
+                <div class="flex items-center gap-2 flex-1 overflow-x-auto">
+                    <span class="text-xs text-base-content/60 flex-shrink-0">筛选：</span>
+                    <div class="flex items-center gap-1 flex-1">
+                        <div v-for="tag in selectedTags" :key="tag"
+                            class="inline-flex items-center gap-1 px-2 py-1 bg-primary/10 text-primary rounded-md text-xs hover:bg-primary/20 transition-colors cursor-pointer group"
+                            @click="removeTag(tag)">
+                            <span>#{{ tag }}</span>
+                            <button class="opacity-60 group-hover:opacity-100 transition-opacity">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 右侧：操作和数量 -->
+                <div class="flex items-center gap-3 flex-shrink-0">
+                    <button v-if="selectedTags.length > 1" @click="clearAllTags"
+                        class="text-xs text-base-content/40 hover:text-base-content/60 transition-colors">
+                        清空
+                    </button>
+                    <span class="text-xs text-base-content/60">共 {{ filteredNoteCount }} 条笔记</span>
+                </div>
+            </div>
         </div>
 
         <!-- 笔记列表 -->

@@ -102,7 +102,7 @@ const filteredTree = computed(() => {
   function filterNodes(nodes) {
     return nodes.reduce((acc, node) => {
       const nameMatches = node.name.toLowerCase().includes(query)
-      const fullNameMatches = node.full_name ? node.full_name.toLowerCase().includes(query) : false
+      const fullNameMatches = node.fullName ? node.fullName.toLowerCase().includes(query) : false
       const filteredChildren = filterNodes(node.children)
 
       if (nameMatches || fullNameMatches || filteredChildren.length > 0) {
@@ -162,7 +162,7 @@ async function togglePin(tagId, event) {
 
 // 处理标签点击
 function handleTagClick(tag) {
-  emit('select-tag', tag.full_name)
+  emit('select-tag', tag.fullName)
 }
 
 // 点击外部关闭菜单

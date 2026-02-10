@@ -753,6 +753,93 @@ impl Database {
 
         Ok(())
     }
+
+    /// 根据标签筛选笔记（支持多个标签，OR 逻辑）
+    pub fn get_notes_by_tags(&self, tags: Vec<String>) -> SqliteResult<Vec<Note>> {
+        println!("[标签筛选] 开始筛选笔记，输入标签: {:?}", tags);
+
+        if tags.is_empty() {
+            return self.get_all_notes(1, 1000); // 返回最多1000条
+        }
+
+        // 构建 SQL 查询：查找包含任意一个标签的笔记
+        // 使用完整的标签路径进行匹配
+        let mut where_clauses = Vec::new();
+        let mut params_vec = Vec::new();
+
+        for tag_full_name in &tags {
+            // 直接使用完整的标签路径进行匹配
+            let tag_pattern = format!("%<span class=\"tag\">#{}</span>%", tag_full_name);
+            println!("[标签筛选] 标签 '{}' -> 匹配模式: {}", tag_full_name, tag_pattern);
+            where_clauses.push("content LIKE ?");
+            params_vec.push(tag_pattern);
+        }
+
+        let where_clause = where_clauses.join(" OR ");
+        let sql = format!(
+            "SELECT id, type, content, source_url,
+             COALESCE(images, '[]') as images,
+             created_at, updated_at,
+             extract_url
+             FROM notes WHERE {} ORDER BY updated_at DESC",
+            where_clause
+        );
+
+        println!("[标签筛选] SQL 查询: {}", sql);
+
+        let mut stmt = self.conn.prepare(&sql)?;
+        let params_refs: Vec<&dyn rusqlite::ToSql> = params_vec.iter().map(|p| p as &dyn rusqlite::ToSql).collect();
+
+        let notes = stmt.query_map(params_refs.as_slice(), |row| {
+            let images_str: String = row.get(4)?;
+            Ok(Note {
+                id: row.get(0)?,
+                note_type: row.get(1)?,
+                content: row.get(2)?,
+                source_url: row.get(3)?,
+                extract_url: row.get(7)?,
+                images: deserialize_images(&images_str),
+                created_at: row.get(5)?,
+                updated_at: row.get(6)?,
+            })
+        })?;
+
+        let result: Vec<Note> = notes.collect::<Result<Vec<_>, _>>()?;
+        println!("[标签筛选] 找到 {} 条笔记", result.len());
+        Ok(result)
+    }
+
+    /// 根据标签获取笔记数量
+    pub fn count_notes_by_tags(&self, tags: Vec<String>) -> SqliteResult<i64> {
+        println!("[标签筛选] 开始计数，输入标签: {:?}", tags);
+
+        if tags.is_empty() {
+            return self.count_notes();
+        }
+
+        // 构建 SQL 查询
+        let mut where_clauses = Vec::new();
+        let mut params_vec = Vec::new();
+
+        for tag_full_name in &tags {
+            // 直接使用完整的标签路径进行匹配
+            let tag_pattern = format!("%<span class=\"tag\">#{}</span>%", tag_full_name);
+            where_clauses.push("content LIKE ?");
+            params_vec.push(tag_pattern);
+        }
+
+        let where_clause = where_clauses.join(" OR ");
+        let sql = format!("SELECT COUNT(*) FROM notes WHERE {}", where_clause);
+
+        println!("[标签筛选] 计数 SQL: {}", sql);
+
+        let mut stmt = self.conn.prepare(&sql)?;
+        let params_refs: Vec<&dyn rusqlite::ToSql> = params_vec.iter().map(|p| p as &dyn rusqlite::ToSql).collect();
+
+        let count = stmt.query_row(params_refs.as_slice(), |row| row.get(0))?;
+        println!("[标签筛选] 笔记数量: {}", count);
+        Ok(count)
+    }
 }
 
 // ============ 标签相关的 Tauri 命令 ============
@@ -797,4 +884,20 @@ pub async fn pin_tag(id: String, work_directory: Option<String>) -> Result<(), S
     let db = Database::new(&db_path).map_err(|e| format!("Failed to open database: {}", e))?;
     db.pin_tag(&id).map_err(|e| format!("Failed to pin tag: {}", e))?;
     Ok(())
+}
+
+/// Tauri 命令：根据标签筛选笔记
+#[tauri::command]
+pub async fn get_notes_by_tags(tags: Vec<String>, work_directory: Option<String>) -> Result<Vec<Note>, String> {
+    let db_path = get_database_path(work_directory)?;
+    let db = Database::new(&db_path).map_err(|e| format!("Failed to open database: {}", e))?;
+    db.get_notes_by_tags(tags).map_err(|e| format!("Failed to get notes by tags: {}", e))
+}
+
+/// Tauri 命令：根据标签获取笔记数量
+#[tauri::command]
+pub async fn count_notes_by_tags(tags: Vec<String>, work_directory: Option<String>) -> Result<i64, String> {
+    let db_path = get_database_path(work_directory)?;
+    let db = Database::new(&db_path).map_err(|e| format!("Failed to open database: {}", e))?;
+    db.count_notes_by_tags(tags).map_err(|e| format!("Failed to count notes by tags: {}", e))
 }
