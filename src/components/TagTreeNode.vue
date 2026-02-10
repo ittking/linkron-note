@@ -32,19 +32,8 @@ const shouldShowPinnedText = computed(() => {
 <template>
   <div class="tag-tree-node">
     <div
-      class="tag-tree-item flex items-center gap-2 px-3 py-2 hover:bg-base-200 cursor-pointer rounded-lg transition-colors group relative"
+      class="tag-tree-item flex items-center gap-2 pl-3 pr-1 py-2 hover:bg-base-200 cursor-pointer rounded-lg transition-colors group relative"
       @click="emit('click', node)">
-      <!-- 展开/收起按钮 -->
-      <span class="w-6 h-6 flex items-center justify-center">
-        <template v-if="node.children && node.children.length > 0">
-          <button @click.stop="emit('toggle-node', node.fullName)"
-            class="expand-btn w-6 h-6 flex items-center justify-center text-base-content/40 hover:text-base-content transition-colors">
-            <ChevronRight v-if="!expandedNodes.has(node.fullName)" :size="18" />
-            <ChevronDown v-else :size="18" />
-          </button>
-        </template>
-      </span>
-
       <!-- 标签图标或置顶文本 -->
       <Tag v-if="!shouldShowPinnedText" :size="14" class="text-primary flex-shrink-0" />
       <div v-else class="flex items-center gap-1 flex-shrink-0">
@@ -60,6 +49,17 @@ const shouldShowPinnedText = computed(() => {
         class="w-6 h-6 rounded-md flex items-center justify-center text-base-content/40 hover:text-base-content hover:bg-base-200 transition-all duration-200 opacity-0 group-hover:opacity-100">
         <MoreVertical :size="14" />
       </button>
+
+      <!-- 展开/收起按钮 -->
+      <span class="w-6 h-6 flex items-center justify-center">
+        <template v-if="node.children && node.children.length > 0">
+          <button @click.stop="emit('toggle-node', node.fullName)"
+            class="expand-btn w-6 h-6 flex items-center justify-center text-base-content/40 hover:text-base-content transition-colors">
+            <ChevronRight v-if="!expandedNodes.has(node.fullName)" :size="18" />
+            <ChevronDown v-else :size="18" />
+          </button>
+        </template>
+      </span>
 
       <!-- 下拉菜单 -->
       <div v-if="activeMenuTagId === node.id" @click.stop
