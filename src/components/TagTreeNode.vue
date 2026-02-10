@@ -1,5 +1,6 @@
 <script setup>
 import { ChevronDown, ChevronRight, Tag, MoreVertical, Pin, PinOff, Trash2 } from 'lucide-vue-next'
+import { computed } from 'vue'
 
 const props = defineProps({
   node: {
@@ -21,6 +22,11 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['toggle-node', 'toggle-menu', 'delete-tag', 'toggle-pin', 'click'])
+
+// 判断是否显示"置顶"文本（根节点且被置顶）
+const shouldShowPinnedText = computed(() => {
+  return props.level === 0 && props.node.pinned
+})
 </script>
 
 <template>
@@ -39,8 +45,12 @@ const emit = defineEmits(['toggle-node', 'toggle-menu', 'delete-tag', 'toggle-pi
         </template>
       </span>
 
-      <!-- 标签图标 -->
-      <Tag :size="14" class="text-primary flex-shrink-0" />
+      <!-- 标签图标或置顶文本 -->
+      <Tag v-if="!shouldShowPinnedText" :size="14" class="text-primary flex-shrink-0" />
+      <div v-else class="flex items-center gap-1 flex-shrink-0">
+        <span class="text-xs text-primary font-medium">置顶</span>
+        <span class="w-1 h-1 rounded-full bg-primary"></span>
+      </div>
 
       <!-- 标签名称 -->
       <span class="text-sm text-base-content truncate flex-1">{{ node.name }}</span>
