@@ -8,6 +8,7 @@ import { useConfig } from '@/store/configStore'
 import { revealFile } from '@/utils/fileUpload'
 import { useWorkDirectory } from '@/composables/useWorkDirectory'
 import ImageViewer from './ImageViewer.vue'
+import Dropdown from './ui/Dropdown.vue'
 import StarterKit from '@tiptap/starter-kit'
 import Highlight from '@tiptap/extension-highlight'
 import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight'
@@ -41,7 +42,6 @@ const configStore = useConfig()
 // 使用 useWorkDirectory composable
 const { getWorkDirectory } = useWorkDirectory()
 
-const menuVisible = ref(false)
 const isExpanded = ref(false)
 const contentRef = ref(null)
 const isOverflowing = ref(false)
@@ -217,7 +217,6 @@ function toggleImageDisplay(event) {
 
 // 菜单项点击处理
 function handleMenuClick(action) {
-  menuVisible.value = false
   if (action === 'edit') {
     emit('edit', props.note)
   } else if (action === 'delete') {
@@ -251,15 +250,7 @@ function handleCardClick() {
   emit('click', props.note)
 }
 
-// 点击外部关闭菜单
-function handleClickOutside() {
-  if (menuVisible.value) {
-    menuVisible.value = false
-  }
-}
-
 onMounted(() => {
-  document.addEventListener('click', handleClickOutside)
   // 组件挂载后检查溢出状态
   nextTick(() => {
     setTimeout(checkOverflow, 100)
@@ -268,7 +259,6 @@ onMounted(() => {
 })
 
 onBeforeUnmount(() => {
-  document.removeEventListener('click', handleClickOutside)
   // 销毁编辑器实例，避免内存泄漏
   if (editor.value) {
     editor.value.destroy()
@@ -299,28 +289,32 @@ defineExpose({
       <div class="flex items-center gap-2">
         <span class="text-xs text-base-content/50">{{ formattedDate }}</span>
       </div>
-      <div class="relative">
-        <button @click.stop="menuVisible = !menuVisible"
-          class="w-6 h-6 rounded flex items-center justify-center text-base-content/40 hover:text-base-content hover:bg-base-200 transition-colors">
-          <MoreHorizontal :size="20" />
-        </button>
+      <Dropdown position="bottom-end">
+        <template #trigger="{ toggle }">
+          <button @click.stop="toggle"
+            class="w-6 h-6 rounded flex items-center justify-center text-base-content/40 hover:text-base-content hover:bg-base-200 transition-colors">
+            <MoreHorizontal :size="20" />
+          </button>
+        </template>
 
         <!-- 下拉菜单 -->
-        <div v-if="menuVisible"
-          class="absolute right-0 top-8 z-10 bg-base-100 border border-base-200 rounded-lg shadow-xl min-w-[120px] py-1"
-          @click.stop>
-          <button @click="handleMenuClick('edit')"
-            class="w-full px-3 py-2 text-left text-xs text-base-content hover:bg-base-200 flex items-center gap-2 transition-colors">
-            <Edit :size="14" />
-            编辑
-          </button>
-          <button @click="handleMenuClick('delete')"
-            class="w-full px-3 py-2 text-left text-xs text-error hover:bg-base-200 flex items-center gap-2 transition-colors">
-            <Trash2 :size="14" />
-            删除
-          </button>
-        </div>
-      </div>
+        <template #default="{ close }">
+          <ul class="menu p-2 bg-base-100">
+            <li @click.stop="handleMenuClick('edit')">
+              <a class="flex items-center gap-2 text-xs text-base-content hover:bg-base-200">
+                <Edit :size="14" />
+                编辑
+              </a>
+            </li>
+            <li @click.stop="handleMenuClick('delete')">
+              <a class="flex items-center gap-2 text-xs text-error hover:bg-base-200">
+                <Trash2 :size="14" />
+                删除
+              </a>
+            </li>
+          </ul>
+        </template>
+      </Dropdown>
     </div>
 
     <!-- 笔记内容：TipTap 编辑器渲染 -->
