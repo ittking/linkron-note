@@ -701,7 +701,7 @@ async function filterNotesByTags() {
         <div class="flex-1 flex flex-col max-w-200 mx-auto">
 
             <!-- 编辑器区域 -->
-            <div ref="editorContainerRef" class="px-4 py-3 relative">
+            <div ref="editorContainerRef" class="p-3 relative">
             <!-- 编辑器拖拽遮罩 -->
             <div v-if="isDragging"
                 class="absolute inset-0 bg-primary/2 border-2 border-dashed border-primary flex flex-col items-center justify-center z-10 transition-opacity duration-200 pointer-events-none">

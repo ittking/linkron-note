@@ -16,7 +16,7 @@
         "title": "iterm",
         "label": "main",
         "width": 360,
-        "height": 680,
+        "height": 780,
         "minHeight": 680,
         "minWidth": 360,
         "center": true,
