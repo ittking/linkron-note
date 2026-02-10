@@ -9,6 +9,14 @@ const { getWorkDirectory } = useWorkDirectory('setting')
 const monthData = ref([]) // 格式: { year, month, weeks: [count1, count2, count3, count4, count5] }
 const loading = ref(false)
 
+// 悬浮提示状态
+const tooltip = ref({
+  visible: false,
+  content: '',
+  x: 0,
+  y: 0
+})
+
 // 颜色级别（从浅到深）
 const getColorClass = (count) => {
   if (count === 0) return 'bg-base-200'
@@ -28,6 +36,46 @@ const getMonthName = (year, month) => {
 // 判断是否需要显示月份标签：从左到右，第一个显示，第二个不显示，以此类推
 const shouldShowMonthLabel = (index) => {
   return index % 2 === 0
+}
+
+// 显示悬浮提示
+const showTooltip = (event, year, month, weekIndex, count) => {
+  if (count > 0) {
+    const content = `${year}年/${month}月 第${weekIndex}周（${count}条笔记）`
+    
+    // 计算悬浮提示的位置
+    const tooltipWidth = 200 // 估算的宽度
+    const tooltipHeight = 50 // 估算的高度
+    const padding = 10
+    
+    let x = event.clientX
+    let y = event.clientY - padding
+    
+    // 检查是否超出右边界
+    if (x + tooltipWidth / 2 > window.innerWidth) {
+      x = window.innerWidth - tooltipWidth / 2 - padding
+    }
+    // 检查是否超出左边界
+    if (x - tooltipWidth / 2 < 0) {
+      x = tooltipWidth / 2 + padding
+    }
+    // 检查是否超出上边界
+    if (y - tooltipHeight < 0) {
+      y = event.clientY + tooltipHeight + padding
+    }
+    
+    tooltip.value = {
+      visible: true,
+      content: content,
+      x: x,
+      y: y
+    }
+  }
+}
+
+// 隐藏悬浮提示
+const hideTooltip = () => {
+  tooltip.value.visible = false
 }
 
 // 加载热度图数据
@@ -60,8 +108,9 @@ onMounted(() => {
         <div
           v-for="(month, index) in monthData"
           :key="`${month.year}-${month.month}-week-${weekIndex}`"
-          :class="['w-5 h-5 rounded-sm flex-shrink-0 transition-colors', getColorClass(month.weeks[weekIndex - 1])]"
-          :title="`${getMonthName(month.year, month.month)} 第${weekIndex}周: ${month.weeks[weekIndex - 1]} 条笔记`"
+          :class="['w-5 h-5 rounded-sm flex-shrink-0 transition-colors cursor-pointer', getColorClass(month.weeks[weekIndex - 1])]"
+          @mouseenter="showTooltip($event, month.year, month.month, weekIndex, month.weeks[weekIndex - 1])"
+          @mouseleave="hideTooltip"
         ></div>
       </div>
       <!-- 月份标签（底部） -->
@@ -79,5 +128,28 @@ onMounted(() => {
     <div v-else class="flex items-center justify-center h-20 text-base-content/40 text-xs">
       暂无数据
     </div>
+
+    <!-- 悬浮提示 -->
+    <transition name="fade">
+      <div
+        v-if="tooltip.visible"
+        class="fixed z-50 px-3 py-2 bg-black/90 text-white text-xs rounded-lg shadow-xl pointer-events-none whitespace-nowrap"
+        :style="{ left: tooltip.x + 'px', top: tooltip.y + 'px', transform: 'translate(-50%, -100%)' }"
+      >
+        {{ tooltip.content }}
+      </div>
+    </transition>
   </div>
 </template>
+
+<style scoped>
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.2s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+</style>
