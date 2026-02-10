@@ -776,9 +776,9 @@ impl Database {
         for tag_full_name in &tags {
             // 支持子标签查询：匹配 #测试 或 #测试/开头的标签
             // 例如：查询"测试"会匹配"#测试"、"#测试/子标签"、"#测试/子标签/xxx"等
-            let tag_pattern_exact = format!("%<span class=\"tag\">#{}</span>%", tag_full_name);
-            let tag_pattern_with_slash = format!("%<span class=\"tag\">#{}/%</span>%", tag_full_name);
-            
+            let _tag_pattern_exact = format!("%<span class=\"tag\">#{}</span>%", tag_full_name);
+            let _tag_pattern_with_slash = format!("%<span class=\"tag\">#{}/%</span>%", tag_full_name);
+
             // 构建正确的 SQL：content LIKE ? OR content LIKE ?
             let combined_pattern = format!("content LIKE ? OR content LIKE ?");
             where_clauses.push(combined_pattern);
@@ -837,8 +837,8 @@ impl Database {
 
         for tag_full_name in &tags {
             // 支持子标签查询
-            let tag_pattern_exact = format!("%<span class=\"tag\">#{}</span>%", tag_full_name);
-            let tag_pattern_with_slash = format!("%<span class=\"tag\">#{}/%</span>%", tag_full_name);
+            let _tag_pattern_exact = format!("%<span class=\"tag\">#{}</span>%", tag_full_name);
+            let _tag_pattern_with_slash = format!("%<span class=\"tag\">#{}/%</span>%", tag_full_name);
             let combined_pattern = format!("content LIKE ? OR content LIKE ?");
             where_clauses.push(combined_pattern);
         }
