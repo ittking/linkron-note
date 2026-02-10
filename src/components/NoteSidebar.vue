@@ -1,9 +1,10 @@
 <script setup>
 import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
-import { Search, X, Tag } from 'lucide-vue-next'
+import { X, Tag } from 'lucide-vue-next'
 import { useWorkDirectory } from '@/composables/useWorkDirectory'
 import TagTreeNode from './TagTreeNode.vue'
+import NoteHeatmap from './NoteHeatmap.vue'
 
 const props = defineProps({
   isOpen: {
@@ -16,9 +17,6 @@ const emit = defineEmits(['close', 'select-tag'])
 
 // 使用 useWorkDirectory composable
 const { getWorkDirectory } = useWorkDirectory('setting')
-
-// 搜索关键词
-const searchQuery = ref('')
 
 // 标签列表
 const tags = ref([])
@@ -91,34 +89,6 @@ const tagTree = computed(() => {
   return roots
 })
 
-// 过滤后的树
-const filteredTree = computed(() => {
-  if (!searchQuery.value) {
-    return tagTree.value
-  }
-
-  const query = searchQuery.value.toLowerCase()
-
-  function filterNodes(nodes) {
-    return nodes.reduce((acc, node) => {
-      const nameMatches = node.name.toLowerCase().includes(query)
-      const fullNameMatches = node.fullName ? node.fullName.toLowerCase().includes(query) : false
-      const filteredChildren = filterNodes(node.children)
-
-      if (nameMatches || fullNameMatches || filteredChildren.length > 0) {
-        acc.push({
-          ...node,
-          children: filteredChildren
-        })
-      }
-
-      return acc
-    }, [])
-  }
-
-  return filterNodes(tagTree.value)
-})
-
 // 切换下拉菜单
 function toggleMenu(tagId, event) {
   event.stopPropagation()
@@ -189,13 +159,9 @@ onBeforeUnmount(() => {
         </button>
       </div>
 
-      <!-- 搜索框 -->
+      <!-- 笔记热度图 -->
       <div class="px-4 py-3 border-b border-base-300">
-        <div class="relative">
-          <Search :size="16" class="absolute left-3 top-1/2 -translate-y-1/2 text-base-content/40" />
-          <input v-model="searchQuery" type="text" placeholder="搜索标签..."
-            class="w-full pl-9 pr-4 py-2 bg-base-200 border border-base-300 rounded-lg text-sm text-base-content placeholder:text-base-content/40 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all" />
-        </div>
+        <NoteHeatmap />
       </div>
 
       <!-- 标签列表 -->
@@ -204,14 +170,14 @@ onBeforeUnmount(() => {
           <span class="loading loading-spinner text-primary"></span>
         </div>
 
-        <div v-else-if="filteredTree.length === 0" class="flex flex-col items-center justify-center py-8 text-base-content/40">
+        <div v-else-if="tagTree.length === 0" class="flex flex-col items-center justify-center py-8 text-base-content/40">
           <Tag :size="48" class="mb-3 opacity-50" />
-          <div class="text-sm">{{ searchQuery ? '未找到匹配的标签' : '暂无标签' }}</div>
+          <div class="text-sm">暂无标签</div>
         </div>
 
         <div v-else class="tag-tree space-y-1">
           <TagTreeNode
-            v-for="node in filteredTree"
+            v-for="node in tagTree"
             :key="node.id"
             :node="node"
             :level="0"

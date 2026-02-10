@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use ulid::Ulid;
 use regex::Regex;
+use chrono::{Datelike, TimeZone};
 
 // 笔记数据结构
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -37,6 +38,14 @@ pub struct Tag {
     pub created_at: String,
     #[serde(rename = "updatedAt")]
     pub updated_at: String,
+}
+
+// 热度图数据结构
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct MonthData {
+    pub year: i32,
+    pub month: i32,
+    pub weeks: [i32; 5], // 每月5周的笔记数量
 }
 
 /// 序列化图片数组为 JSON 字符串
@@ -822,6 +831,58 @@ impl Database {
 
         stmt.query_row(params_refs.as_slice(), |row| row.get(0))
     }
+
+    /// 获取笔记热度图数据（最近12个月，每月5周）
+    pub fn get_notes_heatmap(&self) -> SqliteResult<Vec<MonthData>> {
+        let now = chrono::Utc::now();
+        let mut result = Vec::new();
+
+        // 从当前月份往前推12个月
+        for i in 0..12 {
+            let current_date = now - chrono::Duration::days((i * 30) as i64);
+            let year = current_date.year();
+            let month = current_date.month();
+
+            // 获取该月的第一天和最后一天
+            let first_day = chrono::Utc.with_ymd_and_hms(year, month, 1, 0, 0, 0).unwrap();
+            let next_month_first_day = if month == 12 {
+                chrono::Utc.with_ymd_and_hms(year + 1, 1, 1, 0, 0, 0).unwrap()
+            } else {
+                chrono::Utc.with_ymd_and_hms(year, month + 1, 1, 0, 0, 0).unwrap()
+            };
+            let last_day = next_month_first_day - chrono::Duration::days(1);
+
+            // 获取该月的所有笔记
+            let sql = "SELECT created_at FROM notes WHERE created_at >= ? AND created_at <= ? ORDER BY created_at";
+            let mut stmt = self.conn.prepare(sql)?;
+
+            let notes = stmt.query_map(params![first_day.to_rfc3339(), last_day.to_rfc3339()], |row| {
+                row.get::<_, String>(0)
+            })?;
+
+            // 统计每周的笔记数量
+            let mut weeks: [i32; 5] = [0; 5];
+            for note in notes {
+                if let Ok(date_str) = note {
+                    if let Ok(dt) = chrono::DateTime::parse_from_rfc3339(&date_str) {
+                        let day_of_month = dt.day();
+                        let week_index = ((day_of_month - 1) / 7).min(4) as usize;
+                        weeks[week_index] += 1;
+                    }
+                }
+            }
+
+            result.push(MonthData {
+                year,
+                month: month as i32,
+                weeks,
+            });
+        }
+
+        // 反转顺序，让最近的月份在前面
+        result.reverse();
+        Ok(result)
+    }
 }
 
 // ============ 标签相关的 Tauri 命令 ============
@@ -882,4 +943,12 @@ pub async fn count_notes_by_tags(tags: Vec<String>, work_directory: Option<Strin
     let db_path = get_database_path(work_directory)?;
     let db = Database::new(&db_path).map_err(|e| format!("Failed to open database: {}", e))?;
     db.count_notes_by_tags(tags).map_err(|e| format!("Failed to count notes by tags: {}", e))
+}
+
+/// Tauri 命令：获取笔记热度图数据
+#[tauri::command]
+pub async fn get_notes_heatmap(work_directory: Option<String>) -> Result<Vec<MonthData>, String> {
+    let db_path = get_database_path(work_directory)?;
+    let db = Database::new(&db_path).map_err(|e| format!("Failed to open database: {}", e))?;
+    db.get_notes_heatmap().map_err(|e| format!("Failed to get notes heatmap: {}", e))
 }
