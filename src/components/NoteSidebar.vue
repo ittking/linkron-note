@@ -117,6 +117,14 @@ function handleTagClick(tag) {
 </script>
 
 <template>
+  <!-- 遮罩层 -->
+  <Transition name="fade">
+    <div v-if="isOpen" @click="emit('close')"
+      class="fixed inset-0 bg-black/30 backdrop-blur-sm z-40 cursor-pointer">
+    </div>
+  </Transition>
+
+  <!-- 侧边栏 -->
   <div class="fixed inset-y-0 left-0 z-50 transition-transform duration-300 ease-in-out"
     :class="isOpen ? 'translate-x-0' : '-translate-x-full'">
     <div data-tauri-drag-region class="w-80 h-full bg-base-100 flex flex-col shadow-xl">
@@ -161,10 +169,17 @@ function handleTagClick(tag) {
         </div>
       </div>
     </div>
-
-    <!-- 遮罩层 -->
-    <div v-if="isOpen" @click="emit('close')"
-      class="fixed inset-0 bg-black/30 backdrop-blur-sm transition-opacity duration-300 -z-10">
-    </div>
   </div>
 </template>
+
+<style scoped>
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.3s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+</style>
