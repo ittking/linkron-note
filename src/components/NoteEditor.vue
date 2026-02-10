@@ -16,6 +16,7 @@ import { useWorkDirectory } from '@/composables/useWorkDirectory'
 import SelectionMenu from './SelectionMenu.vue'
 import ImageViewer from './ImageViewer.vue'
 import { TagMark, TagInputRuleExtension } from '@/extensions/tag-mark'
+import { ResizableImage } from '@/extensions/resizable-image'
 import {
   Hash,
   Image as ImageIcon,
@@ -143,13 +144,7 @@ const editor = useEditor({
       lowlight,
       defaultLanguage: null,
     }),
-    Image.configure({
-      inline: false,
-      allowBase64: true,
-      HTMLAttributes: {
-        class: 'max-w-full h-auto rounded-lg',
-      },
-    }),
+    ResizableImage,
     Placeholder.configure({
       placeholder: props.placeholder,
     }),
@@ -332,8 +327,19 @@ async function handleImageUpload(event) {
       const imageUrl = await saveImage(file, workDirectory)
       // imageUrl 现在已经是完整 URL: http://iterm.localhost/resources/images/...
 
-      // 添加到图片列表（不再插入到编辑器）
+      // 添加到图片列表
       images.value.push(imageUrl)
+
+      // 同时插入到编辑器光标处
+      if (editor.value) {
+        editor.value.chain().focus().insertContent({
+          type: 'resizableImage',
+          attrs: {
+            src: imageUrl,
+            alt: file.name,
+          }
+        }).run()
+      }
     } catch (error) {
       // 图片上传失败，静默处理
     }
