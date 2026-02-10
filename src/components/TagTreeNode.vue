@@ -35,14 +35,14 @@ console.log('[TagTreeNode] node.full_name:', props.node.full_name)
       @click="emit('click', node)"
     >
       <!-- 展开/收起按钮 -->
-      <span class="w-4 h-4 flex items-center justify-center">
+      <span class="w-6 h-6 flex items-center justify-center">
         <template v-if="node.children && node.children.length > 0">
           <button
             @click.stop="emit('toggle-node', node.fullName)"
-            class="expand-btn w-4 h-4 flex items-center justify-center text-base-content/40 hover:text-base-content transition-colors"
+            class="expand-btn w-6 h-6 flex items-center justify-center text-base-content/40 hover:text-base-content transition-colors"
           >
-            <ChevronRight v-if="!expandedNodes.has(node.fullName)" :size="14" />
-            <ChevronDown v-else :size="14" />
+            <ChevronRight v-if="!expandedNodes.has(node.fullName)" :size="18" />
+            <ChevronDown v-else :size="18" />
           </button>
         </template>
       </span>
@@ -91,7 +91,7 @@ console.log('[TagTreeNode] node.full_name:', props.node.full_name)
     <!-- 子节点 -->
     <div
       v-if="node.children && node.children.length > 0 && expandedNodes.has(node.fullName)"
-      class="tag-tree-children ml-5 pl-3 border-l border-base-300 space-y-1"
+      class="tag-tree-children ml-6 border-l border-base-300 space-y-1"
     >
       <TagTreeNode
         v-for="child in node.children"
