@@ -1,7 +1,9 @@
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
-import { Search, X, ChevronDown, ChevronRight, Tag } from 'lucide-vue-next'
+import { Search, X, Tag } from 'lucide-vue-next'
+import { useWorkDirectory } from '@/composables/useWorkDirectory'
+import TagTreeNode from './TagTreeNode.vue'
 
 const props = defineProps({
   isOpen: {
@@ -11,6 +13,9 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['close', 'select-tag'])
+
+// 使用 useWorkDirectory composable
+const { getWorkDirectory } = useWorkDirectory('setting')
 
 // 搜索关键词
 const searchQuery = ref('')
@@ -22,11 +27,15 @@ const loading = ref(false)
 // 展开的标签节点
 const expandedNodes = ref(new Set())
 
+// 下拉菜单状态
+const activeMenuTagId = ref(null)
+
 // 加载标签
 async function loadTags() {
   loading.value = true
   try {
-    const allTags = await invoke('get_all_tags')
+    const workDirectory = await getWorkDirectory()
+    const allTags = await invoke('get_all_tags', { workDirectory })
     tags.value = allTags
   } catch (error) {
     console.error('加载标签失败:', error)
@@ -93,7 +102,7 @@ const filteredTree = computed(() => {
   function filterNodes(nodes) {
     return nodes.reduce((acc, node) => {
       const nameMatches = node.name.toLowerCase().includes(query)
-      const fullNameMatches = node.full_name.toLowerCase().includes(query)
+      const fullNameMatches = node.full_name ? node.full_name.toLowerCase().includes(query) : false
       const filteredChildren = filterNodes(node.children)
 
       if (nameMatches || fullNameMatches || filteredChildren.length > 0) {
@@ -110,49 +119,60 @@ const filteredTree = computed(() => {
   return filterNodes(tagTree.value)
 })
 
-// 递归渲染标签树
-function renderTree(nodes, parentPath = '') {
-  return nodes.map(node => {
-    const currentPath = parentPath ? `${parentPath}/${node.name}` : node.name
-    const hasChildren = node.children && node.children.length > 0
-    const isExpanded = expandedNodes.value.has(currentPath)
+// 切换下拉菜单
+function toggleMenu(tagId, event) {
+  event.stopPropagation()
+  if (activeMenuTagId.value === tagId) {
+    activeMenuTagId.value = null
+  } else {
+    activeMenuTagId.value = tagId
+  }
+}
 
-    return `
-      <div class="tag-tree-node">
-        <div class="tag-tree-item flex items-center gap-2 px-3 py-2 hover:bg-base-200 cursor-pointer rounded-lg transition-colors" data-tag-path="${currentPath}">
-          ${hasChildren ? `
-            <button class="expand-btn w-5 h-5 flex items-center justify-center text-base-content/40 hover:text-base-content transition-colors" data-action="toggle" data-path="${currentPath}">
-              ${isExpanded ? '<ChevronDown :size="14" />' : '<ChevronRight :size="14" />'}
-            </button>
-          ` : '<span class="w-5"></span>'}
-          <Tag :size="14" class="text-primary flex-shrink-0" />
-          <span class="text-sm text-base-content truncate">${node.name}</span>
-        </div>
-        ${hasChildren && isExpanded ? `
-          <div class="tag-tree-children ml-4 pl-2 border-l border-base-300">
-            ${renderTree(node.children, currentPath)}
-          </div>
-        ` : ''}
-      </div>
-    `
-  }).join('')
+// 关闭所有下拉菜单
+function closeAllMenus() {
+  activeMenuTagId.value = null
+}
+
+// 删除标签
+async function deleteTag(tagId, event) {
+  event.stopPropagation()
+  try {
+    const workDirectory = await getWorkDirectory()
+    await invoke('delete_tag', { id: tagId, workDirectory })
+    await loadTags()
+    activeMenuTagId.value = null
+  } catch (error) {
+    console.error('删除标签失败:', error)
+  }
+}
+
+// 置顶/取消置顶标签
+async function togglePin(tagId, event) {
+  event.stopPropagation()
+  try {
+    const workDirectory = await getWorkDirectory()
+    await invoke('pin_tag', { id: tagId, workDirectory })
+    await loadTags()
+    activeMenuTagId.value = null
+  } catch (error) {
+    console.error('置顶标签失败:', error)
+  }
 }
 
 // 处理标签点击
-function handleTagClick(event) {
-  const target = event.target.closest('[data-tag-path]')
-  if (!target) return
-
-  const action = event.target.closest('[data-action]')
-  const path = target.dataset.tagPath
-
-  if (action && action.dataset.action === 'toggle') {
-    event.stopPropagation()
-    toggleNode(path)
-  } else {
-    emit('select-tag', path)
-  }
+function handleTagClick(tag) {
+  emit('select-tag', tag.full_name)
 }
+
+// 点击外部关闭菜单
+onMounted(() => {
+  document.addEventListener('click', closeAllMenus)
+})
+
+onBeforeUnmount(() => {
+  document.removeEventListener('click', closeAllMenus)
+})
 </script>
 
 <template>
@@ -178,7 +198,7 @@ function handleTagClick(event) {
       </div>
 
       <!-- 标签列表 -->
-      <div class="flex-1 overflow-y-auto p-4" @click="handleTagClick">
+      <div class="flex-1 overflow-y-auto p-4">
         <div v-if="loading" class="flex justify-center py-8">
           <span class="loading loading-spinner text-primary"></span>
         </div>
@@ -188,8 +208,20 @@ function handleTagClick(event) {
           <div class="text-sm">{{ searchQuery ? '未找到匹配的标签' : '暂无标签' }}</div>
         </div>
 
-        <div v-else class="tag-tree">
-          <div v-html="renderTree(filteredTree)"></div>
+        <div v-else class="tag-tree space-y-1">
+          <TagTreeNode
+            v-for="node in filteredTree"
+            :key="node.id"
+            :node="node"
+            :level="0"
+            :expanded-nodes="expandedNodes"
+            :active-menu-tag-id="activeMenuTagId"
+            @toggle-node="toggleNode"
+            @toggle-menu="toggleMenu"
+            @delete-tag="deleteTag"
+            @toggle-pin="togglePin"
+            @click="handleTagClick"
+          />
         </div>
       </div>
     </div>
@@ -200,13 +232,3 @@ function handleTagClick(event) {
     </div>
   </div>
 </template>
-
-<style scoped>
-.tag-tree-item:hover {
-  background-color: var(--color-base-200, #f5f5f5);
-}
-
-.tag-tree-children {
-  border-left-color: var(--color-base-300, #e5e5e5);
-}
-</style>

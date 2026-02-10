@@ -32,20 +32,11 @@ pub struct Tag {
     pub name: String,
     #[serde(rename = "fullName")]
     pub full_name: String,
+    pub pinned: bool,
     #[serde(rename = "createdAt")]
     pub created_at: String,
     #[serde(rename = "updatedAt")]
     pub updated_at: String,
-}
-
-// 创建标签的数据结构
-#[derive(Debug, Deserialize)]
-pub struct TagData {
-    #[serde(rename = "parentId")]
-    pub parent_id: Option<String>,
-    pub name: String,
-    #[serde(rename = "fullName")]
-    pub full_name: String,
 }
 
 /// 序列化图片数组为 JSON 字符串
@@ -149,6 +140,11 @@ impl Database {
 
         self.conn.execute(
             "ALTER TABLE tags ADD COLUMN full_name TEXT",
+            [],
+        ).ok(); // 忽略列已存在的错误
+
+        self.conn.execute(
+            "ALTER TABLE tags ADD COLUMN pinned INTEGER DEFAULT 0",
             [],
         ).ok(); // 忽略列已存在的错误
 
@@ -607,6 +603,7 @@ impl Database {
                         parent_id: parent_id.clone(),
                         name: part.to_string(),
                         full_name: current_full_name.clone(),
+                        pinned: existing.pinned,
                         created_at: existing.created_at,
                         updated_at: now.clone(),
                     };
@@ -625,14 +622,15 @@ impl Database {
                         parent_id: parent_id.clone(),
                         name: part.to_string(),
                         full_name: current_full_name.clone(),
+                        pinned: false,
                         created_at: now.clone(),
                         updated_at: now.clone(),
                     };
 
                     self.conn.execute(
-                        "INSERT INTO tags (id, parent_id, name, full_name, created_at, updated_at)
-                         VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
-                        params![&id, &parent_id, part, &current_full_name, &now, &now],
+                        "INSERT INTO tags (id, parent_id, name, full_name, pinned, created_at, updated_at)
+                         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+                        params![&id, &parent_id, part, &current_full_name, 0, &now, &now],
                     )?;
 
                     new_tag
@@ -654,18 +652,20 @@ impl Database {
     /// 根据完整名称获取标签
     pub fn get_tag_by_full_name(&self, full_name: &str) -> SqliteResult<Option<Tag>> {
         let mut stmt = self.conn.prepare(
-            "SELECT id, parent_id, name, full_name, created_at, updated_at
-             FROM tags WHERE full_name = ?1"
+            "SELECT id, parent_id, name, COALESCE(full_name, name) as full_name, COALESCE(pinned, 0) as pinned, created_at, updated_at
+             FROM tags WHERE COALESCE(full_name, name) = ?1"
         )?;
 
         let mut tags = stmt.query_map(params![full_name], |row| {
+            let pinned: i32 = row.get(4)?;
             Ok(Tag {
                 id: row.get(0)?,
                 parent_id: row.get(1)?,
                 name: row.get(2)?,
                 full_name: row.get(3)?,
-                created_at: row.get(4)?,
-                updated_at: row.get(5)?,
+                pinned: pinned == 1,
+                created_at: row.get(5)?,
+                updated_at: row.get(6)?,
             })
         })?;
 
@@ -678,18 +678,20 @@ impl Database {
     /// 获取所有标签（树状结构）
     pub fn get_all_tags(&self) -> SqliteResult<Vec<Tag>> {
         let mut stmt = self.conn.prepare(
-            "SELECT id, parent_id, name, full_name, created_at, updated_at
-             FROM tags ORDER BY full_name ASC"
+            "SELECT id, parent_id, name, COALESCE(full_name, name) as full_name, COALESCE(pinned, 0) as pinned, created_at, updated_at
+             FROM tags ORDER BY COALESCE(pinned, 0) DESC, COALESCE(full_name, name) ASC"
         )?;
 
         let tags = stmt.query_map([], |row| {
+            let pinned: i32 = row.get(4)?;
             Ok(Tag {
                 id: row.get(0)?,
                 parent_id: row.get(1)?,
                 name: row.get(2)?,
                 full_name: row.get(3)?,
-                created_at: row.get(4)?,
-                updated_at: row.get(5)?,
+                pinned: pinned == 1,
+                created_at: row.get(5)?,
+                updated_at: row.get(6)?,
             })
         })?;
 
@@ -699,6 +701,30 @@ impl Database {
     /// 删除标签（级联删除子标签）
     pub fn delete_tag(&self, id: &str) -> SqliteResult<()> {
         self.conn.execute("DELETE FROM tags WHERE id = ?", params![id])?;
+        Ok(())
+    }
+
+    /// 置顶/取消置顶标签
+    pub fn pin_tag(&self, id: &str) -> SqliteResult<()> {
+        // 获取当前置顶状态
+        let mut stmt = self.conn.prepare("SELECT COALESCE(pinned, 0) FROM tags WHERE id = ?1")?;
+        let mut tags = stmt.query_map(params![id], |row| {
+            let pinned: i32 = row.get(0)?;
+            Ok(pinned == 1)
+        })?;
+
+        let current_pinned = match tags.next() {
+            Some(Ok(pinned)) => pinned,
+            _ => return Ok(()),
+        };
+
+        // 切换置顶状态
+        let new_pinned = if current_pinned { 0 } else { 1 };
+        self.conn.execute(
+            "UPDATE tags SET pinned = ?1, updated_at = ?2 WHERE id = ?3",
+            params![new_pinned, &chrono::Utc::now().to_rfc3339(), id],
+        )?;
+
         Ok(())
     }
 }
@@ -734,5 +760,15 @@ pub async fn get_all_tags(work_directory: Option<String>) -> Result<Vec<Tag>, St
 pub async fn delete_tag(id: String, work_directory: Option<String>) -> Result<(), String> {
     let db_path = get_database_path(work_directory)?;
     let db = Database::new(&db_path).map_err(|e| format!("Failed to open database: {}", e))?;
-    db.delete_tag(&id).map_err(|e| format!("Failed to delete tag: {}", e))
+    db.delete_tag(&id).map_err(|e| format!("Failed to delete tag: {}", e))?;
+    Ok(())
+}
+
+/// Tauri 命令：置顶/取消置顶标签
+#[tauri::command]
+pub async fn pin_tag(id: String, work_directory: Option<String>) -> Result<(), String> {
+    let db_path = get_database_path(work_directory)?;
+    let db = Database::new(&db_path).map_err(|e| format!("Failed to open database: {}", e))?;
+    db.pin_tag(&id).map_err(|e| format!("Failed to pin tag: {}", e))?;
+    Ok(())
 }

@@ -64,6 +64,7 @@ pub fn run() {
             database::sync_tags,
             database::get_all_tags,
             database::delete_tag,
+            database::pin_tag,
             file_reader::read_text_file,
             file_reader::read_file_text,
             file_reader::get_file_metadata,
