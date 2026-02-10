@@ -299,20 +299,19 @@ defineExpose({
 
         <!-- 下拉菜单 -->
         <template #default="{ close }">
-          <ul class="menu p-2 bg-base-100">
-            <li @click.stop="handleMenuClick('edit')">
-              <a class="flex items-center gap-2 text-xs text-base-content hover:bg-base-200">
-                <Edit :size="14" />
-                编辑
-              </a>
-            </li>
-            <li @click.stop="handleMenuClick('delete')">
-              <a class="flex items-center gap-2 text-xs text-error hover:bg-base-200">
-                <Trash2 :size="14" />
-                删除
-              </a>
-            </li>
-          </ul>
+          <!-- 编辑 -->
+          <button @click.stop="handleMenuClick('edit'); close()"
+            class="w-full px-3 py-2 flex items-center gap-2 text-sm text-base-content hover:bg-base-200 transition-colors">
+            <Edit :size="14" />
+            <span>编辑</span>
+          </button>
+
+          <!-- 删除 -->
+          <button @click.stop="handleMenuClick('delete'); close()"
+            class="w-full px-3 py-2 flex items-center gap-2 text-sm text-error hover:bg-base-200 transition-colors">
+            <Trash2 :size="14" />
+            <span>删除</span>
+          </button>
         </template>
       </Dropdown>
     </div>
