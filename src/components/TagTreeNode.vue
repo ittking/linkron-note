@@ -21,11 +21,6 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['toggle-node', 'toggle-menu', 'delete-tag', 'toggle-pin', 'click'])
-
-// 添加日志查看 node 结构
-console.log('[TagTreeNode] node 对象:', props.node)
-console.log('[TagTreeNode] node.fullName:', props.node.fullName)
-console.log('[TagTreeNode] node.full_name:', props.node.full_name)
 </script>
 
 <template>

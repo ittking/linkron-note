@@ -638,7 +638,6 @@ function closeSidebar() {
 
 // 选择标签
 function handleSelectTag(tagPath) {
-    console.log('选择标签:', tagPath)
     // TODO: 根据标签筛选笔记
     closeSidebar()
 }

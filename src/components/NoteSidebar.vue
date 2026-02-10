@@ -36,7 +36,6 @@ async function loadTags() {
   try {
     const workDirectory = await getWorkDirectory()
     const allTags = await invoke('get_all_tags', { workDirectory })
-    console.log('[加载标签] 获取到标签:', allTags)
     tags.value = allTags
   } catch (error) {
     console.error('加载标签失败:', error)
@@ -54,18 +53,11 @@ watch(() => props.isOpen, (isOpen) => {
 
 // 切换节点展开状态
 function toggleNode(nodePath) {
-  console.log('[切换节点] 当前节点路径:', nodePath)
-  console.log('[切换节点] 展开前 expandedNodes:', Array.from(expandedNodes.value))
-  
   if (expandedNodes.value.has(nodePath)) {
     expandedNodes.value.delete(nodePath)
-    console.log('[切换节点] 收起节点:', nodePath)
   } else {
     expandedNodes.value.add(nodePath)
-    console.log('[切换节点] 展开节点:', nodePath)
   }
-  
-  console.log('[切换节点] 展开后 expandedNodes:', Array.from(expandedNodes.value))
 }
 
 // 构建树形结构
@@ -80,8 +72,6 @@ const tagTree = computed(() => {
     tagMap.set(tag.id, { ...tag, children: [] })
   })
 
-  console.log('[树形构建] tagMap 构建完成，节点数量:', tagMap.size)
-
   // 第二步：构建树，建立父子关系
   const roots = []
   tags.value.forEach(tag => {
@@ -90,19 +80,14 @@ const tagTree = computed(() => {
       const parent = tagMap.get(tag.parentId)
       if (parent) {
         parent.children.push(node)
-        console.log('[树形构建] 添加子节点:', node.name, '到父节点:', parent.name)
       } else {
-        console.log('[树形构建] 父节点不存在，添加到根节点:', node.name, 'parent_id:', tag.parentId)
         roots.push(node)
       }
     } else {
-      console.log('[树形构建] 添加根节点:', node.name)
       roots.push(node)
     }
   })
 
-  console.log('[树形构建] 最终根节点数量:', roots.length, '根节点:', roots.map(n => n.name))
-  console.log('[树形构建] 根节点详情:', roots.map(n => ({ name: n.name, children: n.children.length })))
   return roots
 })
 
