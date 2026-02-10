@@ -17,6 +17,7 @@ import SelectionMenu from './SelectionMenu.vue'
 import ImageViewer from './ImageViewer.vue'
 import { TagMark, TagInputRuleExtension } from '@/extensions/tag-mark'
 import { ResizableImage } from '@/extensions/resizable-image'
+import { TagSuggestion } from '@/extensions/tag-suggestion'
 import {
   Hash,
   Image as ImageIcon,
@@ -150,12 +151,14 @@ const editor = useEditor({
     }),
     TagMark,
     TagInputRuleExtension,
+    TagSuggestion,
   ],
   autofocus: props.autofocus,
   editorProps: {
     attributes: {
       class: 'prose prose-sm max-w-none focus:outline-none py-2 text-sm',
     },
+    getWorkDirectory: () => getWorkDirectory(),
     handleDragOver: (view, event) => {
       // 阻止默认的拖拽行为，防止 TipTap 自动处理拖拽
       event.preventDefault()

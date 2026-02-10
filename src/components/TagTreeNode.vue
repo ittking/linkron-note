@@ -81,7 +81,7 @@ const shouldShowPinnedText = computed(() => {
 
     <!-- 子节点 -->
     <div v-if="node.children && node.children.length > 0 && expandedNodes.has(node.fullName)"
-      class="tag-tree-children ml-6 border-l border-base-300 space-y-1">
+      class="tag-tree-children ml-5 pl-1 border-l border-base-300 space-y-1">
       <TagTreeNode v-for="child in node.children" :key="child.id" :node="child" :level="level + 1"
         :expanded-nodes="expandedNodes" @toggle-node="emit('toggle-node', $event)"
         @delete-tag="(tagId, event) => emit('delete-tag', tagId, event)"

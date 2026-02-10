@@ -992,3 +992,54 @@ pub async fn get_notes_heatmap(work_directory: Option<String>) -> Result<Vec<Mon
     let db = Database::new(&db_path).map_err(|e| format!("Failed to open database: {}", e))?;
     db.get_notes_heatmap().map_err(|e| format!("Failed to get notes heatmap: {}", e))
 }
+
+/// 搜索标签（根据名称或全名模糊匹配，最多返回5条）
+#[tauri::command]
+pub fn search_tags(work_directory: String, query: String) -> Result<Vec<Tag>, String> {
+    println!("[标签搜索] 开始搜索标签，查询: {}", query);
+
+    let db_path = get_database_path(Some(work_directory))?;
+    let db = Database::new(&db_path).map_err(|e| format!("Failed to open database: {}", e))?;
+
+    db.search_tags(&query).map_err(|e| format!("Failed to search tags: {}", e))
+}
+
+impl Database {
+    /// 搜索标签（根据名称或全名模糊匹配，最多返回5条）
+    pub fn search_tags(&self, query: &str) -> SqliteResult<Vec<Tag>> {
+        let pattern = format!("%{}%", query);
+
+        let mut stmt = self.conn.prepare(
+            "SELECT id, parent_id, name, COALESCE(full_name, name) as full_name, COALESCE(pinned, 0) as pinned, created_at, updated_at
+             FROM tags
+             WHERE name LIKE ?1 OR full_name LIKE ?1
+             ORDER BY
+               CASE
+                 WHEN full_name = ?2 THEN 0
+                 WHEN name = ?2 THEN 1
+                 WHEN full_name LIKE ?2 || '%' THEN 2
+                 WHEN name LIKE ?2 || '%' THEN 3
+                 ELSE 4
+               END,
+               updated_at DESC,
+               pinned DESC,
+               full_name ASC
+             LIMIT 5"
+        )?;
+
+        let tags = stmt.query_map(params![pattern, query], |row| {
+            let pinned: i32 = row.get(4)?;
+            Ok(Tag {
+                id: row.get(0)?,
+                parent_id: row.get(1)?,
+                name: row.get(2)?,
+                full_name: row.get(3)?,
+                pinned: pinned == 1,
+                created_at: row.get(5)?,
+                updated_at: row.get(6)?,
+            })
+        })?;
+
+        tags.collect()
+    }
+}
