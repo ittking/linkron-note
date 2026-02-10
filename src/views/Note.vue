@@ -724,7 +724,7 @@ async function filterNotesByTags() {
         </div>
 
         <!-- 标签筛选栏 -->
-        <div v-if="isTagFilterMode" class="px-4 pt-3 border-t border-base-200 bg-base-100">
+        <div v-if="isTagFilterMode" class="px-4 py-3 border-t border-base-200 bg-base-100">
             <div class="flex items-center justify-between gap-2">
                 <!-- 左侧：标签列表 -->
                 <div class="flex items-center gap-2 flex-1 flex-wrap">
@@ -764,7 +764,7 @@ async function filterNotesByTags() {
                 <div class="text-sm text-base-content/60">支持链接、文档（md、txt）、文字</div>
             </div>
 
-            <div ref="noteListRef" class="p-3 h-full overflow-y-auto no-scrollbar relative" @scroll="handleNoteListScroll">
+            <div ref="noteListRef" class="p-3 pt-0 h-full overflow-y-auto no-scrollbar relative" @scroll="handleNoteListScroll">
                 <div v-if="notes.length === 0"
                     class="flex flex-col select-none items-center justify-center h-full text-base-content/40 text-center p-5">
                     <FileText :size="64" class="mb-4 opacity-50" />
