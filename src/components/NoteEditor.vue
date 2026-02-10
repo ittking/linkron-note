@@ -88,7 +88,16 @@ watch(() => props.images, (newImages) => {
 onMounted(() => {
   // 只在编辑模式下初始化内容
   if (props.isEditing && editor.value && props.modelValue) {
+    // 设置内容，不触发更新事件，并标记为初始化
     editor.value.commands.setContent(props.modelValue, false)
+    // 在下一个事件循环中标记初始化完成
+    setTimeout(() => {
+      if (editor.value) {
+        editor.value.view.dispatch(
+          editor.value.state.tr.setMeta('isInitializing', false)
+        )
+      }
+    }, 0)
   }
 })
 
@@ -249,11 +258,17 @@ watch(() => props.modelValue, (newValue) => {
   // 如果编辑器已初始化且内容不同，则更新
   if (editor.value && !editor.value.isDestroyed && newValue && newValue !== editor.value.getHTML()) {
     isSettingContent.value = true
+    // 设置内容，不触发更新事件
     editor.value.commands.setContent(newValue, false)
-    // 稍后重置标志
+    // 在下一个事件循环中标记初始化完成
     setTimeout(() => {
       if (!isUnmounting.value) {
         isSettingContent.value = false
+        if (editor.value) {
+          editor.value.view.dispatch(
+            editor.value.state.tr.setMeta('isInitializing', false)
+          )
+        }
       }
     }, 0)
   }

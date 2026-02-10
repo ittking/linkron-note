@@ -25,19 +25,6 @@ export const TagMark = Mark.create({
   },
 })
 
-// 辅助函数：检查标签后面是否有空格
-function checkTagHasTrailingSpace(state, tagMark, from, to) {
-  const $pos = state.doc.resolve(to)
-  const nextPos = $pos.pos
-
-  // 检查标签后面是否有空格
-  if (nextPos < state.doc.content.size) {
-    const textAfter = state.doc.textBetween(nextPos, Math.min(nextPos + 1, state.doc.content.size))
-    return textAfter === ' '
-  }
-  return false
-}
-
 // 创建扩展来处理标签的自动检测和转换
 export const TagInputRuleExtension = Mark.create({
   name: 'tagInputRule',
@@ -156,43 +143,6 @@ export const TagInputRuleExtension = Mark.create({
 
             return false
           },
-        },
-        // 在事务变化后检查标签是否还有尾随空格
-        appendTransaction: (transactions, oldState, newState) => {
-          const tagMark = newState.schema.marks.tag
-          let tr = null
-
-          transactions.forEach(transaction => {
-            // 如果事务没有改变文档内容，跳过
-            if (!transaction.docChanged) return
-
-            const { doc } = newState
-
-            // 遍历文档，查找所有标签
-            doc.descendants((node, pos) => {
-              if (node.isText) {
-                node.marks.forEach(mark => {
-                  if (mark.type === tagMark) {
-                    const tagStart = pos
-                    const tagEnd = pos + node.nodeSize
-
-                    // 检查标签后面是否有空格
-                    const $pos = doc.resolve(tagEnd)
-                    const hasTrailingSpace = $pos.pos < doc.content.size &&
-                      doc.textBetween($pos.pos, $pos.pos + 1) === ' '
-
-                    // 如果没有尾随空格，将标签转换为普通文本
-                    if (!hasTrailingSpace) {
-                      if (!tr) tr = newState.tr
-                      tr.removeMark(tagStart, tagEnd, tagMark)
-                    }
-                  }
-                })
-              }
-            })
-          })
-
-          return tr
         },
       }),
     ]
