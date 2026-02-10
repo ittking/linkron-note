@@ -116,7 +116,6 @@ export const TagSuggestion = Extension.create({
             }
 
             lastQuery = query
-            console.log('[标签建议] #+' + query)
 
             // 清除之前的定时器
             if (searchTimer) {

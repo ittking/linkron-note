@@ -868,8 +868,6 @@ impl Database {
         let now = chrono::Utc::now();
         let mut result = Vec::new();
 
-        println!("[热度图] 开始统计热度图数据，当前时间: {}", now);
-
         // 从当前月份往前推12个月
         for i in 0..12 {
             let current_date = now - chrono::Duration::days((i * 30) as i64);
@@ -885,8 +883,6 @@ impl Database {
             };
             let last_day = next_month_first_day - chrono::Duration::days(1);
 
-            println!("[热度图] 月份: {}-{}, 时间范围: {} 到 {}", year, month, first_day.to_rfc3339(), last_day.to_rfc3339());
-
             // 获取该月的所有笔记
             let sql = "SELECT created_at FROM notes WHERE created_at >= ? AND created_at <= ? ORDER BY created_at";
             let mut stmt = self.conn.prepare(sql)?;
@@ -897,19 +893,15 @@ impl Database {
 
             // 统计每周的笔记数量
             let mut weeks: [i32; 5] = [0; 5];
-            let mut total_count = 0;
             for note in notes {
                 if let Ok(date_str) = note {
                     if let Ok(dt) = chrono::DateTime::parse_from_rfc3339(&date_str) {
                         let day_of_month = dt.day();
                         let week_index = ((day_of_month - 1) / 7).min(4) as usize;
                         weeks[week_index] += 1;
-                        total_count += 1;
                     }
                 }
             }
-
-            println!("[热度图] {}-{} 总共找到 {} 条笔记，每周分布: {:?}", year, month, total_count, weeks);
 
             result.push(MonthData {
                 year,
@@ -920,7 +912,6 @@ impl Database {
 
         // 反转顺序，让最近的月份在前面
         result.reverse();
-        println!("[热度图] 最终结果: {:?}", result.iter().map(|m| format!("{}-{}: {:?}", m.year, m.month, m.weeks)).collect::<Vec<_>>());
         Ok(result)
     }
 }
@@ -996,8 +987,6 @@ pub async fn get_notes_heatmap(work_directory: Option<String>) -> Result<Vec<Mon
 /// 搜索标签（根据名称或全名模糊匹配，最多返回5条）
 #[tauri::command]
 pub fn search_tags(work_directory: String, query: String) -> Result<Vec<Tag>, String> {
-    println!("[标签搜索] 开始搜索标签，查询: {}", query);
-
     let db_path = get_database_path(Some(work_directory))?;
     let db = Database::new(&db_path).map_err(|e| format!("Failed to open database: {}", e))?;
 

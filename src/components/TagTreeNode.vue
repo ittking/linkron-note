@@ -1,5 +1,5 @@
 <script setup>
-import { ChevronDown, ChevronRight, Tag, MoreVertical, Pin, PinOff, Trash2 } from 'lucide-vue-next'
+import { ChevronDown, ChevronRight, MoreVertical, Pin, PinOff, Trash2 } from 'lucide-vue-next'
 import { computed } from 'vue'
 import Dropdown from './ui/Dropdown.vue'
 
@@ -32,7 +32,7 @@ const shouldShowPinnedText = computed(() => {
       class="tag-tree-item flex items-center gap-2 pl-3 pr-1 py-2 hover:bg-base-200 cursor-pointer rounded-lg transition-colors group relative"
       @click="emit('click', node)">
       <!-- 标签图标或置顶文本 -->
-      <Tag v-if="!shouldShowPinnedText" :size="14" class="text-primary flex-shrink-0" />
+      <span v-if="!shouldShowPinnedText" class="text-primary flex-shrink-0 text-sm opacity-50">#</span>
       <div v-else class="flex items-center gap-1 flex-shrink-0">
         <span class="text-xs text-primary font-medium">置顶</span>
         <span class="w-1 h-1 rounded-full bg-primary"></span>
