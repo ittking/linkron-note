@@ -28,7 +28,6 @@ const menuStyle = computed(() => ({
   top: `${menuPosition.value.top}px`,
   left: `${menuPosition.value.left}px`,
   width: menuPosition.value.width ? `${menuPosition.value.width}px` : 'auto',
-  minWidth: '160px',
   zIndex: 9999
 }))
 
