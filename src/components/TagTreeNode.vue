@@ -21,6 +21,11 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['toggle-node', 'toggle-menu', 'delete-tag', 'toggle-pin', 'click'])
+
+// 添加日志查看 node 结构
+console.log('[TagTreeNode] node 对象:', props.node)
+console.log('[TagTreeNode] node.fullName:', props.node.fullName)
+console.log('[TagTreeNode] node.full_name:', props.node.full_name)
 </script>
 
 <template>
@@ -30,13 +35,13 @@ const emit = defineEmits(['toggle-node', 'toggle-menu', 'delete-tag', 'toggle-pi
       @click="emit('click', node)"
     >
       <!-- 展开/收起按钮 -->
-      <span class="w-4 h-4 flex items-center justify-center" @click.stop>
+      <span class="w-4 h-4 flex items-center justify-center">
         <template v-if="node.children && node.children.length > 0">
           <button
-            @click="emit('toggle-node', node.full_name)"
+            @click.stop="emit('toggle-node', node.fullName)"
             class="expand-btn w-4 h-4 flex items-center justify-center text-base-content/40 hover:text-base-content transition-colors"
           >
-            <ChevronRight v-if="!expandedNodes.has(node.full_name)" :size="14" />
+            <ChevronRight v-if="!expandedNodes.has(node.fullName)" :size="14" />
             <ChevronDown v-else :size="14" />
           </button>
         </template>
@@ -85,7 +90,7 @@ const emit = defineEmits(['toggle-node', 'toggle-menu', 'delete-tag', 'toggle-pi
 
     <!-- 子节点 -->
     <div
-      v-if="node.children && node.children.length > 0 && expandedNodes.has(node.full_name)"
+      v-if="node.children && node.children.length > 0 && expandedNodes.has(node.fullName)"
       class="tag-tree-children ml-5 pl-3 border-l border-base-300 space-y-1"
     >
       <TagTreeNode

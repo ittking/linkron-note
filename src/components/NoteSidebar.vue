@@ -54,11 +54,18 @@ watch(() => props.isOpen, (isOpen) => {
 
 // 切换节点展开状态
 function toggleNode(nodePath) {
+  console.log('[切换节点] 当前节点路径:', nodePath)
+  console.log('[切换节点] 展开前 expandedNodes:', Array.from(expandedNodes.value))
+  
   if (expandedNodes.value.has(nodePath)) {
     expandedNodes.value.delete(nodePath)
+    console.log('[切换节点] 收起节点:', nodePath)
   } else {
     expandedNodes.value.add(nodePath)
+    console.log('[切换节点] 展开节点:', nodePath)
   }
+  
+  console.log('[切换节点] 展开后 expandedNodes:', Array.from(expandedNodes.value))
 }
 
 // 构建树形结构
