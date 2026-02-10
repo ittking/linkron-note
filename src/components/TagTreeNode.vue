@@ -72,21 +72,28 @@ const shouldShowPinnedText = computed(() => {
         <template v-if="node.children && node.children.length > 0">
           <button @click.stop="emit('toggle-node', node.fullName)"
             class="expand-btn w-6 h-6 flex items-center justify-center text-base-content/40 hover:text-base-content transition-colors">
-            <ChevronRight v-if="!expandedNodes.has(node.fullName)" :size="18" />
-            <ChevronDown v-else :size="18" />
+            <ChevronRight :size="18" :class="{ 'rotate-90': expandedNodes.has(node.fullName) }" class="transition-transform duration-200" />
           </button>
         </template>
       </span>
     </div>
 
     <!-- 子节点 -->
-    <div v-if="node.children && node.children.length > 0 && expandedNodes.has(node.fullName)"
-      class="tag-tree-children ml-5 pl-1 border-l border-base-300 space-y-1">
-      <TagTreeNode v-for="child in node.children" :key="child.id" :node="child" :level="level + 1"
-        :expanded-nodes="expandedNodes" @toggle-node="emit('toggle-node', $event)"
-        @delete-tag="(tagId, event) => emit('delete-tag', tagId, event)"
-        @toggle-pin="(tagId, event) => emit('toggle-pin', tagId, event)" @click="emit('click', $event)" />
-    </div>
+    <Transition
+      enter-active-class="transition-all duration-200 ease-out"
+      enter-from-class="opacity-0 -translate-y-1"
+      enter-to-class="opacity-100 translate-y-0"
+      leave-active-class="transition-all duration-150 ease-in"
+      leave-from-class="opacity-100 translate-y-0"
+      leave-to-class="opacity-0 -translate-y-1">
+      <div v-if="node.children && node.children.length > 0 && expandedNodes.has(node.fullName)"
+        class="tag-tree-children ml-5 pl-1 border-l border-base-300 space-y-1">
+        <TagTreeNode v-for="child in node.children" :key="child.id" :node="child" :level="level + 1"
+          :expanded-nodes="expandedNodes" @toggle-node="emit('toggle-node', $event)"
+          @delete-tag="(tagId, event) => emit('delete-tag', tagId, event)"
+          @toggle-pin="(tagId, event) => emit('toggle-pin', tagId, event)" @click="emit('click', $event)" />
+      </div>
+    </Transition>
   </div>
 </template>
 
@@ -99,10 +106,5 @@ const shouldShowPinnedText = computed(() => {
   border-left-color: var(--color-base-300, #e5e5e5);
   margin-top: 2px;
   margin-bottom: 2px;
-}
-
-.tag-tree-children .tag-tree-item {
-  padding-top: 2px;
-  padding-bottom: 2px;
 }
 </style>

@@ -765,8 +765,6 @@ impl Database {
 
     /// 根据标签筛选笔记（支持多个标签，OR 逻辑，支持子标签查询）
     pub fn get_notes_by_tags(&self, tags: Vec<String>) -> SqliteResult<Vec<Note>> {
-        println!("[标签筛选] 开始筛选笔记，输入标签: {:?}", tags);
-
         if tags.is_empty() {
             return self.get_all_notes(1, 1000);
         }
@@ -794,8 +792,6 @@ impl Database {
             where_clause
         );
 
-        println!("[标签筛选] SQL 查询: {}", sql);
-
         let mut stmt = self.conn.prepare(&sql)?;
         
         // 构建参数：每个标签需要两个参数（精确匹配和子标签匹配）
@@ -821,14 +817,11 @@ impl Database {
         })?;
 
         let result: Vec<Note> = notes.collect::<Result<Vec<_>, _>>()?;
-        println!("[标签筛选] 找到 {} 条笔记", result.len());
         Ok(result)
     }
 
     /// 根据标签获取笔记数量（支持子标签查询）
     pub fn count_notes_by_tags(&self, tags: Vec<String>) -> SqliteResult<i64> {
-        println!("[标签筛选] 开始计数，输入标签: {:?}", tags);
-
         if tags.is_empty() {
             return self.count_notes();
         }
@@ -846,8 +839,6 @@ impl Database {
         let where_clause = where_clauses.join(" OR ");
         let sql = format!("SELECT COUNT(*) FROM notes WHERE {}", where_clause);
 
-        println!("[标签筛选] 计数 SQL: {}", sql);
-
         let mut stmt = self.conn.prepare(&sql)?;
         
         // 构建参数
@@ -859,7 +850,6 @@ impl Database {
         let params_refs: Vec<&dyn rusqlite::ToSql> = all_params.iter().map(|p| p as &dyn rusqlite::ToSql).collect();
 
         let count = stmt.query_row(params_refs.as_slice(), |row| row.get(0))?;
-        println!("[标签筛选] 笔记数量: {}", count);
         Ok(count)
     }
 
