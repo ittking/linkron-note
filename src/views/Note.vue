@@ -42,9 +42,9 @@ const croppedNoteId = ref(null)
 // NoteCard 组件引用管理
 const noteCardRefs = ref(new Map())
 
-function setNoteCardRef(noteId, ref) {
-    if (ref) {
-        noteCardRefs.value.set(noteId, ref)
+function setNoteCardRef(noteId, cardRef) {
+    if (cardRef) {
+        noteCardRefs.value.set(noteId, cardRef)
     } else {
         noteCardRefs.value.delete(noteId)
     }
@@ -89,6 +89,17 @@ const notes = ref([])
 const editorContent = ref('')
 const isDragging = ref(false)
 const isProcessing = ref(false)
+
+// 工作目录缓存
+let cachedWorkDirectory = null
+
+// 获取缓存的工作目录
+async function getCachedWorkDirectory() {
+    if (!cachedWorkDirectory) {
+        cachedWorkDirectory = await getWorkDirectory()
+    }
+    return cachedWorkDirectory
+}
 
 // 标签筛选相关状态
 const selectedTags = ref([])
@@ -172,60 +183,51 @@ function handleNoteListScroll() {
 
         updateEditorHeight(scrollTop)
 
-        // 滚动时简化检测，只检测可见区域附近的笔记
-        detectCroppedNoteOptimized()
+        // 滚动时使用优化检测
+        detectCroppedNote(true)
 
         lastScrollTime = now
         rafId = null
     })
 }
 
-// 优化的被切割笔记检测（滚动时使用，减少查询范围）
-function detectCroppedNoteOptimized() {
+// 检测被切割的笔记
+function detectCroppedNote(optimized = false) {
     if (!noteListRef.value) return
 
     const containerRect = noteListRef.value.getBoundingClientRect()
     const containerBottom = containerRect.bottom
 
-    // 只查询可见区域的元素，使用 for 循环比 forEach 更快
     const noteElements = noteListRef.value.querySelectorAll('[data-note-id]')
     let croppedId = null
 
-    for (let i = 0; i < noteElements.length; i++) {
-        const element = noteElements[i]
-        const elementRect = element.getBoundingClientRect()
-        const elementTop = elementRect.top
-        const elementBottom = elementRect.bottom
+    if (optimized) {
+        // 优化版本：使用 for 循环比 forEach 更快
+        for (let i = 0; i < noteElements.length; i++) {
+            const element = noteElements[i]
+            const elementRect = element.getBoundingClientRect()
+            const elementTop = elementRect.top
+            const elementBottom = elementRect.bottom
 
-        if (elementTop < containerBottom && elementBottom > containerBottom) {
-            croppedId = element.getAttribute('data-note-id')
-            break
+            if (elementTop < containerBottom && elementBottom > containerBottom) {
+                croppedId = element.getAttribute('data-note-id')
+                break
+            }
         }
+    } else {
+        // 标准版本：用于精确场景
+        noteElements.forEach(element => {
+            if (croppedId) return // 已找到，提前退出
+            const noteId = element.getAttribute('data-note-id')
+            const elementRect = element.getBoundingClientRect()
+            const elementTop = elementRect.top
+            const elementBottom = elementRect.bottom
+
+            if (elementTop < containerBottom && elementBottom > containerBottom) {
+                croppedId = noteId
+            }
+        })
     }
-
-    croppedNoteId.value = croppedId
-}
-
-// 原始检测方法（保留用于精确场景）
-function detectCroppedNote() {
-    if (!noteListRef.value) return
-
-    const containerRect = noteListRef.value.getBoundingClientRect()
-    const containerBottom = containerRect.bottom
-
-    const noteElements = noteListRef.value.querySelectorAll('[data-note-id]')
-    let croppedId = null
-
-    noteElements.forEach(element => {
-        const noteId = element.getAttribute('data-note-id')
-        const elementRect = element.getBoundingClientRect()
-        const elementTop = elementRect.top
-        const elementBottom = elementRect.bottom
-
-        if (elementTop < containerBottom && elementBottom > containerBottom) {
-            croppedId = noteId
-        }
-    })
 
     croppedNoteId.value = croppedId
 }
@@ -391,7 +393,7 @@ function handleDrop(e) {
 
 // 处理文件的公共逻辑
 async function processFile(file, target = 'note') {
-    const workDirectory = await getWorkDirectory()
+    const workDirectory = await getCachedWorkDirectory()
 
     if (isUrlFile(file.name)) {
         // 处理 .url 文件
@@ -557,11 +559,6 @@ async function createTextNote(text) {
     }
 }
 
-// 卡片点击
-function handleCardClick(note) {
-    // 暂时不做任何操作
-}
-
 // NoteCard 展开/收起事件处理
 function handleNoteExpand(noteId) {
     expandedNoteIds.value.set(noteId, true)
@@ -640,11 +637,6 @@ function handleCancelEdit() {
     showToast('已取消编辑', 'info')
 }
 
-// 计算显示的笔记列表
-const displayNotes = computed(() => {
-    return notes.value
-})
-
 // 侧边栏状态
 const isSidebarOpen = ref(false)
 
@@ -696,7 +688,7 @@ function clearAllTags() {
 async function filterNotesByTags() {
     isLoading.value = true
     try {
-        const workDirectory = await getWorkDirectory()
+        const workDirectory = await getCachedWorkDirectory()
         const [filteredNotes, count] = await Promise.all([
             invoke('get_notes_by_tags', { tags: selectedTags.value, workDirectory }),
             invoke('count_notes_by_tags', { tags: selectedTags.value, workDirectory })
@@ -791,8 +783,8 @@ async function filterNotesByTags() {
                     <div class="text-sm leading-relaxed max-w-[240px]">拖拽链接或文字到这里创建笔记</div>
                 </div>
 
-                <NoteCard v-for="note in displayNotes" :key="note.id" :ref="(ref) => setNoteCardRef(note.id, ref)" :note="note"
-                    @click="handleCardClick" @edit="handleMenuEdit" @delete="handleMenuDelete" @pin="handleMenuPin"
+                <NoteCard v-for="note in notes" :key="note.id" :ref="(ref) => setNoteCardRef(note.id, ref)" :note="note"
+                    @edit="handleMenuEdit" @delete="handleMenuDelete" @pin="handleMenuPin"
                     @expand="handleNoteExpand" @collapse="handleNoteCollapse" />
 
                 <!-- Loading 组件 -->

@@ -204,7 +204,7 @@ impl Database {
              COALESCE(pinned, 0) as pinned,
              created_at, updated_at,
              extract_url
-             FROM notes ORDER BY pinned DESC, updated_at DESC LIMIT ? OFFSET ?"
+             FROM notes ORDER BY pinned DESC, created_at DESC LIMIT ? OFFSET ?"
         )?;
 
         let notes = stmt.query_map(params![page_size, offset], |row| {
@@ -401,7 +401,7 @@ impl Database {
              COALESCE(pinned, 0) as pinned,
              created_at, updated_at
              FROM notes WHERE content LIKE ?1
-             ORDER BY pinned DESC, updated_at DESC"
+             ORDER BY pinned DESC, created_at DESC"
         )?;
 
         let notes = stmt.query_map(params![search_pattern], |row| {
@@ -832,7 +832,7 @@ impl Database {
              COALESCE(pinned, 0) as pinned,
              created_at, updated_at,
              extract_url
-             FROM notes WHERE {} ORDER BY pinned DESC, updated_at DESC",
+             FROM notes WHERE {} ORDER BY pinned DESC, created_at DESC",
             where_clause
         );
 
