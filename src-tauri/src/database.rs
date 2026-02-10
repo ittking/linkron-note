@@ -23,6 +23,31 @@ pub struct Note {
     pub updated_at: String,
 }
 
+// 标签数据结构
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct Tag {
+    pub id: String,
+    #[serde(rename = "parentId")]
+    pub parent_id: Option<String>,
+    pub name: String,
+    #[serde(rename = "fullName")]
+    pub full_name: String,
+    #[serde(rename = "createdAt")]
+    pub created_at: String,
+    #[serde(rename = "updatedAt")]
+    pub updated_at: String,
+}
+
+// 创建标签的数据结构
+#[derive(Debug, Deserialize)]
+pub struct TagData {
+    #[serde(rename = "parentId")]
+    pub parent_id: Option<String>,
+    pub name: String,
+    #[serde(rename = "fullName")]
+    pub full_name: String,
+}
+
 /// 序列化图片数组为 JSON 字符串
 fn serialize_images(images: &Vec<String>) -> String {
     serde_json::to_string(images).unwrap_or_else(|_| "[]".to_string())
@@ -97,6 +122,36 @@ impl Database {
             [],
         ).ok(); // 忽略列已存在的错误
 
+        // 创建 tags 表
+        self.conn.execute(
+            "CREATE TABLE IF NOT EXISTS tags (
+                id TEXT PRIMARY KEY,
+                parent_id TEXT,
+                name TEXT NOT NULL,
+                full_name TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                FOREIGN KEY (parent_id) REFERENCES tags(id) ON DELETE CASCADE
+            )",
+            [],
+        )?;
+
+        // 检查并添加 tags 表可能缺失的列（兼容旧版本数据库）
+        self.conn.execute(
+            "ALTER TABLE tags ADD COLUMN parent_id TEXT",
+            [],
+        ).ok(); // 忽略列已存在的错误
+
+        self.conn.execute(
+            "ALTER TABLE tags ADD COLUMN name TEXT",
+            [],
+        ).ok(); // 忽略列已存在的错误
+
+        self.conn.execute(
+            "ALTER TABLE tags ADD COLUMN full_name TEXT",
+            [],
+        ).ok(); // 忽略列已存在的错误
+
         // 创建索引
         self.conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_notes_updated_at ON notes(updated_at DESC)",
@@ -105,6 +160,16 @@ impl Database {
 
         self.conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_notes_type ON notes(type)",
+            [],
+        )?;
+
+        self.conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_tags_parent_id ON tags(parent_id)",
+            [],
+        )?;
+
+        self.conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_tags_full_name ON tags(full_name)",
             [],
         )?;
 
@@ -196,6 +261,12 @@ impl Database {
             ],
         )?;
 
+        // 解析并同步标签
+        let tags = self.parse_tags_from_content(&note_data.content);
+        if !tags.is_empty() {
+            let _ = self.create_or_update_tags(tags);
+        }
+
         Ok(Note {
             id,
             note_type,
@@ -223,11 +294,23 @@ impl Database {
                     "UPDATE notes SET content = ?1, images = ?2, updated_at = ?3 WHERE id = ?4",
                     params![content, &images_json, &now, id],
                 )?;
+
+                // 解析并同步标签
+                let tags = self.parse_tags_from_content(content);
+                if !tags.is_empty() {
+                    let _ = self.create_or_update_tags(tags);
+                }
             } else {
                 self.conn.execute(
                     "UPDATE notes SET content = ?1, updated_at = ?2 WHERE id = ?3",
                     params![content, &now, id],
                 )?;
+
+                // 解析并同步标签
+                let tags = self.parse_tags_from_content(content);
+                if !tags.is_empty() {
+                    let _ = self.create_or_update_tags(tags);
+                }
             }
         } else if let Some(images) = &updates.images {
             let images_json = serialize_images(images);
@@ -476,4 +559,180 @@ pub async fn migrate_from_json(work_directory: Option<String>) -> Result<usize, 
         .map_err(|e| format!("Failed to backup JSON file: {}", e))?;
 
     Ok(migrated_count)
+}
+
+// ============ 标签相关方法 ============
+
+impl Database {
+    /// 解析笔记内容中的标签
+    pub fn parse_tags_from_content(&self, content: &str) -> Vec<String> {
+        let tag_regex = Regex::new(r#"<span class="tag">#([^<]+)</span>"#).unwrap();
+        let mut tags = std::collections::HashSet::new();
+
+        for caps in tag_regex.captures_iter(content) {
+            if let Some(tag_name) = caps.get(1) {
+                tags.insert(tag_name.as_str().to_string());
+            }
+        }
+
+        tags.into_iter().collect()
+    }
+
+    /// 创建或更新标签（处理多级标签结构）
+    pub fn create_or_update_tags(&self, tags: Vec<String>) -> SqliteResult<Vec<Tag>> {
+        let mut created_tags = Vec::new();
+        let now = chrono::Utc::now().to_rfc3339();
+
+        for tag_full_name in tags {
+            // 分割标签路径，例如 "测试/子标签" -> ["测试", "子标签"]
+            let parts: Vec<&str> = tag_full_name.split('/').collect();
+            let mut parent_id: Option<String> = None;
+            let mut current_full_name = String::new();
+
+            for (index, part) in parts.iter().enumerate() {
+                // 构建当前级别的完整名称
+                if index == 0 {
+                    current_full_name = part.to_string();
+                } else {
+                    current_full_name = format!("{}/{}", current_full_name, part);
+                }
+
+                // 检查标签是否已存在
+                let existing_tag = self.get_tag_by_full_name(&current_full_name)?;
+
+                let tag = if let Some(existing) = existing_tag {
+                    // 更新标签
+                    let updated_tag = Tag {
+                        id: existing.id.clone(),
+                        parent_id: parent_id.clone(),
+                        name: part.to_string(),
+                        full_name: current_full_name.clone(),
+                        created_at: existing.created_at,
+                        updated_at: now.clone(),
+                    };
+
+                    self.conn.execute(
+                        "UPDATE tags SET parent_id = ?1, name = ?2, updated_at = ?3 WHERE id = ?4",
+                        params![&parent_id, part, &now, &existing.id],
+                    )?;
+
+                    updated_tag
+                } else {
+                    // 创建新标签
+                    let id = Ulid::new().to_string();
+                    let new_tag = Tag {
+                        id: id.clone(),
+                        parent_id: parent_id.clone(),
+                        name: part.to_string(),
+                        full_name: current_full_name.clone(),
+                        created_at: now.clone(),
+                        updated_at: now.clone(),
+                    };
+
+                    self.conn.execute(
+                        "INSERT INTO tags (id, parent_id, name, full_name, created_at, updated_at)
+                         VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+                        params![&id, &parent_id, part, &current_full_name, &now, &now],
+                    )?;
+
+                    new_tag
+                };
+
+                // 更新 parent_id 为当前标签的 ID，用于下一级
+                parent_id = Some(tag.id.clone());
+
+                // 只将最终级别的标签添加到结果中
+                if index == parts.len() - 1 {
+                    created_tags.push(tag);
+                }
+            }
+        }
+
+        Ok(created_tags)
+    }
+
+    /// 根据完整名称获取标签
+    pub fn get_tag_by_full_name(&self, full_name: &str) -> SqliteResult<Option<Tag>> {
+        let mut stmt = self.conn.prepare(
+            "SELECT id, parent_id, name, full_name, created_at, updated_at
+             FROM tags WHERE full_name = ?1"
+        )?;
+
+        let mut tags = stmt.query_map(params![full_name], |row| {
+            Ok(Tag {
+                id: row.get(0)?,
+                parent_id: row.get(1)?,
+                name: row.get(2)?,
+                full_name: row.get(3)?,
+                created_at: row.get(4)?,
+                updated_at: row.get(5)?,
+            })
+        })?;
+
+        match tags.next() {
+            Some(Ok(tag)) => Ok(Some(tag)),
+            _ => Ok(None),
+        }
+    }
+
+    /// 获取所有标签（树状结构）
+    pub fn get_all_tags(&self) -> SqliteResult<Vec<Tag>> {
+        let mut stmt = self.conn.prepare(
+            "SELECT id, parent_id, name, full_name, created_at, updated_at
+             FROM tags ORDER BY full_name ASC"
+        )?;
+
+        let tags = stmt.query_map([], |row| {
+            Ok(Tag {
+                id: row.get(0)?,
+                parent_id: row.get(1)?,
+                name: row.get(2)?,
+                full_name: row.get(3)?,
+                created_at: row.get(4)?,
+                updated_at: row.get(5)?,
+            })
+        })?;
+
+        tags.collect()
+    }
+
+    /// 删除标签（级联删除子标签）
+    pub fn delete_tag(&self, id: &str) -> SqliteResult<()> {
+        self.conn.execute("DELETE FROM tags WHERE id = ?", params![id])?;
+        Ok(())
+    }
+}
+
+// ============ 标签相关的 Tauri 命令 ============
+
+/// Tauri 命令：从笔记内容解析标签
+#[tauri::command]
+pub async fn parse_tags(content: String, work_directory: Option<String>) -> Result<Vec<String>, String> {
+    let db_path = get_database_path(work_directory)?;
+    let db = Database::new(&db_path).map_err(|e| format!("Failed to open database: {}", e))?;
+    Ok(db.parse_tags_from_content(&content))
+}
+
+/// Tauri 命令：创建或更新标签
+#[tauri::command]
+pub async fn sync_tags(tags: Vec<String>, work_directory: Option<String>) -> Result<Vec<Tag>, String> {
+    let db_path = get_database_path(work_directory)?;
+    let db = Database::new(&db_path).map_err(|e| format!("Failed to open database: {}", e))?;
+    db.create_or_update_tags(tags).map_err(|e| format!("Failed to sync tags: {}", e))
+}
+
+/// Tauri 命令：获取所有标签
+#[tauri::command]
+pub async fn get_all_tags(work_directory: Option<String>) -> Result<Vec<Tag>, String> {
+    let db_path = get_database_path(work_directory)?;
+    let db = Database::new(&db_path).map_err(|e| format!("Failed to open database: {}", e))?;
+    db.get_all_tags().map_err(|e| format!("Failed to get tags: {}", e))
+}
+
+/// Tauri 命令：删除标签
+#[tauri::command]
+pub async fn delete_tag(id: String, work_directory: Option<String>) -> Result<(), String> {
+    let db_path = get_database_path(work_directory)?;
+    let db = Database::new(&db_path).map_err(|e| format!("Failed to open database: {}", e))?;
+    db.delete_tag(&id).map_err(|e| format!("Failed to delete tag: {}", e))
 }
