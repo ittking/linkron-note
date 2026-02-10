@@ -253,7 +253,6 @@ async function loadNotes(reset = false) {
 
     if (reset) {
         currentPage.value = 1
-        notes.value = []
         hasMore.value = true
     }
 
@@ -702,6 +701,8 @@ async function filterNotesByTags() {
             invoke('get_notes_by_tags', { tags: selectedTags.value, workDirectory }),
             invoke('count_notes_by_tags', { tags: selectedTags.value, workDirectory })
         ])
+        // 新数据到达后才更新 notes，避免闪烁
+        await nextTick()
         notes.value = filteredNotes
         filteredNoteCount.value = count
     } catch (error) {
