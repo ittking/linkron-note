@@ -65,10 +65,16 @@ export const TagSuggestion = Extension.create({
             const startPos = Math.max(0, $from.pos - maxLookback)
             const textBefore = newState.doc.textBetween(startPos, $from.pos)
             
-            // 查找最近的 # 字符
-            const match = textBefore.match(/#([^\s#]+)$/)
+            // 查找最近的 # 字符，匹配 #标签名/子标签名 的模式
+            // 先尝试匹配 #标签名/子标签名
+            let match = textBefore.match(/#([^\/\s#]+)\/([^\s#]+)$/)
+            
+            if (!match) {
+              // 如果没有匹配到子标签模式，则匹配 #标签名 模式
+              match = textBefore.match(/#([^\s#]+)$/)
+            }
 
-            if (!match || match[1] === '') {
+            if (!match || match[0] === '#') {
               // 清除定时器
               if (searchTimer) {
                 clearTimeout(searchTimer)
@@ -86,8 +92,17 @@ export const TagSuggestion = Extension.create({
               }
             }
 
-            const query = match[1]
-            const from = $from.pos - query.length - 1
+            // 计算查询内容和范围
+            let query, from
+            if (match[2] !== undefined) {
+              // 子标签模式：#父标签/子标签
+              query = match[1] + '/' + match[2]
+              from = $from.pos - query.length - 1
+            } else {
+              // 普通标签模式：#标签名
+              query = match[1]
+              from = $from.pos - query.length - 1
+            }
             const to = $from.pos
 
             // 如果查询没有变化，不重新搜索
@@ -328,15 +343,22 @@ function selectItem(pluginState, editor) {
     const { from, to } = pluginState.range
     const view = editor.view
     if (view) {
-      // 插入纯文本（#标签全名），不带标签 mark
-      const tagText = '#' + (item.fullName || item.name)
+      // 直接用匹配到的标签的 fullName 完整替换
+      const insertText = '#' + item.fullName
+      
       const tr = view.state.tr.replaceWith(
         from,
         to,
-        view.state.schema.text(tagText)
+        view.state.schema.text(insertText)
       )
+      // 设置选择位置到插入文本的末尾
+      tr.setSelection(view.state.selection.constructor.near(tr.doc.resolve(from + insertText.length)))
       view.dispatch(tr)
-      destroyPopup(pluginState)
+      // 不要销毁弹窗，让它继续匹配可能的子标签
+      // 但需要清除搜索结果，等待下一次匹配
+      pluginState.items = []
+      pluginState.selectedIndex = 0
+      lastQuery = ''
     }
   }
 }
