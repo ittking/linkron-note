@@ -148,7 +148,7 @@ onBeforeUnmount(() => {
 <template>
   <div class="fixed inset-y-0 left-0 z-50 transition-transform duration-300 ease-in-out"
     :class="isOpen ? 'translate-x-0' : '-translate-x-full'">
-    <div data-tauri-drag-region class="w-80 h-full bg-base-100 border-r border-base-300 flex flex-col shadow-xl">
+    <div data-tauri-drag-region class="w-80 h-full bg-base-100 flex flex-col shadow-xl">
       <!-- 头部 -->
       <div data-tauri-drag-region class="flex items-center px-4 py-3 border-b border-base-300">
         <h2 data-tauri-drag-region class="text-base font-semibold text-base-content">ITERM</h2>
@@ -160,12 +160,12 @@ onBeforeUnmount(() => {
       </div>
 
       <!-- 笔记热度图 -->
-      <div class="px-4 py-3 border-b border-base-300">
+      <div class="px-4 py-3">
         <NoteHeatmap />
       </div>
 
       <!-- 标签列表 -->
-      <div class="flex-1 overflow-y-auto p-4">
+      <div class="flex-1 overflow-y-auto p-2">
         <div v-if="loading" class="flex justify-center py-8">
           <span class="loading loading-spinner text-primary"></span>
         </div>
