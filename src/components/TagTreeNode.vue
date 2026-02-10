@@ -101,9 +101,9 @@ console.log('[TagTreeNode] node.full_name:', props.node.full_name)
         :expanded-nodes="expandedNodes"
         :active-menu-tag-id="activeMenuTagId"
         @toggle-node="emit('toggle-node', $event)"
-        @toggle-menu="emit('toggle-menu', $event[0], $event[1])"
-        @delete-tag="emit('delete-tag', $event[0], $event[1])"
-        @toggle-pin="emit('toggle-pin', $event[0], $event[1])"
+        @toggle-menu="(tagId, event) => emit('toggle-menu', tagId, event)"
+        @delete-tag="(tagId, event) => emit('delete-tag', tagId, event)"
+        @toggle-pin="(tagId, event) => emit('toggle-pin', tagId, event)"
         @click="emit('click', $event)"
       />
     </div>
