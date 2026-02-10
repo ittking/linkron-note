@@ -328,14 +328,12 @@ function selectItem(pluginState, editor) {
     const { from, to } = pluginState.range
     const view = editor.view
     if (view) {
-      // 插入带 # 的标签（# 标签全名）
+      // 插入纯文本（#标签全名），不带标签 mark
       const tagText = '#' + (item.fullName || item.name)
       const tr = view.state.tr.replaceWith(
         from,
         to,
-        view.state.schema.text(tagText, [
-          view.state.schema.marks.tag.create()
-        ])
+        view.state.schema.text(tagText)
       )
       view.dispatch(tr)
       destroyPopup(pluginState)
