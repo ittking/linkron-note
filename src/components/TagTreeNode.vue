@@ -29,8 +29,7 @@ const shouldShowPinnedText = computed(() => {
 <template>
   <div class="tag-tree-node">
     <div
-      class="tag-tree-item flex items-center gap-2 pl-3 pr-1 py-2 hover:bg-base-200 cursor-pointer rounded-lg transition-colors group relative"
-      @click="emit('click', node)">
+      class="tag-tree-item flex items-center gap-2 pl-3 pr-1 py-2 hover:bg-base-200 cursor-pointer rounded-lg transition-colors group relative">
       <!-- 标签图标或置顶文本 -->
       <span v-if="!shouldShowPinnedText" class="text-primary flex-shrink-0 text-sm opacity-50">#</span>
       <div v-else class="flex items-center gap-1 flex-shrink-0">
@@ -39,7 +38,9 @@ const shouldShowPinnedText = computed(() => {
       </div>
 
       <!-- 标签名称 -->
-      <span class="text-sm text-base-content truncate flex-1">{{ node.name }}</span>
+      <div class="flex-1">
+        <span class="text-sm text-base-content truncate max-w-full" @click="emit('click', node)">{{ node.name }}</span>
+      </div>
 
       <!-- 下拉菜单 -->
       <Dropdown position="bottom-end">
@@ -72,20 +73,17 @@ const shouldShowPinnedText = computed(() => {
         <template v-if="node.children && node.children.length > 0">
           <button @click.stop="emit('toggle-node', node.fullName)"
             class="expand-btn w-6 h-6 flex items-center justify-center text-base-content/40 hover:text-base-content transition-colors">
-            <ChevronRight :size="18" :class="{ 'rotate-90': expandedNodes.has(node.fullName) }" class="transition-transform duration-200" />
+            <ChevronRight :size="18" :class="{ 'rotate-90': expandedNodes.has(node.fullName) }"
+              class="transition-transform duration-200" />
           </button>
         </template>
       </span>
     </div>
 
     <!-- 子节点 -->
-    <Transition
-      enter-active-class="transition-all duration-200 ease-out"
-      enter-from-class="opacity-0 -translate-y-1"
-      enter-to-class="opacity-100 translate-y-0"
-      leave-active-class="transition-all duration-150 ease-in"
-      leave-from-class="opacity-100 translate-y-0"
-      leave-to-class="opacity-0 -translate-y-1">
+    <Transition enter-active-class="transition-all duration-200 ease-out" enter-from-class="opacity-0 -translate-y-1"
+      enter-to-class="opacity-100 translate-y-0" leave-active-class="transition-all duration-150 ease-in"
+      leave-from-class="opacity-100 translate-y-0" leave-to-class="opacity-0 -translate-y-1">
       <div v-if="node.children && node.children.length > 0 && expandedNodes.has(node.fullName)"
         class="tag-tree-children ml-5 pl-1 border-l border-base-300 space-y-1">
         <TagTreeNode v-for="child in node.children" :key="child.id" :node="child" :level="level + 1"
