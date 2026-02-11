@@ -244,11 +244,12 @@ onMounted(() => {
       <div v-for="(week, weekIndex) in calendarWeeks" :key="weekIndex"
         class="grid grid-cols-7 gap-px bg-base-200 border-b border-base-200 last:border-b-0">
         <div v-for="day in week" :key="day.dateStr"
-          class="min-h-[120px] bg-base-100 p-2 transition-colors hover:bg-base-content/5"
+          class="min-h-[120px] bg-base-100 p-2 transition-colors hover:bg-base-content/5 cursor-pointer"
           :class="{
             'bg-base-content/5': !day.isCurrentMonth,
             'bg-primary/5': day.isToday
-          }">
+          }"
+          @click.self="openAddDialog(day.dateStr)">
           <!-- 日期显示 -->
           <div class="flex items-center justify-between mb-2">
             <span class="text-sm font-medium"
@@ -259,15 +260,10 @@ onMounted(() => {
               }">
               {{ day.day }}
             </span>
-            <button @click="openAddDialog(day.dateStr)"
-              class="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-base-200 transition-all"
-              :class="{ 'opacity-100': getTodosForDate(day.dateStr).length > 0 }">
-              <Plus :size="14" class="text-base-content/50 hover:text-primary" />
-            </button>
           </div>
 
           <!-- 待办列表 -->
-          <div class="space-y-1">
+          <div class="space-y-1" @click.stop>
             <div v-for="todo in getTodosForDate(day.dateStr).slice(0, 3)" :key="todo.id"
               class="flex items-start gap-1 group text-xs">
               <button @click="toggleTodo(day.dateStr, todo.id)"
@@ -291,7 +287,7 @@ onMounted(() => {
               </button>
             </div>
             <div v-if="getTodosForDate(day.dateStr).length > 3"
-              class="text-xs text-base-content/30 pl-4">
+              class="text-xs text-base-content/30 pl-4" @click.stop>
               还有 {{ getTodosForDate(day.dateStr).length - 3 }} 项
             </div>
           </div>
