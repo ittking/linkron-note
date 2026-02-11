@@ -12,6 +12,7 @@ export {}
 declare module 'vue' {
   export interface GlobalComponents {
     Button: typeof import('./components/ui/Button.vue')['default']
+    CalendarTodo: typeof import('./components/CalendarTodo.vue')['default']
     Dropdown: typeof import('./components/ui/Dropdown.vue')['default']
     ImageViewer: typeof import('./components/ImageViewer.vue')['default']
     Input: typeof import('./components/ui/Input.vue')['default']
