@@ -240,7 +240,7 @@ onMounted(() => {
     </div>
 
     <!-- 日历主体 -->
-    <div class="flex-1 overflow-y-auto">
+    <div class="flex-1 overflow-y-auto  no-scrollbar">
       <div v-for="(week, weekIndex) in calendarWeeks" :key="weekIndex"
         class="grid grid-cols-7 gap-px bg-base-200 border-b border-base-200 last:border-b-0">
         <div v-for="day in week" :key="day.dateStr"
@@ -330,21 +330,5 @@ onMounted(() => {
 </template>
 
 <style scoped>
-/* 隐藏滚动条但保留滚动功能 */
-.overflow-y-auto::-webkit-scrollbar {
-  width: 6px;
-}
 
-.overflow-y-auto::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.overflow-y-auto::-webkit-scrollbar-thumb {
-  background: hsl(var(--bc) / 0.1);
-  border-radius: 3px;
-}
-
-.overflow-y-auto::-webkit-scrollbar-thumb:hover {
-  background: hsl(var(--bc) / 0.2);
-}
 </style>
