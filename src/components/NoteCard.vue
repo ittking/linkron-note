@@ -335,7 +335,7 @@ defineExpose({
       <div ref="contentRef" class="text-base-content leading-relaxed break-words transition-all duration-200" :class="{
         'max-h-[120px] overflow-hidden': !isExpanded && isOverflowing
       }">
-        <EditorContent class="ProseMirror prose prose-sm max-w-none" :editor="editor" />
+        <EditorContent class="ProseMirror prose prose-sm max-w-none select-text" :editor="editor" />
       </div>
 
       <!-- 展开/收起按钮 -->
