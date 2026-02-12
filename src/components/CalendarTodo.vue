@@ -544,7 +544,7 @@ onMounted(() => {
             'bg-base-content/5': !day.isCurrentMonth,
             'bg-primary/5': day.isToday
           }"
-          @click.self="openTodoDialog(day.dateStr)">
+          @click="openTodoDialog(day.dateStr)">
           <!-- 日期显示 -->
           <div class="flex items-center justify-between mb-2">
             <span class="text-sm font-medium"
@@ -558,11 +558,11 @@ onMounted(() => {
           </div>
 
           <!-- 待办标签列表 -->
-          <div class="flex flex-col gap-1 overflow-hidden" @click.stop>
+          <div class="flex flex-col gap-1 overflow-hidden">
             <div v-for="todo in getTodosForDate(day.dateStr)" :key="todo.id"
               class="tag-todo px-2 py-0.5 rounded text-xs cursor-pointer transition-colors"
               :class="getStatusClass(todo.status)"
-              @click="openTodoDialog(day.dateStr, todo)">
+              @click.stop="openTodoDialog(day.dateStr, todo)">
               <div class="overflow-hidden text-ellipsis whitespace-nowrap">
                 {{ todo.text }}
               </div>
