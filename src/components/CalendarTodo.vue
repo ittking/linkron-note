@@ -426,20 +426,21 @@ onMounted(() => {
     </div>
 
     <!-- 日历主体 -->
-    <div class="flex-1 overflow-auto no-scrollbar relative">
+    <div class="flex-1 overflow-auto no-scrollbar relative flex flex-col">
       <!-- 星期标题 -->
-      <div class="grid grid-cols-[repeat(7,minmax(100px,1fr))] gap-px bg-base-200 border-b border-base-200 sticky top-0 z-10">
+      <div class="grid grid-cols-[repeat(7,minmax(100px,1fr))] border-b border-base-200 shrink-0">
         <div v-for="day in ['周日', '周一', '周二', '周三', '周四', '周五', '周六']" :key="day"
-          class="bg-base-100 py-2 text-center text-xs font-medium text-base-content/50">
+          class="py-2 text-center text-xs font-medium text-base-content/50 border-r border-b border-base-200 last:border-r-0">
           {{ day }}
         </div>
       </div>
 
-      <div v-for="(week, weekIndex) in calendarWeeks" :key="weekIndex"
-        class="grid grid-cols-[repeat(7,minmax(100px,1fr))] gap-px bg-base-200 border-b border-base-200 last:border-b-0">
-        <div v-for="day in week" :key="day.dateStr"
-          class="min-h-[120px] bg-base-100 p-2 transition-colors hover:bg-base-content/5 cursor-pointer"
+      <!-- 所有日期格子放在一个统一的grid中 -->
+      <div class="grid grid-cols-[repeat(7,minmax(100px,1fr))] grid-rows-[repeat(6,1fr)] min-h-0 flex-1">
+        <div v-for="day in calendarDays" :key="day.dateStr"
+          class="p-2 transition-colors hover:bg-base-content/5 cursor-pointer border-r border-b border-base-200 last:border-r-0"
           :class="{
+            'bg-base-100': day.isCurrentMonth,
             'bg-base-content/5': !day.isCurrentMonth,
             'bg-primary/5': day.isToday
           }"
