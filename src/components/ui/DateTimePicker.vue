@@ -261,34 +261,54 @@ function calculatePosition() {
     setTimeout(() => {
       if (!dropdownRef.value || !triggerRef.value) return
 
-      const dropdown = dropdownRef.value
       const trigger = triggerRef.value
       const triggerRect = trigger.getBoundingClientRect()
-      const dropdownRect = dropdown.getBoundingClientRect()
       const viewportWidth = window.innerWidth
       const viewportHeight = window.innerHeight
 
+      // 获取下拉框的实际尺寸
+      const dropdownWidth = dropdownRef.value.offsetWidth
+      const dropdownHeight = dropdownRef.value.offsetHeight
+
+      // 计算垂直位置
       const spaceBelow = viewportHeight - triggerRect.bottom
       const spaceAbove = triggerRect.top
-      const dropdownHeight = dropdownRect.height
 
-      if (spaceBelow < dropdownHeight + 10 && spaceAbove > dropdownHeight + 10) {
-        dropdownPosition.value.bottom = '100%'
-        dropdownPosition.value.top = 'auto'
-      } else {
-        dropdownPosition.value.top = '100%'
+      if (spaceBelow >= dropdownHeight + 10) {
+        // 显示在下方
+        dropdownPosition.value.top = `${triggerRect.bottom + 8}px`
         dropdownPosition.value.bottom = 'auto'
+      } else if (spaceAbove >= dropdownHeight + 10) {
+        // 显示在上方
+        dropdownPosition.value.top = 'auto'
+        dropdownPosition.value.bottom = `${viewportHeight - triggerRect.top + 8}px`
+      } else {
+        // 空间都不够，显示在空间更大的一侧
+        if (spaceBelow >= spaceAbove) {
+          dropdownPosition.value.top = `${triggerRect.bottom + 8}px`
+          dropdownPosition.value.bottom = 'auto'
+        } else {
+          dropdownPosition.value.top = 'auto'
+          dropdownPosition.value.bottom = `${viewportHeight - triggerRect.top + 8}px`
+        }
       }
 
-      const spaceRight = viewportWidth - triggerRect.left
+      // 计算水平位置
+      const spaceRight = viewportWidth - triggerRect.right
       const spaceLeft = triggerRect.left
-      const dropdownWidth = dropdownRect.width
 
-      if (spaceRight < dropdownWidth && spaceLeft > dropdownWidth) {
-        dropdownPosition.value.right = '0'
+      if (triggerRect.left + dropdownWidth <= viewportWidth - 10) {
+        // 左对齐，右侧空间足够
+        dropdownPosition.value.left = `${triggerRect.left}px`
+        dropdownPosition.value.right = 'auto'
+      } else if (triggerRect.right - dropdownWidth >= 10) {
+        // 右对齐，左侧空间足够
         dropdownPosition.value.left = 'auto'
+        dropdownPosition.value.right = `${viewportWidth - triggerRect.right}px`
       } else {
-        dropdownPosition.value.left = '0'
+        // 居中显示
+        const leftPos = Math.max(10, Math.min(viewportWidth - dropdownWidth - 10, triggerRect.left))
+        dropdownPosition.value.left = `${leftPos}px`
         dropdownPosition.value.right = 'auto'
       }
 
@@ -403,14 +423,30 @@ defineExpose({
     </div>
 
     <!-- 下拉面板 -->
-    <teleport to="body">
-      <div v-if="isOpen" ref="dropdownRef"
-        class="dropdown-panel fixed bg-base-100 border border-base-200 rounded-lg shadow-lg z-[9999]" :style="{
-          top: dropdownPosition.top === '100%' ? `${triggerRef?.getBoundingClientRect().bottom + 8}px` : 'auto',
-          bottom: dropdownPosition.bottom === '100%' ? `${window.innerHeight - triggerRef?.getBoundingClientRect().top + 8}px` : 'auto',
-          left: dropdownPosition.left === '0' ? `${triggerRef?.getBoundingClientRect().left}px` : 'auto',
-          right: dropdownPosition.right === '0' ? `${window.innerWidth - triggerRef?.getBoundingClientRect().right}px` : 'auto',
-        }" :class="{ 'top-0': dropdownPosition.top === '100%', 'bottom-0': dropdownPosition.bottom === '100%' }">
+
+        <teleport to="body">
+
+          <div
+
+            v-if="isOpen"
+
+            ref="dropdownRef"
+
+            class="dropdown-panel fixed bg-base-100 border border-base-200 rounded-lg shadow-lg z-[9999]"
+
+            :style="{
+
+              top: dropdownPosition.top,
+
+              bottom: dropdownPosition.bottom,
+
+              left: dropdownPosition.left,
+
+              right: dropdownPosition.right
+
+            }"
+
+          >
         <div class="flex flex-col max-w-[600px]">
           <!-- 主内容区 -->
           <div class="flex">
