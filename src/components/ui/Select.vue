@@ -37,7 +37,8 @@ const emit = defineEmits(['update:modelValue', 'change', 'focus', 'blur'])
 
 const isOpen = ref(false)
 const selectRef = ref(null)
-const dropdownPosition = ref({ top: 0, left: 0, width: 0 })
+const dropdownRef = ref(null)
+const dropdownPosition = ref({ top: 0, left: 0, width: 0, showAbove: false, triggerTop: 0, triggerBottom: 0 })
 
 const selectedOption = computed(() => {
   if (!props.modelValue) return null
@@ -51,12 +52,16 @@ const displayLabel = computed(() => {
   return selectedOption.value ? selectedOption.value[props.optionLabel] : props.placeholder
 })
 
-const dropdownStyle = computed(() => ({
-  top: `${dropdownPosition.value.top}px`,
-  left: `${dropdownPosition.value.left}px`,
-  width: `${dropdownPosition.value.width}px`,
-  zIndex: 9999
-}))
+const dropdownStyle = computed(() => {
+  const position = dropdownPosition.value
+  return {
+    top: position.showAbove ? 'auto' : `${position.top}px`,
+    bottom: position.showAbove ? `${window.innerHeight - position.triggerTop + 4}px` : 'auto',
+    left: `${position.left}px`,
+    width: `${position.width}px`,
+    zIndex: 9999
+  }
+})
 
 async function toggle() {
   if (!props.disabled) {
@@ -69,12 +74,32 @@ async function toggle() {
 }
 
 function updateDropdownPosition() {
-  if (selectRef.value) {
+  if (selectRef.value && dropdownRef.value) {
     const rect = selectRef.value.getBoundingClientRect()
+    const dropdownHeight = dropdownRef.value.scrollHeight
+    const viewportHeight = window.innerHeight
+    const scrollTop = window.pageYOffset || document.documentElement.scrollTop
+    const scrollLeft = window.pageXOffset || document.documentElement.scrollLeft
+
+    // 计算可用空间
+    const spaceBelow = viewportHeight - rect.bottom - 20 // 20px 底部留白
+    const spaceAbove = rect.top - 20 // 20px 顶部留白
+
+    // 下拉框实际高度（限制最大高度）
+    const maxDropdownHeight = 240
+    const actualDropdownHeight = Math.min(dropdownHeight, maxDropdownHeight)
+
+    // 判断是显示在上面还是下面
+    // 只有当下方空间不足以容纳下拉框时，才考虑显示在上方
+    const shouldShowAbove = spaceBelow < actualDropdownHeight && spaceAbove > spaceBelow
+
     dropdownPosition.value = {
       top: rect.bottom + 4,
       left: rect.left,
-      width: rect.width
+      width: rect.width,
+      showAbove: shouldShowAbove,
+      triggerTop: rect.top,
+      triggerBottom: rect.bottom
     }
   }
 }
@@ -106,12 +131,14 @@ const sizeClasses = computed(() => {
 onMounted(() => {
   if (typeof window !== 'undefined') {
     window.addEventListener('click', handleClickOutside)
+    window.addEventListener('resize', updateDropdownPosition)
   }
 })
 
 onUnmounted(() => {
   if (typeof window !== 'undefined') {
     window.removeEventListener('click', handleClickOutside)
+    window.removeEventListener('resize', updateDropdownPosition)
   }
 })
 </script>
@@ -152,14 +179,15 @@ onUnmounted(() => {
     <Teleport to="body">
       <Transition
         enter-active-class="transition duration-200 ease-out"
-        enter-from-class="opacity-0 scale-95 -translate-y-1"
-        enter-to-class="opacity-100 scale-100 translate-y-0"
+        enter-from-class="opacity-0 scale-95"
+        enter-to-class="opacity-100 scale-100"
         leave-active-class="transition duration-150 ease-in"
-        leave-from-class="opacity-100 scale-100 translate-y-0"
-        leave-to-class="opacity-0 scale-95 -translate-y-1"
+        leave-from-class="opacity-100 scale-100"
+        leave-to-class="opacity-0 scale-95"
       >
         <div
           v-if="isOpen"
+          ref="dropdownRef"
           :class="[
             'fixed rounded-lg border shadow-lg overflow-hidden',
             'bg-base-100 border-base-300'

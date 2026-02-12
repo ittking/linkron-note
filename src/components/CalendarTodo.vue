@@ -5,6 +5,7 @@ import dayjs from 'dayjs'
 import Button from './ui/Button.vue'
 import Toggle from './ui/Toggle.vue'
 import Input from './ui/Input.vue'
+import Select from './ui/Select.vue'
 
 dayjs.locale('zh-cn')
 
@@ -496,6 +497,22 @@ const calendarWeeks = computed(() => {
   return weeks
 })
 
+// 月份选项（用于按年重复）
+const monthOptions = computed(() => {
+  return Array.from({ length: 12 }, (_, i) => ({
+    label: `${i + 1}月`,
+    value: i + 1
+  }))
+})
+
+// 日期选项（用于按年重复）
+const dayOptions = computed(() => {
+  return Array.from({ length: 31 }, (_, i) => ({
+    label: `${i + 1}日`,
+    value: i + 1
+  }))
+})
+
 // 监听 props 变化
 watch(() => props.year, (newVal) => {
   currentYear.value = newVal
@@ -671,14 +688,20 @@ onMounted(() => {
               <div v-if="formRepeatType === 'year'" class="space-y-2">
                 <div class="flex items-center gap-2">
                   <span class="text-xs text-base-content/60">每年</span>
-                  <select v-model="formRepeatYearMonth"
-                    class="px-2 py-1 border border-base-200 rounded text-sm text-center">
-                    <option v-for="m in 12" :key="m" :value="m">{{ m }}月</option>
-                  </select>
-                  <select v-model="formRepeatYearDay"
-                    class="px-2 py-1 border border-base-200 rounded text-sm text-center">
-                    <option v-for="d in 31" :key="d" :value="d">{{ d }}日</option>
-                  </select>
+                  <Select
+                    v-model="formRepeatYearMonth"
+                    :options="monthOptions"
+                    placeholder="选择月份"
+                    size="sm"
+                    class="flex-1"
+                  />
+                  <Select
+                    v-model="formRepeatYearDay"
+                    :options="dayOptions"
+                    placeholder="选择日期"
+                    size="sm"
+                    class="flex-1"
+                  />
                 </div>
               </div>
             </div>
