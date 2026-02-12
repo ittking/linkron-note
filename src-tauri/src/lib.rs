@@ -6,6 +6,9 @@ mod database;
 mod protocol;
 mod file_reader;
 mod web_scraper;
+mod note;
+mod tag;
+mod todo;
 
 #[cfg(any(windows, target_os = "macos"))]
 mod window_manager;
@@ -71,6 +74,12 @@ pub fn run() {
             database::count_notes,
             database::get_notes_heatmap,
             database::search_tags,
+            database::create_todo,
+            database::update_todo,
+            database::delete_todo,
+            database::get_todos_by_date,
+            database::get_todos_by_month,
+            database::get_reminders,
             file_reader::read_text_file,
             file_reader::read_file_text,
             file_reader::get_file_metadata,
