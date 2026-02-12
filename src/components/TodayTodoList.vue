@@ -16,6 +16,9 @@ const newTodoText = ref('')
 const selectedReminderTime = ref('')
 const loading = ref(false)
 
+// 正在编辑定时时间的待办项
+const editingTodoId = ref(null)
+
 // 状态颜色映射
 const STATUS_COLORS = {
   'todo': '#6B7280',
@@ -137,6 +140,33 @@ function formatReminderTime(timeStr) {
   return `${dateStr} ${timeStr2}`
 }
 
+// 更新定时时间
+async function updateReminderTime(todo, value) {
+  try {
+    const workDirectory = await getWorkDirectory()
+    
+    let reminder = null
+    if (value) {
+      reminder = JSON.stringify({
+        type: 'onetime',
+        repeatTime: value
+      })
+    }
+
+    await invoke('update_todo', {
+      id: todo.id,
+      text: todo.text,
+      status: todo.status,
+      reminder,
+      workDirectory
+    })
+    
+    await loadTodos()
+  } catch (error) {
+    console.error('更新定时时间失败:', error)
+  }
+}
+
 // 后端已排序，直接使用
 const sortedTodos = computed(() => todos.value)
 
@@ -228,9 +258,24 @@ onMounted(() => {
             </div>
 
             <!-- 提醒时间 -->
-            <div v-if="getReminderTime(todo)" class="flex items-center gap-1 mt-1.5 text-xs text-base-content/50">
-              <Clock :size="12" />
-              {{ formatReminderTime(getReminderTime(todo)) }}
+            <div v-if="getReminderTime(todo)" class="mt-1.5">
+              <DateTimePicker
+                :model-value="getReminderTime(todo)"
+                @update:model-value="(value) => updateReminderTime(todo, value)"
+                mode="datetime"
+                :min="dayjs().format('YYYY-MM-DDTHH:mm')"
+                :clearable="true"
+              >
+                <template #default="{ toggle, hasValue }">
+                  <div 
+                    @click="toggle"
+                    class="flex items-center gap-1 text-xs text-base-content/50 cursor-pointer hover:text-primary transition-colors"
+                  >
+                    <Clock :size="12" />
+                    {{ formatReminderTime(getReminderTime(todo)) }}
+                  </div>
+                </template>
+              </DateTimePicker>
             </div>
           </div>
 
