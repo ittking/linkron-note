@@ -43,7 +43,7 @@ const currentSize = computed(() => sizes[props.size])
     :class="[
       'relative rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-base-100',
       currentSize.track,
-      modelValue ? 'bg-primary' : 'bg-base-100',
+      modelValue ? 'bg-primary' : 'bg-base-300',
       disabled && 'opacity-50 cursor-not-allowed'
     ]"
     role="switch"
