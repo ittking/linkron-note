@@ -370,3 +370,12 @@ fn should_send_remind(date: &str, reminder: &TodoReminder, current_time: &chrono
         None => false,
     }
 }
+
+/// 统计待办事项数量（排除已完成、已取消、已暂停）
+pub fn count_todos(conn: &Connection) -> SqliteResult<i64> {
+    conn.query_row(
+        "SELECT COUNT(*) FROM todos WHERE status NOT IN ('completed', 'cancelled', 'pending')",
+        [],
+        |row| row.get(0)
+    )
+}

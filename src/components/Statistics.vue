@@ -8,7 +8,7 @@ const { getWorkDirectory } = useWorkDirectory('setting')
 
 const noteCount = ref(0)
 const tagCount = ref(0)
-const todoCount = ref(99) // TODO 统计，暂时固定为 99
+const todoCount = ref(0)
 
 // 加载统计数据
 async function loadStatistics() {
@@ -23,8 +23,9 @@ async function loadStatistics() {
     const allTags = await invoke('get_all_tags', { workDirectory })
     tagCount.value = allTags.length
 
-    // TODO 统计暂时固定为 99，等后台实现后再查询
-    // todoCount.value = 99
+    // 获取待办数量（排除已完成、已取消、已暂停）
+    const todo = await invoke('count_todos', { workDirectory })
+    todoCount.value = todo
   } catch (error) {
     console.error('加载统计数据失败:', error)
   }

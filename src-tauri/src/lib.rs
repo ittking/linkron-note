@@ -80,6 +80,7 @@ pub fn run() {
             database::get_todos_by_date,
             database::get_todos_by_month,
             database::get_reminders,
+            database::count_todos,
             file_reader::read_text_file,
             file_reader::read_file_text,
             file_reader::get_file_metadata,

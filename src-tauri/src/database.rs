@@ -368,3 +368,11 @@ pub async fn get_reminders(work_directory: Option<String>) -> Result<Vec<Todo>, 
     let db = Database::new(&db_path).map_err(|e| format!("Failed to open database: {}", e))?;
     todo::get_reminders(&db.conn).map_err(|e| format!("Failed to get reminders: {}", e))
 }
+
+/// Tauri 命令：统计待办事项数量
+#[tauri::command]
+pub async fn count_todos(work_directory: Option<String>) -> Result<i64, String> {
+    let db_path = get_database_path(work_directory)?;
+    let db = Database::new(&db_path).map_err(|e| format!("Failed to open database: {}", e))?;
+    todo::count_todos(&db.conn).map_err(|e| format!("Failed to count todos: {}", e))
+}

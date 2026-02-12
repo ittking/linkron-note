@@ -1,11 +1,13 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
+import { invoke } from '@tauri-apps/api/core'
 import { ChevronLeft, ChevronRight, Plus, X } from 'lucide-vue-next'
 import dayjs from 'dayjs'
 import Button from './ui/Button.vue'
 import Toggle from './ui/Toggle.vue'
 import Input from './ui/Input.vue'
 import Select from './ui/Select.vue'
+import { useWorkDirectory } from '@/composables/useWorkDirectory'
 
 dayjs.locale('zh-cn')
 
@@ -22,14 +24,17 @@ const props = defineProps({
 
 const emit = defineEmits(['month-change'])
 
+const { getWorkDirectory } = useWorkDirectory('setting')
+
 const currentYear = ref(props.year)
 const currentMonth = ref(props.month)
-const todos = ref({})
+const todos = ref([])
 const showTodoDialog = ref(false)
 const isEditing = ref(false)
 const selectedDate = ref('')
 const selectedTodo = ref(null)
 const newTodoText = ref('')
+const loading = ref(false)
 
 // 状态常量
 const STATUS_OPTIONS = [
@@ -79,22 +84,27 @@ const formRepeatMonthDays = ref([1]) // 按月重复：每月几号
 const formRepeatYearMonth = ref(1) // 按年重复：几月
 const formRepeatYearDay = ref(1) // 按年重复：几号
 
-// 从 localStorage 加载待办事项
-function loadTodos() {
-  const saved = localStorage.getItem('calendar-todos')
-  if (saved) {
-    todos.value = JSON.parse(saved)
+// 从后端加载待办事项
+async function loadTodos() {
+  loading.value = true
+  try {
+    const workDirectory = await getWorkDirectory()
+    const data = await invoke('get_todos_by_month', { 
+      year: currentYear.value, 
+      month: currentMonth.value,
+      workDirectory 
+    })
+    todos.value = data
+  } catch (error) {
+    console.error('加载待办事项失败:', error)
+  } finally {
+    loading.value = false
   }
-}
-
-// 保存待办事项到 localStorage
-function saveTodos() {
-  localStorage.setItem('calendar-todos', JSON.stringify(todos.value))
 }
 
 // 获取指定日期的待办事项
 function getTodosForDate(dateStr) {
-  return todos.value[dateStr] || []
+  return todos.value.filter(t => t.date === dateStr) || []
 }
 
 // 获取状态样式类
@@ -110,120 +120,46 @@ function getStatusClass(status) {
 }
 
 // 添加待办事项
-function addTodo() {
+async function addTodo() {
   if (!newTodoText.value.trim()) return
 
-  const dateStr = selectedDate.value
-  if (!todos.value[dateStr]) {
-    todos.value[dateStr] = []
-  }
-
-  const repeatRule = formReminderType.value === 'repeat' ? {
-    type: formRepeatType.value,
-    value: getRepeatRuleValue()
-  } : undefined
-
-  const todo = {
-    id: Date.now(),
-    text: newTodoText.value,
-    status: formStatus.value,
-    reminder: formReminderEnabled.value ? {
-      enabled: true,
-      type: formReminderType.value,
-      datetime: formReminderType.value === 'once' ? formReminderTime.value : undefined,
-      repeatRule: repeatRule,
-      nextReminder: calculateNextReminder({
-        enabled: true,
-        type: formReminderType.value,
-        datetime: formReminderType.value === 'once' ? formReminderTime.value : undefined,
-        repeatRule: repeatRule
-      })
-    } : undefined,
-    createdAt: dayjs().toISOString(),
-    updatedAt: dayjs().toISOString()
-  }
-
-  todos.value[dateStr].push(todo)
-  saveTodos()
-  resetForm()
-}
-
-// 获取重复规则值
-function getRepeatRuleValue() {
-  switch (formRepeatType.value) {
-    case 'day':
-      return formRepeatInterval.value
-    case 'weekday':
-      return formRepeatWeekdays.value
-    case 'month':
-      return formRepeatMonthDays.value
-    case 'year':
-      return { month: formRepeatYearMonth.value, day: formRepeatYearDay.value }
-    default:
-      return null
-  }
-}
-
-// 计算下次提醒时间
-function calculateNextReminder(reminder) {
-  if (!reminder || !reminder.enabled) return undefined
-
-  if (reminder.type === 'once') {
-    return reminder.datetime
-  }
-
-  if (reminder.type === 'repeat' && reminder.repeatRule) {
-    const now = dayjs()
-    const rule = reminder.repeatRule
-    const repeatTime = reminder.repeatTime || '09:00'
-    const [hour, minute] = repeatTime.split(':').map(Number)
-
-    if (rule.type === 'day') {
-      return now.add(rule.value, 'day').set('hour', hour).set('minute', minute).toISOString()
-    }
-
-    if (rule.type === 'weekday') {
-      const today = now.day()
-      const targetDays = rule.value || []
-      // 找下一个目标星期
-      for (let i = 1; i <= 7; i++) {
-        const nextDay = (today + i) % 7
-        if (targetDays.includes(nextDay)) {
-          return now.add(i, 'day').set('hour', hour).set('minute', minute).toISOString()
-        }
+  try {
+    const workDirectory = await getWorkDirectory()
+    
+    // 构建提醒配置
+    let reminder = null
+    if (formReminderEnabled.value) {
+      if (formReminderType.value === 'once') {
+        reminder = JSON.stringify({
+          type: 'onetime',
+          repeat_time: formReminderTime.value
+        })
+      } else if (formReminderType.value === 'repeat') {
+        reminder = JSON.stringify({
+          type: 'repeat',
+          repeat_rule: formRepeatType.value,
+          repeat_time: formRepeatTime.value,
+          repeat_interval: formRepeatType.value === 'day' ? formRepeatInterval.value : undefined,
+          repeat_day_of_week: formRepeatType.value === 'weekday' ? formRepeatWeekdays.value[0] : undefined,
+          repeat_day_of_month: formRepeatType.value === 'month' ? formRepeatMonthDays.value[0] : undefined,
+          repeat_month: formRepeatType.value === 'year' ? formRepeatYearMonth.value : undefined
+        })
       }
     }
 
-    if (rule.type === 'month') {
-      const days = rule.value || [1]
-      const currentDay = now.date()
-      // 找本月下一个目标日期
-      const nextDay = days.find(d => d > currentDay)
-      if (nextDay) {
-        return now.date(nextDay).set('hour', hour).set('minute', minute).toISOString()
-      } else {
-        // 下个月的第一天
-        return now.add(1, 'month').date(days[0]).set('hour', hour).set('minute', minute).toISOString()
-      }
-    }
+    await invoke('create_todo', {
+      date: selectedDate.value,
+      text: newTodoText.value,
+      status: formStatus.value,
+      reminder,
+      workDirectory
+    })
 
-    if (rule.type === 'year') {
-      const targetMonth = rule.value.month || 1
-      const targetDay = rule.value.day || 1
-      const currentMonth = now.month() + 1
-      const currentDay = now.date()
-
-      // 判断今年是否还有这个日期
-      if (targetMonth > currentMonth || (targetMonth === currentMonth && targetDay >= currentDay)) {
-        return now.month(targetMonth - 1).date(targetDay).set('hour', hour).set('minute', minute).toISOString()
-      } else {
-        // 明年
-        return now.add(1, 'year').month(targetMonth - 1).date(targetDay).set('hour', hour).set('minute', minute).toISOString()
-      }
-    }
+    await loadTodos()
+    resetForm()
+  } catch (error) {
+    console.error('添加待办失败:', error)
   }
-
-  return undefined
 }
 
 // 重置表单
@@ -273,24 +209,26 @@ function openTodoDialog(dateStr, todo = null) {
     newTodoText.value = todo.text
     formStatus.value = todo.status || 'todo'
 
-    if (todo.reminder && todo.reminder.enabled) {
+    if (todo.reminder) {
       formReminderEnabled.value = true
-      formReminderType.value = todo.reminder.type || 'once'
-      formReminderTime.value = todo.reminder.datetime || ''
-      formRepeatTime.value = todo.reminder.repeatTime || '09:00'
-      if (todo.reminder.repeatRule) {
-        formRepeatType.value = todo.reminder.repeatRule.type || 'day'
-        const rule = todo.reminder.repeatRule
+      const reminder = todo.reminder
+      formReminderType.value = reminder.reminder_type === 'onetime' ? 'once' : (reminder.reminder_type === 'repeat' ? 'repeat' : 'none')
+      formReminderTime.value = reminder.repeat_time || ''
+      formRepeatTime.value = reminder.repeat_time || '09:00'
 
-        if (rule.type === 'day') {
-          formRepeatInterval.value = typeof rule.value === 'number' ? rule.value : 1
-        } else if (rule.type === 'weekday') {
-          formRepeatWeekdays.value = Array.isArray(rule.value) ? rule.value : [1, 3, 5]
-        } else if (rule.type === 'month') {
-          formRepeatMonthDays.value = Array.isArray(rule.value) ? rule.value : [1]
-        } else if (rule.type === 'year') {
-          formRepeatYearMonth.value = rule.value?.month || 1
-          formRepeatYearDay.value = rule.value?.day || 1
+      if (reminder.reminder_type === 'repeat' && reminder.repeat_rule) {
+        const rule = reminder.repeat_rule
+        formRepeatType.value = rule
+
+        if (rule === 'day') {
+          formRepeatInterval.value = reminder.repeat_interval || 1
+        } else if (rule === 'weekday') {
+          formRepeatWeekdays.value = [reminder.repeat_day_of_week || 1]
+        } else if (rule === 'month') {
+          formRepeatMonthDays.value = [reminder.repeat_day_of_month || 1]
+        } else if (rule === 'year') {
+          formRepeatYearMonth.value = reminder.repeat_month || 1
+          formRepeatYearDay.value = reminder.repeat_day_of_month || 1
         }
       }
     } else {
@@ -312,96 +250,79 @@ function closeTodoDialog() {
 }
 
 // 保存待办（新增或编辑）
-function saveTodo() {
+async function saveTodo() {
   if (!newTodoText.value.trim()) return
 
-  const dateStr = selectedDate.value
-  const repeatRule = formReminderEnabled.value && formReminderType.value === 'repeat' ? {
-    type: formRepeatType.value,
-    value: getRepeatRuleValue()
-  } : undefined
-
-  if (isEditing.value && selectedTodo.value) {
-    // 更新现有待办
-    const todo = todos.value[dateStr]?.find(t => t.id === selectedTodo.value.id)
-    if (todo) {
-      todo.text = newTodoText.value
-      todo.status = formStatus.value
-      todo.updatedAt = dayjs().toISOString()
-
-      if (formReminderEnabled.value) {
-        todo.reminder = {
-          enabled: true,
-          type: formReminderType.value,
-          datetime: formReminderType.value === 'once' ? formReminderTime.value : undefined,
-          repeatTime: formReminderType.value === 'repeat' ? formRepeatTime.value : undefined,
-          repeatRule: repeatRule,
-          nextReminder: calculateNextReminder({
-            enabled: true,
-            type: formReminderType.value,
-            datetime: formReminderType.value === 'once' ? formReminderTime.value : undefined,
-            repeatTime: formReminderType.value === 'repeat' ? formRepeatTime.value : undefined,
-            repeatRule: repeatRule
-          })
-        }
-      } else {
-        todo.reminder = undefined
-      }
-
-      saveTodos()
-    }
-  } else {
-    // 添加新待办
-    if (!todos.value[dateStr]) {
-      todos.value[dateStr] = []
-    }
-
-    const todo = {
-      id: Date.now(),
-      text: newTodoText.value,
-      status: formStatus.value,
-      reminder: formReminderEnabled.value ? {
-        enabled: true,
-        type: formReminderType.value,
-        datetime: formReminderType.value === 'once' ? formReminderTime.value : undefined,
-        repeatTime: formReminderType.value === 'repeat' ? formRepeatTime.value : undefined,
-        repeatRule: repeatRule,
-        nextReminder: calculateNextReminder({
-          enabled: true,
-          type: formReminderType.value,
-          datetime: formReminderType.value === 'once' ? formReminderTime.value : undefined,
-          repeatTime: formReminderType.value === 'repeat' ? formRepeatTime.value : undefined,
-          repeatRule: repeatRule
+  try {
+    const workDirectory = await getWorkDirectory()
+    
+    // 构建提醒配置
+    let reminder = null
+    if (formReminderEnabled.value) {
+      if (formReminderType.value === 'once') {
+        reminder = JSON.stringify({
+          type: 'onetime',
+          repeat_time: formReminderTime.value
         })
-      } : undefined,
-      createdAt: dayjs().toISOString(),
-      updatedAt: dayjs().toISOString()
+      } else if (formReminderType.value === 'repeat') {
+        reminder = JSON.stringify({
+          type: 'repeat',
+          repeat_rule: formRepeatType.value,
+          repeat_time: formRepeatTime.value,
+          repeat_interval: formRepeatType.value === 'day' ? formRepeatInterval.value : undefined,
+          repeat_day_of_week: formRepeatType.value === 'weekday' ? formRepeatWeekdays.value[0] : undefined,
+          repeat_day_of_month: formRepeatType.value === 'month' ? formRepeatMonthDays.value[0] : undefined,
+          repeat_month: formRepeatType.value === 'year' ? formRepeatYearMonth.value : undefined
+        })
+      }
     }
 
-    todos.value[dateStr].push(todo)
-    saveTodos()
-  }
+    if (isEditing.value && selectedTodo.value) {
+      // 更新现有待办
+      await invoke('update_todo', {
+        id: selectedTodo.value.id,
+        text: newTodoText.value,
+        status: formStatus.value,
+        reminder,
+        workDirectory
+      })
+    } else {
+      // 添加新待办
+      await invoke('create_todo', {
+        date: selectedDate.value,
+        text: newTodoText.value,
+        status: formStatus.value,
+        reminder,
+        workDirectory
+      })
+    }
 
-  closeTodoDialog()
+    await loadTodos()
+    closeTodoDialog()
+  } catch (error) {
+    console.error('保存待办失败:', error)
+  }
 }
 
 // 删除待办事项
-function deleteTodo() {
+async function deleteTodo() {
   if (!selectedTodo.value) return
 
-  const dateStr = selectedDate.value
-  if (todos.value[dateStr]) {
-    todos.value[dateStr] = todos.value[dateStr].filter(t => t.id !== selectedTodo.value.id)
-    if (todos.value[dateStr].length === 0) {
-      delete todos.value[dateStr]
-    }
-    saveTodos()
+  try {
+    const workDirectory = await getWorkDirectory()
+    await invoke('delete_todo', {
+      id: selectedTodo.value.id,
+      workDirectory
+    })
+    await loadTodos()
+    closeTodoDialog()
+  } catch (error) {
+    console.error('删除待办失败:', error)
   }
-  closeTodoDialog()
 }
 
 // 上个月
-function prevMonth() {
+async function prevMonth() {
   if (currentMonth.value === 1) {
     currentMonth.value = 12
     currentYear.value--
@@ -409,10 +330,11 @@ function prevMonth() {
     currentMonth.value--
   }
   emit('month-change', { year: currentYear.value, month: currentMonth.value })
+  await loadTodos()
 }
 
 // 下个月
-function nextMonth() {
+async function nextMonth() {
   if (currentMonth.value === 12) {
     currentMonth.value = 1
     currentYear.value++
@@ -420,6 +342,7 @@ function nextMonth() {
     currentMonth.value++
   }
   emit('month-change', { year: currentYear.value, month: currentMonth.value })
+  await loadTodos()
 }
 
 // 获取当前月份的天数
@@ -525,10 +448,12 @@ const dayOptions = computed(() => {
 // 监听 props 变化
 watch(() => props.year, (newVal) => {
   currentYear.value = newVal
+  loadTodos()
 })
 
 watch(() => props.month, (newVal) => {
   currentMonth.value = newVal
+  loadTodos()
 })
 
 onMounted(() => {
