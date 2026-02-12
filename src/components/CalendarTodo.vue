@@ -656,16 +656,18 @@ onMounted(() => {
           </div>
         </div>
 
-        <div class="flex justify-end gap-2 mt-6">
-          <Button variant="secondary" size="sm" @click="closeEditDialog">
-            取消
-          </Button>
-          <Button variant="error" size="sm" @click="deleteTodo">
+        <div class="flex justify-between items-center mt-6">
+          <Button variant="ghost" size="sm" @click="deleteTodo" class="text-error hover:text-error hover:bg-error/10">
             删除
           </Button>
-          <Button variant="primary" size="sm" @click="updateTodo">
-            保存
-          </Button>
+          <div class="flex gap-2">
+            <Button variant="secondary" size="sm" @click="closeEditDialog">
+              取消
+            </Button>
+            <Button variant="primary" size="sm" @click="updateTodo">
+              保存
+            </Button>
+          </div>
         </div>
       </div>
     </div>
