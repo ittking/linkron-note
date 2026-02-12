@@ -463,10 +463,12 @@ onMounted(() => {
           <!-- 待办标签列表 -->
           <div class="flex flex-col gap-1 overflow-hidden" @click.stop>
             <div v-for="todo in getTodosForDate(day.dateStr)" :key="todo.id"
-              class="tag-todo px-2 py-0.5 rounded text-xs whitespace-nowrap overflow-hidden cursor-pointer transition-colors"
+              class="tag-todo px-2 py-0.5 rounded text-xs cursor-pointer transition-colors"
               :class="getStatusClass(todo.status)"
               @click="openEditDialog(day.dateStr, todo)">
-              {{ todo.text }}
+              <div class="overflow-hidden text-ellipsis whitespace-nowrap">
+                {{ todo.text }}
+              </div>
             </div>
           </div>
         </div>
