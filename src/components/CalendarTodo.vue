@@ -104,7 +104,7 @@ function getStatusClass(status) {
     'in-progress': 'bg-blue-100 text-blue-700 border border-blue-300',
     'completed': 'bg-green-100 text-green-700 border border-green-300 line-through opacity-70',
     'pending': 'bg-yellow-100 text-yellow-700 border border-yellow-300',
-    'cancelled': 'bg-red-100 text-red-700 border border-red-300'
+    'cancelled': 'bg-red-100 text-red-700 border border-red-300 line-through opacity-70'
   }
   return statusMap[status] || 'bg-base-content/5 text-base-content/70 border border-base-content/10'
 }
