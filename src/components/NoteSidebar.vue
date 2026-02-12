@@ -29,6 +29,9 @@ const expandedNodes = ref(new Set())
 // 统计组件引用
 const statisticsRef = ref(null)
 
+// 热力图组件引用
+const heatmapRef = ref(null)
+
 // 加载标签
 async function loadTags() {
   loading.value = true
@@ -50,6 +53,10 @@ watch(() => props.isOpen, (isOpen) => {
     // 刷新统计数据
     if (statisticsRef.value && statisticsRef.value.refresh) {
       statisticsRef.value.refresh()
+    }
+    // 刷新热力图数据
+    if (heatmapRef.value && heatmapRef.value.refresh) {
+      heatmapRef.value.refresh()
     }
   }
 })
@@ -153,7 +160,7 @@ function handleTagClick(tag) {
       <Statistics ref="statisticsRef" />
 
       <!-- 笔记热度图 -->
-      <NoteHeatmap />
+      <NoteHeatmap ref="heatmapRef" />
 
       <!-- 标签列表 -->
       <div class="flex-1 overflow-y-auto p-2">

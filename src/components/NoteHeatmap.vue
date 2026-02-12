@@ -92,6 +92,11 @@ async function loadHeatmapData() {
   }
 }
 
+// 暴露 refresh 方法供外部调用
+defineExpose({
+  refresh: loadHeatmapData
+})
+
 onMounted(() => {
   loadHeatmapData()
 })
