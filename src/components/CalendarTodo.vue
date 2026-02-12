@@ -71,6 +71,7 @@ const formStatus = ref('todo')
 const formReminderEnabled = ref(false)
 const formReminderType = ref('once')
 const formReminderTime = ref('')
+const formRepeatTime = ref('09:00') // 重复提醒的具体时间
 const formRepeatType = ref('day')
 const formRepeatInterval = ref(1)
 const formRepeatWeekdays = ref([1, 3, 5])
@@ -174,9 +175,11 @@ function calculateNextReminder(reminder) {
   if (reminder.type === 'repeat' && reminder.repeatRule) {
     const now = dayjs()
     const rule = reminder.repeatRule
+    const repeatTime = reminder.repeatTime || '09:00'
+    const [hour, minute] = repeatTime.split(':').map(Number)
 
     if (rule.type === 'day') {
-      return now.add(rule.value, 'day').set('hour', 9).set('minute', 0).toISOString()
+      return now.add(rule.value, 'day').set('hour', hour).set('minute', minute).toISOString()
     }
 
     if (rule.type === 'weekday') {
@@ -186,7 +189,7 @@ function calculateNextReminder(reminder) {
       for (let i = 1; i <= 7; i++) {
         const nextDay = (today + i) % 7
         if (targetDays.includes(nextDay)) {
-          return now.add(i, 'day').set('hour', 9).set('minute', 0).toISOString()
+          return now.add(i, 'day').set('hour', hour).set('minute', minute).toISOString()
         }
       }
     }
@@ -197,10 +200,10 @@ function calculateNextReminder(reminder) {
       // 找本月下一个目标日期
       const nextDay = days.find(d => d > currentDay)
       if (nextDay) {
-        return now.date(nextDay).set('hour', 9).set('minute', 0).toISOString()
+        return now.date(nextDay).set('hour', hour).set('minute', minute).toISOString()
       } else {
         // 下个月的第一天
-        return now.add(1, 'month').date(days[0]).set('hour', 9).set('minute', 0).toISOString()
+        return now.add(1, 'month').date(days[0]).set('hour', hour).set('minute', minute).toISOString()
       }
     }
 
@@ -212,10 +215,10 @@ function calculateNextReminder(reminder) {
 
       // 判断今年是否还有这个日期
       if (targetMonth > currentMonth || (targetMonth === currentMonth && targetDay >= currentDay)) {
-        return now.month(targetMonth - 1).date(targetDay).set('hour', 9).set('minute', 0).toISOString()
+        return now.month(targetMonth - 1).date(targetDay).set('hour', hour).set('minute', minute).toISOString()
       } else {
         // 明年
-        return now.add(1, 'year').month(targetMonth - 1).date(targetDay).set('hour', 9).set('minute', 0).toISOString()
+        return now.add(1, 'year').month(targetMonth - 1).date(targetDay).set('hour', hour).set('minute', minute).toISOString()
       }
     }
   }
@@ -230,6 +233,7 @@ function resetForm() {
   formReminderEnabled.value = false
   formReminderType.value = 'once'
   formReminderTime.value = ''
+  formRepeatTime.value = '09:00'
   formRepeatType.value = 'day'
   formRepeatInterval.value = 1
   formRepeatWeekdays.value = [1, 3, 5]
@@ -273,6 +277,7 @@ function openTodoDialog(dateStr, todo = null) {
       formReminderEnabled.value = true
       formReminderType.value = todo.reminder.type || 'once'
       formReminderTime.value = todo.reminder.datetime || ''
+      formRepeatTime.value = todo.reminder.repeatTime || '09:00'
       if (todo.reminder.repeatRule) {
         formRepeatType.value = todo.reminder.repeatRule.type || 'day'
         const rule = todo.reminder.repeatRule
@@ -329,11 +334,13 @@ function saveTodo() {
           enabled: true,
           type: formReminderType.value,
           datetime: formReminderType.value === 'once' ? formReminderTime.value : undefined,
+          repeatTime: formReminderType.value === 'repeat' ? formRepeatTime.value : undefined,
           repeatRule: repeatRule,
           nextReminder: calculateNextReminder({
             enabled: true,
             type: formReminderType.value,
             datetime: formReminderType.value === 'once' ? formReminderTime.value : undefined,
+            repeatTime: formReminderType.value === 'repeat' ? formRepeatTime.value : undefined,
             repeatRule: repeatRule
           })
         }
@@ -357,11 +364,13 @@ function saveTodo() {
         enabled: true,
         type: formReminderType.value,
         datetime: formReminderType.value === 'once' ? formReminderTime.value : undefined,
+        repeatTime: formReminderType.value === 'repeat' ? formRepeatTime.value : undefined,
         repeatRule: repeatRule,
         nextReminder: calculateNextReminder({
           enabled: true,
           type: formReminderType.value,
           datetime: formReminderType.value === 'once' ? formReminderTime.value : undefined,
+          repeatTime: formReminderType.value === 'repeat' ? formRepeatTime.value : undefined,
           repeatRule: repeatRule
         })
       } : undefined,
@@ -643,7 +652,7 @@ onMounted(() => {
             </div>
 
             <!-- 重复提醒 -->
-            <div v-if="formReminderType === 'repeat'">
+            <div v-if="formReminderType === 'repeat'" class="space-y-3">
               <label class="block text-xs text-base-content/60 mb-1.5">重复规则</label>
               <div class="flex flex-wrap gap-2 mb-2">
                 <button v-for="rule in REPEAT_RULES" :key="rule.value" @click="formRepeatType = rule.value"
@@ -703,6 +712,13 @@ onMounted(() => {
                     class="flex-1"
                   />
                 </div>
+              </div>
+
+              <!-- 重复提醒时间 -->
+              <div>
+                <label class="block text-xs text-base-content/60 mb-1.5">提醒时间</label>
+                <input type="time" v-model="formRepeatTime"
+                  class="w-full px-3 py-1.5 border border-base-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/50">
               </div>
             </div>
           </div>
