@@ -1,0 +1,585 @@
+<script setup>
+import { ref, computed, nextTick, onMounted, onBeforeUnmount } from 'vue'
+import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Clock, X } from 'lucide-vue-next'
+import dayjs from 'dayjs'
+import dayjsLocale from 'dayjs/locale/zh-cn'
+
+dayjs.locale(dayjsLocale)
+
+const props = defineProps({
+  modelValue: {
+    type: String,
+    default: ''
+  },
+  placeholder: {
+    type: String,
+    default: '选择日期时间'
+  },
+  mode: {
+    type: String,
+    default: 'datetime',
+    validator: (value) => ['date', 'time', 'datetime'].includes(value)
+  },
+  disabled: {
+    type: Boolean,
+    default: false
+  },
+  min: {
+    type: String,
+    default: ''
+  }
+})
+
+const emit = defineEmits(['update:modelValue', 'change'])
+
+const isOpen = ref(false)
+const dropdownRef = ref(null)
+const triggerRef = ref(null)
+const calendarRef = ref(null)
+const timePickerHeight = ref('200px')
+
+// 临时值（用于确认前暂存）
+const tempSelectedDate = ref(dayjs().format('YYYY-MM-DD'))
+const tempSelectedHour = ref('')
+const tempSelectedMinute = ref('')
+
+// 已确认的值
+const selectedDate = ref(dayjs().format('YYYY-MM-DD'))
+const selectedHour = ref('')
+const selectedMinute = ref('')
+
+// 日历状态
+const currentYear = ref(dayjs().year())
+const currentMonth = ref(dayjs().month() + 1)
+const showYearPicker = ref(false)
+
+// 年份选择范围
+const yearRange = computed(() => {
+  const current = dayjs().year()
+  const startYear = current - 10
+  const endYear = current + 10
+  const years = []
+  for (let y = startYear; y <= endYear; y++) {
+    years.push(y)
+  }
+  return years
+})
+
+// 年份分页
+const yearPageStart = ref(0)
+const displayedYears = computed(() => {
+  return yearRange.value.slice(yearPageStart.value, yearPageStart.value + 12)
+})
+
+// 下拉框定位
+const dropdownPosition = ref({
+  top: '100%',
+  bottom: 'auto',
+  left: '0',
+  right: 'auto'
+})
+
+// 初始化值
+const initValue = () => {
+  if (props.modelValue) {
+    const date = dayjs(props.modelValue)
+    selectedDate.value = date.format('YYYY-MM-DD')
+    selectedHour.value = date.format('HH')
+    selectedMinute.value = date.format('mm')
+  } else {
+    selectedDate.value = dayjs().format('YYYY-MM-DD')
+    selectedHour.value = ''
+    selectedMinute.value = ''
+  }
+  tempSelectedDate.value = selectedDate.value
+  tempSelectedHour.value = selectedHour.value
+  tempSelectedMinute.value = selectedMinute.value
+}
+
+// 格式化显示值
+const displayValue = computed(() => {
+  if (!props.modelValue) return props.placeholder
+
+  const date = dayjs(props.modelValue)
+  const dateStr = date.format('YYYY/MM/DD')
+  const timeStr = date.format('HH:mm')
+
+  if (props.mode === 'date') return dateStr
+  if (props.mode === 'time') return timeStr
+  return `${dateStr} ${timeStr}`
+})
+
+const hasValue = computed(() => !!props.modelValue)
+
+// 获取当前月份的天数
+function getDaysInMonth() {
+  return dayjs(`${currentYear.value}-${currentMonth.value}-1`).daysInMonth()
+}
+
+// 获取当前月份第一天是星期几
+function getFirstDayOfWeek() {
+  return dayjs(`${currentYear.value}-${currentMonth.value}-1`).day()
+}
+
+// 生成日历数据
+const calendarDays = computed(() => {
+  const days = []
+  const daysInMonth = getDaysInMonth()
+  const firstDayOfWeek = getFirstDayOfWeek()
+
+  const prevMonthDays = dayjs(`${currentYear.value}-${currentMonth.value}-1`).subtract(1, 'month').daysInMonth()
+  for (let i = firstDayOfWeek - 1; i >= 0; i--) {
+    const day = prevMonthDays - i
+    const dateStr = dayjs(`${currentYear.value}-${currentMonth.value}-1`)
+      .subtract(firstDayOfWeek - i, 'day')
+      .format('YYYY-MM-DD')
+    days.push({
+      day,
+      dateStr,
+      isCurrentMonth: false,
+      isToday: dayjs(dateStr).isSame(dayjs(), 'day'),
+      isSelected: dateStr === tempSelectedDate.value
+    })
+  }
+
+  for (let day = 1; day <= daysInMonth; day++) {
+    const dateStr = `${currentYear.value}-${String(currentMonth.value).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+    days.push({
+      day,
+      dateStr,
+      isCurrentMonth: true,
+      isToday: dayjs(dateStr).isSame(dayjs(), 'day'),
+      isSelected: dateStr === tempSelectedDate.value
+    })
+  }
+
+  const remainingDays = 42 - days.length
+  for (let day = 1; day <= remainingDays; day++) {
+    const dateStr = dayjs(`${currentYear.value}-${currentMonth.value}-1`)
+      .add(daysInMonth + day - 1, 'day')
+      .format('YYYY-MM-DD')
+    days.push({
+      day,
+      dateStr,
+      isCurrentMonth: false,
+      isToday: dayjs(dateStr).isSame(dayjs(), 'day'),
+      isSelected: dateStr === tempSelectedDate.value
+    })
+  }
+
+  return days
+})
+
+const calendarWeeks = computed(() => {
+  const weeks = []
+  const days = calendarDays.value
+  for (let i = 0; i < days.length; i += 7) {
+    weeks.push(days.slice(i, i + 7))
+  }
+  return weeks
+})
+
+function prevYear() {
+  currentYear.value--
+  calculateTimePickerHeight()
+}
+
+function nextYear() {
+  currentYear.value++
+  calculateTimePickerHeight()
+}
+
+function prevMonth() {
+  if (currentMonth.value === 1) {
+    currentMonth.value = 12
+    currentYear.value--
+  } else {
+    currentMonth.value--
+  }
+  calculateTimePickerHeight()
+}
+
+function nextMonth() {
+  if (currentMonth.value === 12) {
+    currentMonth.value = 1
+    currentYear.value++
+  } else {
+    currentMonth.value++
+  }
+  calculateTimePickerHeight()
+}
+
+function toggleYearPicker() {
+  showYearPicker.value = !showYearPicker.value
+  nextTick(() => {
+    calculateTimePickerHeight()
+  })
+}
+
+function selectYear(year) {
+  currentYear.value = year
+  showYearPicker.value = false
+  calculatePosition()
+}
+
+function prevYearPage() {
+  yearPageStart.value = Math.max(0, yearPageStart.value - 12)
+}
+
+function nextYearPage() {
+  yearPageStart.value = Math.min(yearRange.value.length - 12, yearPageStart.value + 12)
+}
+
+function selectDate(dateStr) {
+  tempSelectedDate.value = dateStr
+}
+
+const hourOptions = computed(() => {
+  return Array.from({ length: 24 }, (_, i) => ({
+    label: String(i).padStart(2, '0'),
+    value: String(i).padStart(2, '0')
+  }))
+})
+
+const minuteOptions = computed(() => {
+  return Array.from({ length: 60 }, (_, i) => ({
+    label: String(i).padStart(2, '0'),
+    value: String(i).padStart(2, '0')
+  }))
+})
+
+function selectHour(hour) {
+  tempSelectedHour.value = hour
+}
+
+function selectMinute(minute) {
+  tempSelectedMinute.value = minute
+}
+
+function calculatePosition() {
+  nextTick(() => {
+    setTimeout(() => {
+      if (!dropdownRef.value || !triggerRef.value) return
+
+      const dropdown = dropdownRef.value
+      const trigger = triggerRef.value
+      const triggerRect = trigger.getBoundingClientRect()
+      const dropdownRect = dropdown.getBoundingClientRect()
+      const viewportWidth = window.innerWidth
+      const viewportHeight = window.innerHeight
+
+      const spaceBelow = viewportHeight - triggerRect.bottom
+      const spaceAbove = triggerRect.top
+      const dropdownHeight = dropdownRect.height
+
+      if (spaceBelow < dropdownHeight + 10 && spaceAbove > dropdownHeight + 10) {
+        dropdownPosition.value.bottom = '100%'
+        dropdownPosition.value.top = 'auto'
+      } else {
+        dropdownPosition.value.top = '100%'
+        dropdownPosition.value.bottom = 'auto'
+      }
+
+      const spaceRight = viewportWidth - triggerRect.left
+      const spaceLeft = triggerRect.left
+      const dropdownWidth = dropdownRect.width
+
+      if (spaceRight < dropdownWidth && spaceLeft > dropdownWidth) {
+        dropdownPosition.value.right = '0'
+        dropdownPosition.value.left = 'auto'
+      } else {
+        dropdownPosition.value.left = '0'
+        dropdownPosition.value.right = 'auto'
+      }
+
+      // 计算时间选择器高度
+      calculateTimePickerHeight()
+    }, 50)
+  })
+}
+
+function calculateTimePickerHeight() {
+  nextTick(() => {
+    if (calendarRef.value) {
+      const calendarHeight = calendarRef.value.offsetHeight
+      timePickerHeight.value = `${calendarHeight}px`
+    }
+  })
+}
+
+function toggleDropdown() {
+  if (props.disabled) return
+  isOpen.value = !isOpen.value
+  if (isOpen.value) {
+    initValue()
+    nextTick(() => {
+      calculatePosition()
+    })
+  }
+}
+
+function closeDropdown() {
+  isOpen.value = false
+  showYearPicker.value = false
+}
+
+function confirm() {
+  selectedDate.value = tempSelectedDate.value
+  selectedHour.value = tempSelectedHour.value
+  selectedMinute.value = tempSelectedMinute.value
+  emitValue()
+  closeDropdown()
+}
+
+function cancel() {
+  closeDropdown()
+}
+
+function emitValue() {
+  let value = ''
+  if (props.mode === 'date') {
+    value = selectedDate.value
+  } else if (props.mode === 'time') {
+    if (selectedHour.value && selectedMinute.value) {
+      value = `${selectedHour.value}:${selectedMinute.value}`
+    }
+  } else {
+    if (selectedDate.value && selectedHour.value && selectedMinute.value) {
+      value = `${selectedDate.value}T${selectedHour.value}:${selectedMinute.value}`
+    }
+  }
+  emit('update:modelValue', value)
+  emit('change', value)
+}
+
+function clearValue(e) {
+  e.stopPropagation()
+  selectedDate.value = dayjs().format('YYYY-MM-DD')
+  selectedHour.value = ''
+  selectedMinute.value = ''
+  emit('update:modelValue', '')
+  emit('change', '')
+}
+
+function handleResize() {
+  if (isOpen.value) {
+    calculatePosition()
+  }
+}
+
+onMounted(() => {
+  window.addEventListener('resize', handleResize)
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('resize', handleResize)
+})
+
+defineExpose({
+  toggleDropdown,
+  closeDropdown
+})
+</script>
+
+<template>
+  <div class="datetime-picker relative" v-click-outside="closeDropdown">
+    <!-- 触发器 -->
+    <div ref="triggerRef">
+      <slot :toggle="toggleDropdown" :has-value="hasValue" :display-value="displayValue" :clear="clearValue">
+        <button @click="toggleDropdown" :disabled="disabled"
+          class="datetime-trigger px-2 py-1.5 border border-base-200 rounded-md hover:bg-base-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5 whitespace-nowrap"
+          :class="{ 'bg-primary/10 border-primary/30 text-primary': hasValue }">
+          <Clock :size="14" />
+          <span class="text-xs">{{ displayValue }}</span>
+          <X v-if="hasValue && !disabled" @click.stop="clearValue" :size="12"
+            class="ml-auto opacity-60 hover:opacity-100" />
+          <svg v-else xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+            class="ml-auto opacity-60">
+            <path d="m6 9 6 6 6-6" />
+          </svg>
+        </button>
+      </slot>
+    </div>
+
+    <!-- 下拉面板 -->
+    <teleport to="body">
+      <div v-if="isOpen" ref="dropdownRef"
+        class="dropdown-panel fixed bg-base-100 border border-base-200 rounded-lg shadow-lg z-[9999]" :style="{
+          top: dropdownPosition.top === '100%' ? `${triggerRef?.getBoundingClientRect().bottom + 8}px` : 'auto',
+          bottom: dropdownPosition.bottom === '100%' ? `${window.innerHeight - triggerRef?.getBoundingClientRect().top + 8}px` : 'auto',
+          left: dropdownPosition.left === '0' ? `${triggerRef?.getBoundingClientRect().left}px` : 'auto',
+          right: dropdownPosition.right === '0' ? `${window.innerWidth - triggerRef?.getBoundingClientRect().right}px` : 'auto',
+        }" :class="{ 'top-0': dropdownPosition.top === '100%', 'bottom-0': dropdownPosition.bottom === '100%' }">
+        <div class="flex flex-col max-w-[600px]">
+          <!-- 主内容区 -->
+          <div class="flex">
+            <!-- 日历区域 -->
+            <div ref="calendarRef" v-if="mode === 'date' || mode === 'datetime'" class="p-2 min-w-[220px]">
+              <!-- 年月导航 -->
+              <div class="flex items-center justify-between mb-2">
+                <div class="flex items-center gap-0.5">
+                  <button @click="prevYear" class="p-0.5 hover:bg-base-200 rounded transition-colors" title="上一年">
+                    <ChevronsLeft :size="14" />
+                  </button>
+                  <button @click="prevMonth" class="p-0.5 hover:bg-base-200 rounded transition-colors" title="上个月">
+                    <ChevronLeft :size="14" />
+                  </button>
+                </div>
+
+                <button @click="toggleYearPicker"
+                  class="text-xs font-medium hover:bg-base-200 px-2 py-0.5 rounded transition-colors">
+                  {{ currentYear }}年{{ currentMonth }}月
+                </button>
+
+                <div class="flex items-center gap-0.5">
+                  <button @click="nextMonth" class="p-0.5 hover:bg-base-200 rounded transition-colors" title="下个月">
+                    <ChevronRight :size="14" />
+                  </button>
+                  <button @click="nextYear" class="p-0.5 hover:bg-base-200 rounded transition-colors" title="下一年">
+                    <ChevronsRight :size="14" />
+                  </button>
+                </div>
+              </div>
+
+              <!-- 年份选择面板 -->
+              <div v-if="showYearPicker" class="mb-2">
+                <div class="grid grid-cols-4 gap-1">
+                  <button v-for="year in displayedYears" :key="year" @click="selectYear(year)"
+                    class="text-[10px] py-1 hover:bg-base-200 rounded transition-colors"
+                    :class="{ 'bg-primary text-primary-content': year === currentYear }">
+                    {{ year }}
+                  </button>
+                </div>
+                <div class="flex justify-between mt-2">
+                  <button @click="prevYearPage" class="text-[10px] hover:bg-base-200 px-2 py-0.5 rounded">
+                    上一页
+                  </button>
+                  <button @click="nextYearPage" class="text-[10px] hover:bg-base-200 px-2 py-0.5 rounded">
+                    下一页
+                  </button>
+                </div>
+              </div>
+
+              <!-- 星期标题 -->
+              <div v-else class="grid grid-cols-7 gap-0.5 mb-1">
+                <div v-for="day in ['日', '一', '二', '三', '四', '五', '六']" :key="day"
+                  class="text-center text-[10px] text-base-content/50 py-0.5">
+                  {{ day }}
+                </div>
+              </div>
+
+              <!-- 日期格子 -->
+              <div v-if="!showYearPicker" class="grid grid-cols-7 gap-0.5">
+                <div v-for="day in calendarDays" :key="day.dateStr" @click="selectDate(day.dateStr)"
+                  class="aspect-square flex items-center justify-center text-[10px] rounded cursor-pointer transition-colors"
+                  :class="{
+                    'text-base-content/30': !day.isCurrentMonth,
+                    'bg-primary text-primary-content': day.isSelected && day.isCurrentMonth,
+                    'bg-primary/10 text-primary': day.isSelected && !day.isCurrentMonth,
+                    'text-primary font-medium': day.isToday && !day.isSelected,
+                    'hover:bg-base-200': !day.isSelected
+                  }">
+                  {{ day.day }}
+                </div>
+              </div>
+            </div>
+
+            <!-- 时间选择区域 -->
+            <div v-if="mode === 'time' || mode === 'datetime'"
+              class="p-2 border-l border-base-200 min-w-[100px] w-[120px] flex flex-col"
+              :style="{ height: timePickerHeight }">
+              <!-- 时间显示标题 -->
+              <div class="text-[10px] text-base-content/60 mb-1.5 flex-shrink-0">
+                {{ (tempSelectedHour && tempSelectedMinute) ? `${tempSelectedHour}:${tempSelectedMinute}` : '选择时间' }}
+              </div>
+              <!-- 时间选择列表 -->
+              <div class="flex gap-1.5 flex-1 min-h-0">
+                <!-- 小时 -->
+                <div class="flex-1 border border-base-200 rounded overflow-hidden">
+                  <div class="overflow-y-auto custom-scrollbar h-full">
+                    <div v-for="hour in hourOptions" :key="hour.value" @click="selectHour(hour.value)"
+                      class="text-[10px] py-1.5 px-1 hover:bg-base-200 cursor-pointer text-center transition-colors"
+                      :class="{ 'bg-primary/20 text-primary font-medium': tempSelectedHour === hour.value }">
+                      {{ hour.label }}
+                    </div>
+                  </div>
+                </div>
+                <!-- 分钟 -->
+                <div class="flex-1 border border-base-200 rounded overflow-hidden">
+                  <div class="overflow-y-auto custom-scrollbar h-full">
+                    <div v-for="minute in minuteOptions" :key="minute.value" @click="selectMinute(minute.value)"
+                      class="text-[10px] py-1.5 px-1 hover:bg-base-200 cursor-pointer text-center transition-colors"
+                      :class="{ 'bg-primary/20 text-primary font-medium': tempSelectedMinute === minute.value }">
+                      {{ minute.label }}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 底部按钮 -->
+          <div class="flex items-center justify-end gap-2 px-3 py-2 border-t border-base-200">
+            <button @click="cancel"
+              class="px-3 py-1 text-xs border border-base-200 rounded hover:bg-base-200 transition-colors">
+              取消
+            </button>
+            <button @click="confirm"
+              class="px-3 py-1 text-xs bg-primary text-primary-content rounded hover:bg-primary/90 transition-colors">
+              确认
+            </button>
+          </div>
+        </div>
+      </div>
+    </teleport>
+  </div>
+</template>
+
+<style scoped>
+.datetime-picker {
+  position: relative;
+}
+
+.datetime-trigger {
+  user-select: none;
+}
+
+.dropdown-panel {
+  animation: fadeIn 0.15s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(156, 163, 175, 0.5) transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background-color: rgba(156, 163, 175, 0.5);
+  border-radius: 2px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(156, 163, 175, 0.7);
+}
+</style>

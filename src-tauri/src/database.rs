@@ -376,3 +376,12 @@ pub async fn count_todos(work_directory: Option<String>) -> Result<i64, String> 
     let db = Database::new(&db_path).map_err(|e| format!("Failed to open database: {}", e))?;
     todo::count_todos(&db.conn).map_err(|e| format!("Failed to count todos: {}", e))
 }
+
+/// Tauri 命令：获取今日相关的待办事项
+/// 包括今日创建的待办和提醒日期是今天的非重复提醒待办
+#[tauri::command]
+pub async fn get_today_todos(today_date: String, work_directory: Option<String>) -> Result<Vec<Todo>, String> {
+    let db_path = get_database_path(work_directory)?;
+    let db = Database::new(&db_path).map_err(|e| format!("Failed to open database: {}", e))?;
+    todo::get_today_todos(&db.conn, &today_date).map_err(|e| format!("Failed to get today todos: {}", e))
+}

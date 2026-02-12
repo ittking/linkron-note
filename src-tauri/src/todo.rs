@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use chrono::Datelike;
 
 /// 待办事项提醒类型
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 #[serde(rename_all = "lowercase")]
 pub enum ReminderType {
     None,
@@ -378,4 +378,91 @@ pub fn count_todos(conn: &Connection) -> SqliteResult<i64> {
         [],
         |row| row.get(0)
     )
+}
+
+/// 获取今日相关的待办事项
+/// 包括：
+/// 1. 今日创建的待办事项
+/// 2. 提醒日期是今天的非重复提醒（一次性提醒）的待办事项
+pub fn get_today_todos(conn: &Connection, today_date: &str) -> SqliteResult<Vec<Todo>> {
+    // 获取今日创建的待办事项
+    let mut stmt = conn.prepare(
+        "SELECT id, date, text, status, reminder, created_at, updated_at
+         FROM todos WHERE date = ?1 ORDER BY created_at ASC"
+    )?;
+
+    let today_todos = stmt.query_map(params![today_date], |row| {
+        let reminder_json: String = row.get(4)?;
+        let reminder: Option<TodoReminder> = serde_json::from_str(&reminder_json).ok();
+        Ok(Todo {
+            id: row.get(0)?,
+            date: row.get(1)?,
+            text: row.get(2)?,
+            status: row.get(3)?,
+            reminder,
+            created_at: row.get(5)?,
+            updated_at: row.get(6)?,
+        })
+    })?.collect::<SqliteResult<Vec<_>>>()?;
+
+    // 获取所有待办事项，筛选出提醒日期是今天的非重复提醒待办
+    let mut stmt_all = conn.prepare(
+        "SELECT id, date, text, status, reminder, created_at, updated_at
+         FROM todos WHERE reminder IS NOT NULL ORDER BY created_at ASC"
+    )?;
+
+    let all_todos = stmt_all.query_map([], |row| {
+        let reminder_json: String = row.get(4)?;
+        let reminder: Option<TodoReminder> = serde_json::from_str(&reminder_json).ok();
+        Ok(Todo {
+            id: row.get(0)?,
+            date: row.get(1)?,
+            text: row.get(2)?,
+            status: row.get(3)?,
+            reminder,
+            created_at: row.get(5)?,
+            updated_at: row.get(6)?,
+        })
+    })?.collect::<SqliteResult<Vec<_>>>()?;
+
+    // 筛选出一次性提醒且提醒日期是今天的待办
+    let mut reminder_today_todos = Vec::new();
+    for todo in all_todos {
+        if let Some(reminder) = &todo.reminder {
+            if reminder.reminder_type == ReminderType::OneTime {
+                if let Some(ref repeat_time) = reminder.repeat_time {
+                    // 解析提醒时间，检查日期是否是今天
+                    if let Ok(reminder_dt) = chrono::NaiveDateTime::parse_from_str(
+                        &format!("{} {}", todo.date, repeat_time),
+                        "%Y-%m-%d %H:%M"
+                    ) {
+                        if reminder_dt.format("%Y-%m-%d").to_string() == today_date {
+                            reminder_today_todos.push(todo);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // 合并并去重
+    let mut result = today_todos;
+    for rt in reminder_today_todos {
+        if !result.iter().any(|t| t.id == rt.id) {
+            result.push(rt);
+        }
+    }
+
+    // 按创建时间排序（新的在前）
+    result.sort_by(|a, b| {
+        let a_time = chrono::DateTime::parse_from_rfc3339(&a.created_at)
+            .unwrap_or_else(|_| chrono::Utc::now().into())
+            .timestamp();
+        let b_time = chrono::DateTime::parse_from_rfc3339(&b.created_at)
+            .unwrap_or_else(|_| chrono::Utc::now().into())
+            .timestamp();
+        b_time.cmp(&a_time)
+    });
+
+    Ok(result)
 }

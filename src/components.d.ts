@@ -13,6 +13,7 @@ declare module 'vue' {
   export interface GlobalComponents {
     Button: typeof import('./components/ui/Button.vue')['default']
     CalendarTodo: typeof import('./components/CalendarTodo.vue')['default']
+    DateTimePicker: typeof import('./components/ui/DateTimePicker.vue')['default']
     Dropdown: typeof import('./components/ui/Dropdown.vue')['default']
     ImageViewer: typeof import('./components/ImageViewer.vue')['default']
     Input: typeof import('./components/ui/Input.vue')['default']
@@ -30,6 +31,7 @@ declare module 'vue' {
     TagTreeNode: typeof import('./components/TagTreeNode.vue')['default']
     TerminalTab: typeof import('./components/TerminalTab.vue')['default']
     ThemeSetting: typeof import('./components/ThemeSetting.vue')['default']
+    TodayTodoList: typeof import('./components/TodayTodoList.vue')['default']
     Toggle: typeof import('./components/ui/Toggle.vue')['default']
     XTerm: typeof import('./components/XTerm.vue')['default']
   }
