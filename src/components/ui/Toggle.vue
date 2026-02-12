@@ -27,9 +27,9 @@ function toggle() {
 
 // 轨道尺寸和小球尺寸
 const sizes = {
-  sm: { track: 'w-8 h-4', thumb: 'w-3 h-3', offset: 'translate-x-[15px]' },
+  sm: { track: 'w-8 h-4', thumb: 'w-3 h-3', offset: 'translate-x-[16px]' },
   md: { track: 'w-10 h-5', thumb: 'w-4 h-4', offset: 'translate-x-[20px]' },
-  lg: { track: 'w-12 h-6', thumb: 'w-5 h-5', offset: 'translate-x-[25px]' }
+  lg: { track: 'w-12 h-6', thumb: 'w-5 h-5', offset: 'translate-x-[24px]' }
 }
 
 const currentSize = computed(() => sizes[props.size])
@@ -43,7 +43,7 @@ const currentSize = computed(() => sizes[props.size])
     :class="[
       'relative rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-base-100',
       currentSize.track,
-      modelValue ? 'bg-primary' : 'bg-base-300',
+      modelValue ? 'bg-primary' : 'bg-primary/30',
       disabled && 'opacity-50 cursor-not-allowed'
     ]"
     role="switch"
