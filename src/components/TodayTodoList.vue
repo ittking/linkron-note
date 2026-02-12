@@ -155,7 +155,7 @@ onMounted(() => {
     </div>
 
     <!-- 输入区域 -->
-    <div class="px-6 py-4 border-b border-base-200">
+    <div class="p-4">
       <div class="flex items-center gap-2">
         <input
           v-model="newTodoText"
@@ -188,7 +188,7 @@ onMounted(() => {
     </div>
 
     <!-- 待办列表 -->
-    <div class="flex-1 overflow-auto px-6 py-4">
+    <div class="flex-1 overflow-auto p-4 pt-0">
       <div v-if="loading" class="flex justify-center py-8">
         <span class="loading loading-spinner text-primary"></span>
       </div>
