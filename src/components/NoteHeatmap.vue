@@ -19,7 +19,7 @@ const tooltip = ref({
 
 // 颜色级别（从浅到深）
 const getColorClass = (count) => {
-  if (count === 0) return 'bg-base-200'
+  if (count === 0) return 'bg-primary/5'
   if (count <= 2) return 'bg-primary/20'
   if (count <= 5) return 'bg-primary/40'
   if (count <= 10) return 'bg-primary/60'
