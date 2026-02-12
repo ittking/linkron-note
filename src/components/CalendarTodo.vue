@@ -545,7 +545,7 @@ onMounted(() => {
     <!-- 日历主体 -->
     <div class="flex-1 overflow-auto no-scrollbar relative flex flex-col">
       <!-- 星期标题 -->
-      <div class="grid grid-cols-[repeat(7,minmax(100px,1fr))] border-b border-base-200 shrink-0">
+      <div class="grid grid-cols-[repeat(7,minmax(100px,1fr))] shrink-0">
         <div v-for="day in ['周日', '周一', '周二', '周三', '周四', '周五', '周六']" :key="day"
           class="py-2 text-center text-xs font-medium text-base-content/50 border-r border-b border-base-200 last:border-r-0">
           {{ day }}
