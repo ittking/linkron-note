@@ -110,7 +110,7 @@ onMounted(async () => {
       </div>
 
       <!-- 子页面内容区域 -->
-      <div class="flex-1 overflow-hidden pb-3">
+      <div class="flex-1 overflow-hidden">
         <router-view v-slot="{ Component, route }">
           <transition name="page-fade" mode="out-in">
             <keep-alive v-if="route.meta?.keepAlive">

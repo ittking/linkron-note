@@ -19,7 +19,7 @@ function setActiveTab(tabId) {
 </script>
 
 <template>
-  <div class="h-full flex flex-col max-w-200 mx-auto">
+  <div class="h-full flex flex-col max-w-200 mx-auto pb-2">
     <!-- Tab 导航 -->
     <div role="tablist" class="tabs tabs-boxed px-4 pt-4">
       <a v-for="tab in tabs" :key="tab.id" role="tab" @click="setActiveTab(tab.id)" :class="[

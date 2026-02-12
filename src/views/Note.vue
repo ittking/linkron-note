@@ -706,7 +706,7 @@ async function filterNotesByTags() {
 </script>
 
 <template>
-    <div class="h-full flex" @dragenter="handleDragEnter" @dragleave="handleDragLeave"
+    <div class="h-full flex pb-2" @dragenter="handleDragEnter" @dragleave="handleDragLeave"
         @dragover="handleDragOver" @drop="handleDrop">
         <!-- 主内容 -->
         <div class="flex-1 flex flex-col max-w-200 mx-auto">
