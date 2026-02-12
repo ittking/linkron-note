@@ -426,9 +426,9 @@ onMounted(() => {
     </div>
 
     <!-- 日历主体 -->
-    <div class="flex-1 overflow-y-auto  no-scrollbar relative">
+    <div class="flex-1 overflow-auto no-scrollbar relative">
       <!-- 星期标题 -->
-      <div class="grid grid-cols-7 gap-px bg-base-200 border-b border-base-200 sticky top-0 z-10">
+      <div class="grid grid-cols-[repeat(7,minmax(100px,1fr))] gap-px bg-base-200 border-b border-base-200 sticky top-0 z-10">
         <div v-for="day in ['周日', '周一', '周二', '周三', '周四', '周五', '周六']" :key="day"
           class="bg-base-100 py-2 text-center text-xs font-medium text-base-content/50">
           {{ day }}
@@ -436,19 +436,22 @@ onMounted(() => {
       </div>
 
       <div v-for="(week, weekIndex) in calendarWeeks" :key="weekIndex"
-        class="grid grid-cols-7 gap-px bg-base-200 border-b border-base-200 last:border-b-0">
+        class="grid grid-cols-[repeat(7,minmax(100px,1fr))] gap-px bg-base-200 border-b border-base-200 last:border-b-0">
         <div v-for="day in week" :key="day.dateStr"
-          class="min-h-[120px] bg-base-100 p-2 transition-colors hover:bg-base-content/5 cursor-pointer" :class="{
+          class="min-h-[120px] bg-base-100 p-2 transition-colors hover:bg-base-content/5 cursor-pointer"
+          :class="{
             'bg-base-content/5': !day.isCurrentMonth,
             'bg-primary/5': day.isToday
-          }" @click.self="openAddDialog(day.dateStr)">
+          }"
+          @click.self="openAddDialog(day.dateStr)">
           <!-- 日期显示 -->
           <div class="flex items-center justify-between mb-2">
-            <span class="text-sm font-medium" :class="{
-              'text-base-content/30': !day.isCurrentMonth,
-              'text-primary': day.isToday,
-              'text-base-content/70': day.isCurrentMonth && !day.isToday
-            }">
+            <span class="text-sm font-medium"
+              :class="{
+                'text-base-content/30': !day.isCurrentMonth,
+                'text-primary': day.isToday,
+                'text-base-content/70': day.isCurrentMonth && !day.isToday
+              }">
               {{ day.day }}
             </span>
           </div>
@@ -457,7 +460,8 @@ onMounted(() => {
           <div class="flex flex-col gap-1 overflow-hidden" @click.stop>
             <div v-for="todo in getTodosForDate(day.dateStr)" :key="todo.id"
               class="tag-todo px-2 py-0.5 rounded text-xs whitespace-nowrap overflow-hidden cursor-pointer transition-colors"
-              :class="getStatusClass(todo.status)" @click="openEditDialog(day.dateStr, todo)">
+              :class="getStatusClass(todo.status)"
+              @click="openEditDialog(day.dateStr, todo)">
               {{ todo.text }}
             </div>
           </div>
