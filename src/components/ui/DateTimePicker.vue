@@ -27,10 +27,14 @@ const props = defineProps({
   min: {
     type: String,
     default: ''
+  },
+  clearable: {
+    type: Boolean,
+    default: false
   }
 })
 
-const emit = defineEmits(['update:modelValue', 'change'])
+const emit = defineEmits(['update:model-value', 'update:modelValue', 'change'])
 
 const isOpen = ref(false)
 const dropdownRef = ref(null)
@@ -88,8 +92,8 @@ const initValue = () => {
     selectedMinute.value = date.format('mm')
   } else {
     selectedDate.value = dayjs().format('YYYY-MM-DD')
-    selectedHour.value = ''
-    selectedMinute.value = ''
+    selectedHour.value = '00'
+    selectedMinute.value = '00'
   }
   tempSelectedDate.value = selectedDate.value
   tempSelectedHour.value = selectedHour.value
@@ -355,6 +359,19 @@ function cancel() {
   closeDropdown()
 }
 
+function clearValue() {
+  selectedDate.value = ''
+  selectedHour.value = ''
+  selectedMinute.value = ''
+  tempSelectedDate.value = ''
+  tempSelectedHour.value = ''
+  tempSelectedMinute.value = ''
+  emit('update:model-value', '')
+  emit('update:modelValue', '')
+  emit('change', '')
+  closeDropdown()
+}
+
 function emitValue() {
   let value = ''
   if (props.mode === 'date') {
@@ -369,16 +386,8 @@ function emitValue() {
     }
   }
   emit('update:modelValue', value)
+  emit('update:model-value', value)
   emit('change', value)
-}
-
-function clearValue(e) {
-  e.stopPropagation()
-  selectedDate.value = dayjs().format('YYYY-MM-DD')
-  selectedHour.value = ''
-  selectedMinute.value = ''
-  emit('update:modelValue', '')
-  emit('change', '')
 }
 
 function handleResize() {
@@ -402,7 +411,7 @@ defineExpose({
 </script>
 
 <template>
-  <div class="datetime-picker relative" v-click-outside="closeDropdown">
+  <div class="datetime-picker relative">
     <!-- 触发器 -->
     <div ref="triggerRef">
       <slot :toggle="toggleDropdown" :has-value="hasValue" :display-value="displayValue" :clear="clearValue">
@@ -411,7 +420,7 @@ defineExpose({
           :class="{ 'bg-primary/10 border-primary/30 text-primary': hasValue }">
           <Clock :size="14" />
           <span class="text-xs">{{ displayValue }}</span>
-          <X v-if="hasValue && !disabled" @click.stop="clearValue" :size="12"
+          <X v-if="hasValue && !disabled && clearable" @click.stop="clearValue" :size="12"
             class="ml-auto opacity-60 hover:opacity-100" />
           <svg v-else xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none"
             stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
@@ -556,15 +565,25 @@ defineExpose({
           </div>
 
           <!-- 底部按钮 -->
-          <div class="flex items-center justify-end gap-2 px-3 py-2 border-t border-base-200">
-            <button @click="cancel"
-              class="px-3 py-1 text-xs border border-base-200 rounded hover:bg-base-200 transition-colors">
-              取消
+          <div class="flex items-center justify-between px-3 py-2 border-t border-base-200">
+            <button
+              v-if="hasValue && clearable"
+              @click="clearValue"
+              class="px-3 py-1 text-xs text-error hover:bg-error/10 rounded transition-colors"
+            >
+              清空
             </button>
-            <button @click="confirm"
-              class="px-3 py-1 text-xs bg-primary text-primary-content rounded hover:bg-primary/90 transition-colors">
-              确认
-            </button>
+            <div v-else></div>
+            <div class="flex items-center gap-2">
+              <button @click="cancel"
+                class="px-3 py-1 text-xs border border-base-200 rounded hover:bg-base-200 transition-colors">
+                取消
+              </button>
+              <button @click="confirm"
+                class="px-3 py-1 text-xs bg-primary text-primary-content rounded hover:bg-primary/90 transition-colors">
+                确认
+              </button>
+            </div>
           </div>
         </div>
       </div>

@@ -1,7 +1,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
-import { Check, Clock } from 'lucide-vue-next'
+import { Check, Clock, X } from 'lucide-vue-next'
 import dayjs from 'dayjs'
 import dayjsLocale from 'dayjs/locale/zh-cn'
 import DateTimePicker from './ui/DateTimePicker.vue'
@@ -18,11 +18,11 @@ const loading = ref(false)
 
 // 状态颜色映射
 const STATUS_COLORS = {
-  'todo': { bg: '#9CA3AF', border: '#6B7280' },
-  'in-progress': { bg: '#3B82F6', border: '#2563EB' },
-  'completed': { bg: '#10B981', border: '#059669' },
-  'pending': { bg: '#F59E0B', border: '#D97706' },
-  'cancelled': { bg: '#EF4444', border: '#DC2626' }
+  'todo': '#6B7280',
+  'in-progress': '#3B82F6',
+  'completed': '#10B981',
+  'pending': '#F59E0B',
+  'cancelled': '#EF4444'
 }
 
 // 获取今日日期字符串
@@ -40,7 +40,6 @@ async function loadTodos() {
   loading.value = true
   try {
     const workDirectory = await getWorkDirectory()
-    // 调用新的后端接口，获取今日相关的待办事项
     const data = await invoke('get_today_todos', { 
       todayDate: today,
       workDirectory 
@@ -70,7 +69,7 @@ async function createTodo() {
     if (selectedReminderTime.value) {
       reminder = JSON.stringify({
         type: 'onetime',
-        repeat_time: selectedReminderTime.value
+        repeatTime: selectedReminderTime.value
       })
     }
 
@@ -126,7 +125,7 @@ async function deleteTodo(todo) {
 function getReminderTime(todo) {
   if (!todo.reminder) return null
   const reminder = todo.reminder
-  return reminder.reminder_time || reminder.repeatTime || null
+  return reminder.repeat_time || reminder.repeatTime || null
 }
 
 // 格式化提醒时间显示
@@ -157,26 +156,34 @@ onMounted(() => {
 
     <!-- 输入区域 -->
     <div class="px-6 py-4 border-b border-base-200">
-      <textarea
-        v-model="newTodoText"
-        placeholder="输入待办事项..."
-        class="w-full px-4 py-2.5 border border-base-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-transparent text-sm resize-none"
-        rows="2"
-      ></textarea>
-      <div class="flex items-center justify-between mt-3">
+      <div class="flex items-center gap-2">
+        <input
+          v-model="newTodoText"
+          @keyup.enter="createTodo"
+          type="text"
+          placeholder="输入待办事项，按回车创建..."
+          class="flex-1 px-3 py-2 border border-base-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-transparent text-sm h-[34px]"
+        />
         <DateTimePicker
           v-model="selectedReminderTime"
           mode="datetime"
           :min="dayjs().format('YYYY-MM-DDTHH:mm')"
-          placeholder="设置提醒"
-        />
-        <button
-          @click="createTodo"
-          :disabled="!newTodoText.trim()"
-          class="px-4 py-1.5 bg-primary text-primary-content rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm whitespace-nowrap"
+          :clearable="true"
         >
-          创建
-        </button>
+          <template #default="{ toggle }">
+            <button
+              @click="toggle"
+              class="rounded-md transition-colors flex-shrink-0 border border-base-200 h-[34px] w-[34px] flex items-center justify-center"
+              :class="{
+                'text-primary bg-primary/10 border-primary/30': !!selectedReminderTime,
+                'text-base-content/40 hover:text-primary hover:bg-primary/5 hover:border-primary/30': !selectedReminderTime
+              }"
+              title="设置提醒时间"
+            >
+              <Clock :size="16" />
+            </button>
+          </template>
+        </DateTimePicker>
       </div>
     </div>
 
@@ -195,22 +202,18 @@ onMounted(() => {
         <div
           v-for="todo in sortedTodos"
           :key="todo.id"
-          class="flex items-center gap-3 p-3 bg-base-100 border border-base-200 rounded-lg hover:border-base-300 transition-colors"
+          class="group flex items-start gap-3 p-3 bg-base-100 border border-base-200 rounded-lg hover:border-base-300 transition-colors"
         >
           <!-- 圆形 Checkbox -->
           <button
             @click="toggleTodoStatus(todo)"
             class="flex-shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all"
-            :class="{
-              'bg-opacity-100': todo.status === 'completed',
-              'border-base-300 hover:border-primary': todo.status !== 'completed'
+            :style="{
+              borderColor: todo.status === 'completed' ? 'rgba(16, 185, 129, 0.5)' : STATUS_COLORS[todo.status],
+              backgroundColor: 'transparent'
             }"
-            :style="todo.status !== 'completed' ? {
-              borderColor: getStatusColor(todo.status).border
-            } : {}"
           >
-            <Check v-if="todo.status === 'completed'" :size="12" class="text-white" />
-            <div v-else class="w-2 h-2 rounded-full transition-all" :style="{ backgroundColor: getStatusColor(todo.status).bg }"></div>
+            <div v-if="todo.status === 'completed'" class="w-2 h-2 rounded-full" style="background-color: #10B981"></div>
           </button>
 
           <!-- 待办内容 -->
@@ -225,7 +228,7 @@ onMounted(() => {
             </div>
 
             <!-- 提醒时间 -->
-            <div v-if="getReminderTime(todo)" class="flex items-center gap-1 mt-1 text-xs text-base-content/50">
+            <div v-if="getReminderTime(todo)" class="flex items-center gap-1 mt-1.5 text-xs text-base-content/50">
               <Clock :size="12" />
               {{ formatReminderTime(getReminderTime(todo)) }}
             </div>
@@ -234,13 +237,10 @@ onMounted(() => {
           <!-- 删除按钮 -->
           <button
             @click="deleteTodo(todo)"
-            class="flex-shrink-0 p-1 text-base-content/40 hover:text-error hover:bg-error/10 rounded transition-colors"
+            class="flex-shrink-0 p-1 text-base-content/40 hover:text-error hover:bg-error/10 rounded transition-colors opacity-0 group-hover:opacity-100"
             title="删除"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <line x1="18" y1="6" x2="6" y2="18"></line>
-              <line x1="6" y1="6" x2="18" y2="18"></line>
-            </svg>
+            <X :size="14" />
           </button>
         </div>
       </div>
