@@ -24,8 +24,8 @@ const emit = defineEmits(['month-change'])
 const currentYear = ref(props.year)
 const currentMonth = ref(props.month)
 const todos = ref({})
-const showAddDialog = ref(false)
-const showEditDialog = ref(false)
+const showTodoDialog = ref(false)
+const isEditing = ref(false)
 const selectedDate = ref('')
 const selectedTodo = ref(null)
 const newTodoText = ref('')
@@ -49,7 +49,9 @@ const REMINDER_TYPES = [
 // 重复规则类型
 const REPEAT_RULES = [
   { value: 'day', label: '按天' },
-  { value: 'weekday', label: '按星期' }
+  { value: 'weekday', label: '按星期' },
+  { value: 'month', label: '按月' },
+  { value: 'year', label: '按年' }
 ]
 
 // 星期选项
@@ -71,6 +73,9 @@ const formReminderTime = ref('')
 const formRepeatType = ref('day')
 const formRepeatInterval = ref(1)
 const formRepeatWeekdays = ref([1, 3, 5])
+const formRepeatMonthDays = ref([1]) // 按月重复：每月几号
+const formRepeatYearMonth = ref(1) // 按年重复：几月
+const formRepeatYearDay = ref(1) // 按年重复：几号
 
 // 从 localStorage 加载待办事项
 function loadTodos() {
@@ -111,6 +116,11 @@ function addTodo() {
     todos.value[dateStr] = []
   }
 
+  const repeatRule = formReminderType.value === 'repeat' ? {
+    type: formRepeatType.value,
+    value: getRepeatRuleValue()
+  } : undefined
+
   const todo = {
     id: Date.now(),
     text: newTodoText.value,
@@ -119,18 +129,12 @@ function addTodo() {
       enabled: true,
       type: formReminderType.value,
       datetime: formReminderType.value === 'once' ? formReminderTime.value : undefined,
-      repeatRule: formReminderType.value === 'repeat' ? {
-        type: formRepeatType.value,
-        value: formRepeatType.value === 'day' ? formRepeatInterval.value : formRepeatWeekdays.value
-      } : undefined,
+      repeatRule: repeatRule,
       nextReminder: calculateNextReminder({
         enabled: true,
         type: formReminderType.value,
         datetime: formReminderType.value === 'once' ? formReminderTime.value : undefined,
-        repeatRule: formReminderType.value === 'repeat' ? {
-          type: formRepeatType.value,
-          value: formRepeatType.value === 'day' ? formRepeatInterval.value : formRepeatWeekdays.value
-        } : undefined
+        repeatRule: repeatRule
       })
     } : undefined,
     createdAt: dayjs().toISOString(),
@@ -140,6 +144,22 @@ function addTodo() {
   todos.value[dateStr].push(todo)
   saveTodos()
   resetForm()
+}
+
+// 获取重复规则值
+function getRepeatRuleValue() {
+  switch (formRepeatType.value) {
+    case 'day':
+      return formRepeatInterval.value
+    case 'weekday':
+      return formRepeatWeekdays.value
+    case 'month':
+      return formRepeatMonthDays.value
+    case 'year':
+      return { month: formRepeatYearMonth.value, day: formRepeatYearDay.value }
+    default:
+      return null
+  }
 }
 
 // 计算下次提醒时间
@@ -169,6 +189,34 @@ function calculateNextReminder(reminder) {
         }
       }
     }
+
+    if (rule.type === 'month') {
+      const days = rule.value || [1]
+      const currentDay = now.date()
+      // 找本月下一个目标日期
+      const nextDay = days.find(d => d > currentDay)
+      if (nextDay) {
+        return now.date(nextDay).set('hour', 9).set('minute', 0).toISOString()
+      } else {
+        // 下个月的第一天
+        return now.add(1, 'month').date(days[0]).set('hour', 9).set('minute', 0).toISOString()
+      }
+    }
+
+    if (rule.type === 'year') {
+      const targetMonth = rule.value.month || 1
+      const targetDay = rule.value.day || 1
+      const currentMonth = now.month() + 1
+      const currentDay = now.date()
+
+      // 判断今年是否还有这个日期
+      if (targetMonth > currentMonth || (targetMonth === currentMonth && targetDay >= currentDay)) {
+        return now.month(targetMonth - 1).date(targetDay).set('hour', 9).set('minute', 0).toISOString()
+      } else {
+        // 明年
+        return now.add(1, 'year').month(targetMonth - 1).date(targetDay).set('hour', 9).set('minute', 0).toISOString()
+      }
+    }
   }
 
   return undefined
@@ -184,6 +232,9 @@ function resetForm() {
   formRepeatType.value = 'day'
   formRepeatInterval.value = 1
   formRepeatWeekdays.value = [1, 3, 5]
+  formRepeatMonthDays.value = [1]
+  formRepeatYearMonth.value = 1
+  formRepeatYearDay.value = 1
 }
 
 // 切换星期选择
@@ -196,66 +247,132 @@ function toggleWeekday(value) {
   }
 }
 
-// 打开编辑待办对话框
-function openEditDialog(dateStr, todo) {
-  selectedDate.value = dateStr
-  selectedTodo.value = todo
-  newTodoText.value = todo.text
-  formStatus.value = todo.status || 'todo'
-
-  if (todo.reminder && todo.reminder.enabled) {
-    formReminderEnabled.value = true
-    formReminderType.value = todo.reminder.type || 'once'
-    formReminderTime.value = todo.reminder.datetime || ''
-    if (todo.reminder.repeatRule) {
-      formRepeatType.value = todo.reminder.repeatRule.type || 'day'
-      formRepeatInterval.value = typeof todo.reminder.repeatRule.value === 'number' ? todo.reminder.repeatRule.value : 1
-      formRepeatWeekdays.value = Array.isArray(todo.reminder.repeatRule.value) ? todo.reminder.repeatRule.value : [1, 3, 5]
-    }
+// 切换月份日期选择
+function toggleMonthDay(value) {
+  const index = formRepeatMonthDays.value.indexOf(value)
+  if (index > -1) {
+    formRepeatMonthDays.value.splice(index, 1)
   } else {
-    formReminderEnabled.value = false
+    formRepeatMonthDays.value.push(value)
   }
-
-  showEditDialog.value = true
 }
 
-// 更新待办事项
-function updateTodo() {
-  if (!newTodoText.value.trim() || !selectedTodo.value) return
+// 打开待办对话框
+function openTodoDialog(dateStr, todo = null) {
+  selectedDate.value = dateStr
+  isEditing.value = !!todo
+  selectedTodo.value = todo
+
+  if (todo) {
+    // 编辑模式
+    newTodoText.value = todo.text
+    formStatus.value = todo.status || 'todo'
+
+    if (todo.reminder && todo.reminder.enabled) {
+      formReminderEnabled.value = true
+      formReminderType.value = todo.reminder.type || 'once'
+      formReminderTime.value = todo.reminder.datetime || ''
+      if (todo.reminder.repeatRule) {
+        formRepeatType.value = todo.reminder.repeatRule.type || 'day'
+        const rule = todo.reminder.repeatRule
+
+        if (rule.type === 'day') {
+          formRepeatInterval.value = typeof rule.value === 'number' ? rule.value : 1
+        } else if (rule.type === 'weekday') {
+          formRepeatWeekdays.value = Array.isArray(rule.value) ? rule.value : [1, 3, 5]
+        } else if (rule.type === 'month') {
+          formRepeatMonthDays.value = Array.isArray(rule.value) ? rule.value : [1]
+        } else if (rule.type === 'year') {
+          formRepeatYearMonth.value = rule.value?.month || 1
+          formRepeatYearDay.value = rule.value?.day || 1
+        }
+      }
+    } else {
+      formReminderEnabled.value = false
+    }
+  } else {
+    // 新增模式
+    resetForm()
+  }
+
+  showTodoDialog.value = true
+}
+
+// 关闭待办对话框
+function closeTodoDialog() {
+  showTodoDialog.value = false
+  selectedTodo.value = null
+  resetForm()
+}
+
+// 保存待办（新增或编辑）
+function saveTodo() {
+  if (!newTodoText.value.trim()) return
 
   const dateStr = selectedDate.value
-  const todo = todos.value[dateStr]?.find(t => t.id === selectedTodo.value.id)
-  if (todo) {
-    todo.text = newTodoText.value
-    todo.status = formStatus.value
-    todo.updatedAt = dayjs().toISOString()
+  const repeatRule = formReminderEnabled.value && formReminderType.value === 'repeat' ? {
+    type: formRepeatType.value,
+    value: getRepeatRuleValue()
+  } : undefined
 
-    if (formReminderEnabled.value) {
-      todo.reminder = {
+  if (isEditing.value && selectedTodo.value) {
+    // 更新现有待办
+    const todo = todos.value[dateStr]?.find(t => t.id === selectedTodo.value.id)
+    if (todo) {
+      todo.text = newTodoText.value
+      todo.status = formStatus.value
+      todo.updatedAt = dayjs().toISOString()
+
+      if (formReminderEnabled.value) {
+        todo.reminder = {
+          enabled: true,
+          type: formReminderType.value,
+          datetime: formReminderType.value === 'once' ? formReminderTime.value : undefined,
+          repeatRule: repeatRule,
+          nextReminder: calculateNextReminder({
+            enabled: true,
+            type: formReminderType.value,
+            datetime: formReminderType.value === 'once' ? formReminderTime.value : undefined,
+            repeatRule: repeatRule
+          })
+        }
+      } else {
+        todo.reminder = undefined
+      }
+
+      saveTodos()
+    }
+  } else {
+    // 添加新待办
+    if (!todos.value[dateStr]) {
+      todos.value[dateStr] = []
+    }
+
+    const todo = {
+      id: Date.now(),
+      text: newTodoText.value,
+      status: formStatus.value,
+      reminder: formReminderEnabled.value ? {
         enabled: true,
         type: formReminderType.value,
         datetime: formReminderType.value === 'once' ? formReminderTime.value : undefined,
-        repeatRule: formReminderType.value === 'repeat' ? {
-          type: formRepeatType.value,
-          value: formRepeatType.value === 'day' ? formRepeatInterval.value : formRepeatWeekdays.value
-        } : undefined,
+        repeatRule: repeatRule,
         nextReminder: calculateNextReminder({
           enabled: true,
           type: formReminderType.value,
           datetime: formReminderType.value === 'once' ? formReminderTime.value : undefined,
-          repeatRule: formReminderType.value === 'repeat' ? {
-            type: formRepeatType.value,
-            value: formRepeatType.value === 'day' ? formRepeatInterval.value : formRepeatWeekdays.value
-          } : undefined
+          repeatRule: repeatRule
         })
-      }
-    } else {
-      todo.reminder = undefined
+      } : undefined,
+      createdAt: dayjs().toISOString(),
+      updatedAt: dayjs().toISOString()
     }
 
+    todos.value[dateStr].push(todo)
     saveTodos()
   }
-  closeEditDialog()
+
+  closeTodoDialog()
 }
 
 // 删除待办事项
@@ -270,27 +387,7 @@ function deleteTodo() {
     }
     saveTodos()
   }
-  closeEditDialog()
-}
-
-// 打开添加待办对话框
-function openAddDialog(dateStr) {
-  selectedDate.value = dateStr
-  newTodoText.value = ''
-  showAddDialog.value = true
-}
-
-// 关闭添加待办对话框
-function closeAddDialog() {
-  showAddDialog.value = false
-  resetForm()
-}
-
-// 关闭编辑对话框
-function closeEditDialog() {
-  showEditDialog.value = false
-  selectedTodo.value = null
-  resetForm()
+  closeTodoDialog()
 }
 
 // 上个月
@@ -447,7 +544,7 @@ onMounted(() => {
             'bg-base-content/5': !day.isCurrentMonth,
             'bg-primary/5': day.isToday
           }"
-          @click.self="openAddDialog(day.dateStr)">
+          @click.self="openTodoDialog(day.dateStr)">
           <!-- 日期显示 -->
           <div class="flex items-center justify-between mb-2">
             <span class="text-sm font-medium"
@@ -465,7 +562,7 @@ onMounted(() => {
             <div v-for="todo in getTodosForDate(day.dateStr)" :key="todo.id"
               class="tag-todo px-2 py-0.5 rounded text-xs cursor-pointer transition-colors"
               :class="getStatusClass(todo.status)"
-              @click="openEditDialog(day.dateStr, todo)">
+              @click="openTodoDialog(day.dateStr, todo)">
               <div class="overflow-hidden text-ellipsis whitespace-nowrap">
                 {{ todo.text }}
               </div>
@@ -475,17 +572,17 @@ onMounted(() => {
       </div>
     </div>
 
-    <!-- 添加待办对话框 -->
-    <div v-if="showAddDialog"
+    <!-- 待办对话框 -->
+    <div v-if="showTodoDialog"
       class="fixed inset-0 bg-base-content/20 backdrop-blur-sm flex items-center justify-center z-50"
-      @click.self="closeAddDialog">
+      @click.self="closeTodoDialog">
       <div class="bg-base-100 rounded-lg shadow-xl p-6 w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
         <h3 class="text-lg font-semibold text-base-content mb-4">
-          添加待办 - {{ selectedDate }}
+          {{ isEditing ? '编辑待办' : '添加待办' }} - {{ selectedDate }}
         </h3>
 
         <!-- 内容输入 -->
-        <textarea v-model="newTodoText" @keyup.enter.exact="addTodo" @keyup.enter.shift.exact.prevent
+        <textarea v-model="newTodoText" @keyup.enter.exact="saveTodo" @keyup.enter.shift.exact.prevent
           placeholder="输入待办事项..."
           class="w-full min-h-[80px] px-3 py-2 border border-base-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-transparent resize-none text-sm mb-4"></textarea>
 
@@ -531,7 +628,7 @@ onMounted(() => {
             <!-- 重复提醒 -->
             <div v-if="formReminderType === 'repeat'">
               <label class="block text-xs text-base-content/60 mb-1.5">重复规则</label>
-              <div class="flex gap-2 mb-2">
+              <div class="flex flex-wrap gap-2 mb-2">
                 <button v-for="rule in REPEAT_RULES" :key="rule.value" @click="formRepeatType = rule.value"
                   class="px-3 py-1.5 rounded text-xs border transition-colors"
                   :class="formRepeatType === rule.value ? 'bg-primary/10 text-primary border-primary/30' : 'bg-base-100 text-base-content/50 border-base-200'">
@@ -557,101 +654,31 @@ onMounted(() => {
                   </button>
                 </div>
               </div>
-            </div>
-          </div>
-        </div>
 
-        <div class="flex justify-end gap-2 mt-6">
-          <Button variant="secondary" size="sm" @click="closeAddDialog">
-            取消
-          </Button>
-          <Button variant="primary" size="sm" @click="addTodo">
-            添加
-          </Button>
-        </div>
-      </div>
-    </div>
-
-    <!-- 编辑待办对话框 -->
-    <div v-if="showEditDialog"
-      class="fixed inset-0 bg-base-content/20 backdrop-blur-sm flex items-center justify-center z-50"
-      @click.self="closeEditDialog">
-      <div class="bg-base-100 rounded-lg shadow-xl p-6 w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
-        <h3 class="text-lg font-semibold text-base-content mb-4">
-          编辑待办 - {{ selectedDate }}
-        </h3>
-
-        <!-- 内容输入 -->
-        <textarea v-model="newTodoText" @keyup.enter.exact="updateTodo" @keyup.enter.shift.exact.prevent
-          placeholder="输入待办事项..."
-          class="w-full min-h-[80px] px-3 py-2 border border-base-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-transparent resize-none text-sm mb-4"></textarea>
-
-        <!-- 状态选择 -->
-        <div class="mb-4">
-          <label class="block text-sm font-medium text-base-content mb-2">状态</label>
-          <div class="flex flex-wrap gap-2">
-            <button v-for="status in STATUS_OPTIONS" :key="status.value" @click="formStatus = status.value"
-              class="px-3 py-1.5 rounded text-xs border transition-colors"
-              :class="formStatus === status.value ? status.color : 'bg-base-100 text-base-content/50 border-base-200'">
-              {{ status.label }}
-            </button>
-          </div>
-        </div>
-
-        <!-- 提醒设置 -->
-        <div class="mb-4">
-          <div class="flex items-center justify-between mb-2">
-            <label class="text-sm font-medium text-base-content">提醒设置</label>
-            <Toggle v-model="formReminderEnabled" size="sm" />
-          </div>
-
-          <div v-if="formReminderEnabled" class="space-y-3 ml-2 pl-4 border-l-2 border-base-200">
-            <!-- 提醒类型 -->
-            <div>
-              <label class="block text-xs text-base-content/60 mb-1.5">提醒类型</label>
-              <div class="flex gap-2">
-                <button v-for="type in REMINDER_TYPES.slice(1)" :key="type.value" @click="formReminderType = type.value"
-                  class="px-3 py-1.5 rounded text-xs border transition-colors"
-                  :class="formReminderType === type.value ? 'bg-primary/10 text-primary border-primary/30' : 'bg-base-100 text-base-content/50 border-base-200'">
-                  {{ type.label }}
-                </button>
-              </div>
-            </div>
-
-            <!-- 一次性提醒 -->
-            <div v-if="formReminderType === 'once'">
-              <label class="block text-xs text-base-content/60 mb-1.5">提醒时间</label>
-              <input type="datetime-local" v-model="formReminderTime"
-                class="w-full px-3 py-1.5 border border-base-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/50">
-            </div>
-
-            <!-- 重复提醒 -->
-            <div v-if="formReminderType === 'repeat'">
-              <label class="block text-xs text-base-content/60 mb-1.5">重复规则</label>
-              <div class="flex gap-2 mb-2">
-                <button v-for="rule in REPEAT_RULES" :key="rule.value" @click="formRepeatType = rule.value"
-                  class="px-3 py-1.5 rounded text-xs border transition-colors"
-                  :class="formRepeatType === rule.value ? 'bg-primary/10 text-primary border-primary/30' : 'bg-base-100 text-base-content/50 border-base-200'">
-                  {{ rule.label }}
-                </button>
-              </div>
-
-              <!-- 按天重复 -->
-              <div v-if="formRepeatType === 'day'" class="flex items-center gap-2">
-                <span class="text-xs text-base-content/60">每隔</span>
-                <input type="number" v-model="formRepeatInterval" min="1" max="365"
-                  class="w-16 px-2 py-1 border border-base-200 rounded text-sm text-center">
-                <span class="text-xs text-base-content/60">天</span>
-              </div>
-
-              <!-- 按星期重复 -->
-              <div v-if="formRepeatType === 'weekday'">
+              <!-- 按月重复 -->
+              <div v-if="formRepeatType === 'month'">
+                <label class="block text-xs text-base-content/60 mb-1.5">每月</label>
                 <div class="flex flex-wrap gap-1.5">
-                  <button v-for="wd in WEEKDAYS" :key="wd.value" @click="toggleWeekday(wd.value)"
+                  <button v-for="d in 31" :key="d" @click="toggleMonthDay(d)"
                     class="w-8 h-8 rounded text-xs border transition-colors"
-                    :class="formRepeatWeekdays.includes(wd.value) ? 'bg-primary text-primary-content border-primary' : 'bg-base-100 text-base-content/50 border-base-200'">
-                    {{ wd.label }}
+                    :class="formRepeatMonthDays.includes(d) ? 'bg-primary text-primary-content border-primary' : 'bg-base-100 text-base-content/50 border-base-200'">
+                    {{ d }}
                   </button>
+                </div>
+              </div>
+
+              <!-- 按年重复 -->
+              <div v-if="formRepeatType === 'year'" class="space-y-2">
+                <div class="flex items-center gap-2">
+                  <span class="text-xs text-base-content/60">每年</span>
+                  <select v-model="formRepeatYearMonth"
+                    class="px-2 py-1 border border-base-200 rounded text-sm text-center">
+                    <option v-for="m in 12" :key="m" :value="m">{{ m }}月</option>
+                  </select>
+                  <select v-model="formRepeatYearDay"
+                    class="px-2 py-1 border border-base-200 rounded text-sm text-center">
+                    <option v-for="d in 31" :key="d" :value="d">{{ d }}日</option>
+                  </select>
                 </div>
               </div>
             </div>
@@ -659,15 +686,16 @@ onMounted(() => {
         </div>
 
         <div class="flex justify-between items-center mt-6">
-          <Button variant="ghost" size="sm" @click="deleteTodo" class="text-error hover:text-error hover:bg-error/10">
+          <Button v-if="isEditing" variant="ghost" size="sm" @click="deleteTodo" class="text-error hover:text-error hover:bg-error/10">
             删除
           </Button>
+          <div v-else></div>
           <div class="flex gap-2">
-            <Button variant="secondary" size="sm" @click="closeEditDialog">
+            <Button variant="secondary" size="sm" @click="closeTodoDialog">
               取消
             </Button>
-            <Button variant="primary" size="sm" @click="updateTodo">
-              保存
+            <Button variant="primary" size="sm" @click="saveTodo">
+              {{ isEditing ? '保存' : '添加' }}
             </Button>
           </div>
         </div>
