@@ -38,7 +38,7 @@ const emit = defineEmits(['update:modelValue', 'change', 'focus', 'blur'])
 const isOpen = ref(false)
 const selectRef = ref(null)
 const dropdownRef = ref(null)
-const dropdownPosition = ref({ top: 0, left: 0, width: 0, showAbove: false, triggerTop: 0, triggerBottom: 0, viewportHeight: 0 })
+const dropdownPosition = ref({ top: 0, left: 0, width: 0, showAbove: false, triggerTop: 0, triggerBottom: 0, dropdownHeight: 0 })
 
 const selectedOption = computed(() => {
   if (!props.modelValue) return null
@@ -54,12 +54,27 @@ const displayLabel = computed(() => {
 
 const dropdownStyle = computed(() => {
   const position = dropdownPosition.value
-  return {
-    top: position.showAbove ? 'auto' : `${position.top}px`,
-    bottom: position.showAbove ? `${position.viewportHeight - position.triggerTop + 4}px` : 'auto',
-    left: `${position.left}px`,
-    width: `${position.width}px`,
-    zIndex: 9999
+  const gap = 4 // 统一的间距
+  if (position.showAbove) {
+    // 显示在上方：top = 触发按钮顶部 - 下拉框高度 - 间距
+    return {
+      top: `${position.triggerTop - position.dropdownHeight - gap}px`,
+      left: `${position.left}px`,
+      width: `${position.width}px`,
+      zIndex: 9999,
+      boxSizing: 'border-box',
+      margin: 0
+    }
+  } else {
+    // 显示在下方：top = 触发按钮底部 + 间距
+    return {
+      top: `${position.top}px`,
+      left: `${position.left}px`,
+      width: `${position.width}px`,
+      zIndex: 9999,
+      boxSizing: 'border-box',
+      margin: 0
+    }
   }
 })
 
@@ -78,29 +93,27 @@ function updateDropdownPosition() {
     const rect = selectRef.value.getBoundingClientRect()
     const dropdownHeight = dropdownRef.value.scrollHeight
     const viewportHeight = window.innerHeight
-    const scrollTop = window.pageYOffset || document.documentElement.scrollTop
-    const scrollLeft = window.pageXOffset || document.documentElement.scrollLeft
-
-    // 计算可用空间
-    const spaceBelow = viewportHeight - rect.bottom - 20 // 20px 底部留白
-    const spaceAbove = rect.top - 20 // 20px 顶部留白
 
     // 下拉框实际高度（限制最大高度）
     const maxDropdownHeight = 240
     const actualDropdownHeight = Math.min(dropdownHeight, maxDropdownHeight)
+    const gap = 8 // 增加间距到 8px
+
+    // 计算可用空间
+    const spaceBelow = viewportHeight - rect.bottom - gap
+    const spaceAbove = rect.top - gap
 
     // 判断是显示在上面还是下面
-    // 只有当下方空间不足以容纳下拉框时，才考虑显示在上方
     const shouldShowAbove = spaceBelow < actualDropdownHeight && spaceAbove > spaceBelow
 
     dropdownPosition.value = {
-      top: rect.bottom + 4,
+      top: rect.bottom + gap, // 用于下方显示
       left: rect.left,
       width: rect.width,
       showAbove: shouldShowAbove,
       triggerTop: rect.top,
       triggerBottom: rect.bottom,
-      viewportHeight: viewportHeight
+      dropdownHeight: actualDropdownHeight
     }
   }
 }
@@ -190,7 +203,7 @@ onUnmounted(() => {
           v-if="isOpen"
           ref="dropdownRef"
           :class="[
-            'fixed rounded-lg border shadow-lg overflow-hidden',
+            'fixed rounded-lg border shadow-lg overflow-hidden m-0',
             'bg-base-100 border-base-300'
           ]"
           :style="dropdownStyle"
