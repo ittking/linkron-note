@@ -38,7 +38,7 @@ const emit = defineEmits(['update:modelValue', 'change', 'focus', 'blur'])
 const isOpen = ref(false)
 const selectRef = ref(null)
 const dropdownRef = ref(null)
-const dropdownPosition = ref({ top: 0, left: 0, width: 0, showAbove: false, triggerTop: 0, triggerBottom: 0 })
+const dropdownPosition = ref({ top: 0, left: 0, width: 0, showAbove: false, triggerTop: 0, triggerBottom: 0, viewportHeight: 0 })
 
 const selectedOption = computed(() => {
   if (!props.modelValue) return null
@@ -56,7 +56,7 @@ const dropdownStyle = computed(() => {
   const position = dropdownPosition.value
   return {
     top: position.showAbove ? 'auto' : `${position.top}px`,
-    bottom: position.showAbove ? `${window.innerHeight - position.triggerTop + 4}px` : 'auto',
+    bottom: position.showAbove ? `${position.viewportHeight - position.triggerTop + 4}px` : 'auto',
     left: `${position.left}px`,
     width: `${position.width}px`,
     zIndex: 9999
@@ -99,7 +99,8 @@ function updateDropdownPosition() {
       width: rect.width,
       showAbove: shouldShowAbove,
       triggerTop: rect.top,
-      triggerBottom: rect.bottom
+      triggerBottom: rect.bottom,
+      viewportHeight: viewportHeight
     }
   }
 }
