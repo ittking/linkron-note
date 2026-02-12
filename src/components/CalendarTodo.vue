@@ -2,6 +2,9 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { ChevronLeft, ChevronRight, Plus, X } from 'lucide-vue-next'
 import dayjs from 'dayjs'
+import Button from './ui/Button.vue'
+import Toggle from './ui/Toggle.vue'
+import Input from './ui/Input.vue'
 
 dayjs.locale('zh-cn')
 
@@ -414,15 +417,15 @@ onMounted(() => {
   <div class="calendar-todo h-full flex flex-col bg-base-100">
     <!-- 头部：月份导航 -->
     <div class="flex items-center justify-between px-6 py-4 border-b border-base-200">
-      <button @click="prevMonth" class="p-2 rounded hover:bg-base-200 transition-colors">
-        <ChevronLeft :size="20" class="text-base-content/70" />
-      </button>
+      <Button variant="ghost" size="sm" @click="prevMonth">
+        <ChevronLeft :size="20" />
+      </Button>
       <h2 class="text-lg font-semibold text-base-content">
         {{ currentYear }}年{{ currentMonth }}月
       </h2>
-      <button @click="nextMonth" class="p-2 rounded hover:bg-base-200 transition-colors">
-        <ChevronRight :size="20" class="text-base-content/70" />
-      </button>
+      <Button variant="ghost" size="sm" @click="nextMonth">
+        <ChevronRight :size="20" />
+      </Button>
     </div>
 
     <!-- 日历主体 -->
@@ -500,13 +503,7 @@ onMounted(() => {
         <div class="mb-4">
           <div class="flex items-center justify-between mb-2">
             <label class="text-sm font-medium text-base-content">提醒设置</label>
-            <button @click="formReminderEnabled = !formReminderEnabled"
-              class="relative inline-flex h-5 w-9 items-center rounded-full transition-colors"
-              :class="formReminderEnabled ? 'bg-primary' : 'bg-base-200'">
-              <span class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform"
-                :class="formReminderEnabled ? 'translate-x-5' : 'translate-x-0.5'">
-              </span>
-            </button>
+            <Toggle v-model="formReminderEnabled" size="sm" />
           </div>
 
           <div v-if="formReminderEnabled" class="space-y-3 ml-2 pl-4 border-l-2 border-base-200">
@@ -563,14 +560,12 @@ onMounted(() => {
         </div>
 
         <div class="flex justify-end gap-2 mt-6">
-          <button @click="closeAddDialog"
-            class="px-4 py-2 text-sm text-base-content/70 hover:bg-base-200 rounded-lg transition-colors">
+          <Button variant="secondary" size="sm" @click="closeAddDialog">
             取消
-          </button>
-          <button @click="addTodo"
-            class="px-4 py-2 text-sm bg-primary text-primary-content rounded-lg hover:bg-primary/90 transition-colors">
+          </Button>
+          <Button variant="primary" size="sm" @click="addTodo">
             添加
-          </button>
+          </Button>
         </div>
       </div>
     </div>
@@ -605,13 +600,7 @@ onMounted(() => {
         <div class="mb-4">
           <div class="flex items-center justify-between mb-2">
             <label class="text-sm font-medium text-base-content">提醒设置</label>
-            <button @click="formReminderEnabled = !formReminderEnabled"
-              class="relative inline-flex h-5 w-9 items-center rounded-full transition-colors"
-              :class="formReminderEnabled ? 'bg-primary' : 'bg-base-200'">
-              <span class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform"
-                :class="formReminderEnabled ? 'translate-x-5' : 'translate-x-0.5'">
-              </span>
-            </button>
+            <Toggle v-model="formReminderEnabled" size="sm" />
           </div>
 
           <div v-if="formReminderEnabled" class="space-y-3 ml-2 pl-4 border-l-2 border-base-200">
@@ -667,21 +656,16 @@ onMounted(() => {
           </div>
         </div>
 
-        <div class="flex justify-between gap-2 mt-6">
-          <button @click="deleteTodo"
-            class="px-4 py-2 text-sm text-error hover:bg-error/10 rounded-lg transition-colors">
+        <div class="flex justify-end gap-2 mt-6">
+          <Button variant="secondary" size="sm" @click="closeEditDialog">
+            取消
+          </Button>
+          <Button variant="error" size="sm" @click="deleteTodo">
             删除
-          </button>
-          <div class="flex gap-2">
-            <button @click="closeEditDialog"
-              class="px-4 py-2 text-sm text-base-content/70 hover:bg-base-200 rounded-lg transition-colors">
-              取消
-            </button>
-            <button @click="updateTodo"
-              class="px-4 py-2 text-sm bg-primary text-primary-content rounded-lg hover:bg-primary/90 transition-colors">
-              保存
-            </button>
-          </div>
+          </Button>
+          <Button variant="primary" size="sm" @click="updateTodo">
+            保存
+          </Button>
         </div>
       </div>
     </div>
