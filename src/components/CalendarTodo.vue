@@ -610,7 +610,7 @@ onMounted(() => {
         <!-- 内容输入 -->
         <textarea v-model="newTodoText" @keyup.enter.exact="saveTodo" @keyup.enter.shift.exact.prevent
           placeholder="输入待办事项..."
-          class="w-full min-h-[80px] px-3 py-2 border border-base-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-transparent resize-none text-sm mb-4"></textarea>
+          class="w-full min-h-[80px] px-3 py-2 border border-primary/50 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-transparent resize-none text-sm mb-4"></textarea>
 
         <!-- 状态选择 -->
         <div class="mb-4">
