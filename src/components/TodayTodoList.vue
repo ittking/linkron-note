@@ -48,6 +48,16 @@ watch(selectedDate, () => {
   emit('date-change', selectedDate.value)
 })
 
+// 辅助函数：序列化 reminder 对象
+function stringifyReminder(reminderObj) {
+  if (!reminderObj) return null
+  try {
+    return JSON.stringify(reminderObj)
+  } catch {
+    return null
+  }
+}
+
 // 状态颜色映射
 const STATUS_COLORS = {
   'todo': '#6B7280',
@@ -211,17 +221,11 @@ function updateTodoText(todo) {
     return
   }
 
-  // 保持原有的提醒配置不变
-  let reminder = null
-  if (todo.reminder) {
-    reminder = JSON.stringify(todo.reminder)
-  }
-
   emit('update', {
     id: todo.id,
     text: editingTodoText.value.trim(),
     status: todo.status,
-    reminder
+    reminder: stringifyReminder(todo.reminder)
   })
 
   cancelEditing()
@@ -233,21 +237,7 @@ function openEditDialog(todo) {
 }
 
 // 后端已排序，直接使用
-const sortedTodos = computed(() => {
-  return [...props.todos].sort((a, b) => {
-    // 先按状态排序：已完成（completed、cancelled）在后
-    const aCompleted = a.status === 'completed' || a.status === 'cancelled'
-    const bCompleted = b.status === 'completed' || b.status === 'cancelled'
-
-    if (aCompleted && !bCompleted) return 1  // a完成，b未完成，b在前
-    if (!aCompleted && bCompleted) return -1  // a未完成，b完成，a在前
-
-    // 同状态按创建时间排序（新的在前）
-    const aTime = new Date(a.created_at).getTime()
-    const bTime = new Date(b.created_at).getTime()
-    return bTime - aTime
-  })
-})
+const sortedTodos = computed(() => props.todos)
 </script>
 
 <template>
@@ -305,11 +295,15 @@ const sortedTodos = computed(() => {
           <!-- 圆形 Checkbox -->
           <button @click="toggleTodoStatus(todo)"
             class="flex-shrink-0 w-4 h-4 rounded-full border-2 flex items-center justify-center transition-all" :style="{
-              borderColor: todo.status === 'completed' ? 'rgba(16, 185, 129, 0.5)' : STATUS_COLORS[todo.status],
+              borderColor: todo.status === 'completed' ? 'rgba(16, 185, 129, 0.5)' : 
+                       todo.status === 'cancelled' ? 'rgba(239, 68, 68, 0.5)' :
+                       todo.status === 'pending' ? 'rgba(245, 158, 11, 0.5)' :
+                       STATUS_COLORS[todo.status],
               backgroundColor: 'transparent'
             }">
-            <div v-if="todo.status === 'completed'" class="w-1.5 h-1.5 rounded-full" style="background-color: #10B981">
-            </div>
+            <div v-if="todo.status === 'completed'" class="w-1.5 h-1.5 rounded-full" style="background-color: #10B981"></div>
+            <div v-else-if="todo.status === 'cancelled'" class="w-1.5 h-1.5 rounded-full" style="background-color: #EF4444"></div>
+            <div v-else-if="todo.status === 'pending'" class="w-1.5 h-1.5 rounded-full" style="background-color: #F59E0B"></div>
           </button>
 
           <!-- 待办内容 -->
@@ -321,7 +315,7 @@ const sortedTodos = computed(() => {
             <!-- 显示模式 -->
             <div v-else @click="todo.status !== 'completed' && todo.status !== 'cancelled' && startEditing(todo)"
               class="text-sm cursor-pointer" :class="{
-                'line-through opacity-60': todo.status === 'completed' || todo.status === 'cancelled'
+                'line-through opacity-60': todo.status === 'completed' || todo.status === 'cancelled' || todo.status === 'pending'
               }">
               {{ todo.text }}
             </div>

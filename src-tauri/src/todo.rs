@@ -403,25 +403,35 @@ pub fn get_today_todos(conn: &Connection, today_date: &str) -> SqliteResult<Vec<
         })
     })?.collect::<SqliteResult<Vec<_>>>()?;
 
-    // 排序：未完成的在前，已完成的在后；同状态按创建时间排序（新的在前）
+    // 排序：未完成 > 进行中 > 暂停 > 已取消 > 已完成；同状态按创建时间排序（新的在前）
     result.sort_by(|a, b| {
-        // 先按状态排序：已完成（completed、cancelled）在后
-        let a_completed = a.status == "completed" || a.status == "cancelled";
-        let b_completed = b.status == "completed" || b.status == "cancelled";
-        
-        match (a_completed, b_completed) {
-            (true, false) => std::cmp::Ordering::Greater,  // a完成，b未完成，b在前
-            (false, true) => std::cmp::Ordering::Less,     // a未完成，b完成，a在前
-            _ => {
-                // 同状态按创建时间排序（新的在前）
-                let a_time = chrono::DateTime::parse_from_rfc3339(&a.created_at)
-                    .unwrap_or_else(|_| chrono::Utc::now().into())
-                    .timestamp();
-                let b_time = chrono::DateTime::parse_from_rfc3339(&b.created_at)
-                    .unwrap_or_else(|_| chrono::Utc::now().into())
-                    .timestamp();
-                b_time.cmp(&a_time)
+        // 定义状态优先级：数字越小优先级越高
+        fn status_priority(status: &str) -> i32 {
+            match status {
+                "todo" => 1,           // 未完成 - 最高优先级
+                "in-progress" => 2,    // 进行中
+                "pending" => 3,        // 暂停
+                "cancelled" => 4,      // 已取消
+                "completed" => 5,      // 已完成 - 最低优先级
+                _ => 6,                // 其他状态
             }
+        }
+
+        let a_priority = status_priority(&a.status);
+        let b_priority = status_priority(&b.status);
+
+        if a_priority != b_priority {
+            // 优先级不同，按优先级排序（数字小的在前）
+            a_priority.cmp(&b_priority)
+        } else {
+            // 同状态按创建时间排序（新的在前）
+            let a_time = chrono::DateTime::parse_from_rfc3339(&a.created_at)
+                .unwrap_or_else(|_| chrono::Utc::now().into())
+                .timestamp();
+            let b_time = chrono::DateTime::parse_from_rfc3339(&b.created_at)
+                .unwrap_or_else(|_| chrono::Utc::now().into())
+                .timestamp();
+            b_time.cmp(&a_time)
         }
     });
 

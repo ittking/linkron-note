@@ -53,37 +53,80 @@ function handleDialogDelete(id) {
   deleteTodo(id)
 }
 
-// 本地排序函数：未完成的在前，已完成的在后；同状态下按创建时间排序（新的在前）
+// 辅助函数：解析 reminder JSON
+function parseReminder(reminderStr) {
+  if (!reminderStr) return null
+  try {
+    return JSON.parse(reminderStr)
+  } catch {
+    return null
+  }
+}
+
+// 辅助函数：序列化 reminder 对象
+function stringifyReminder(reminderObj) {
+  if (!reminderObj) return null
+  try {
+    return JSON.stringify(reminderObj)
+  } catch {
+    return null
+  }
+}
+
+// 辅助函数：创建待办对象
+function createTodoItem(data, id) {
+  return {
+    id: id,
+    date: data.date,
+    text: data.text,
+    status: data.status || 'todo',
+    reminder: parseReminder(data.reminder),
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString()
+  }
+}
+
+// 辅助函数：更新数组中的待办项
+function updateTodoItemInArray(items, data) {
+  const index = items.findIndex(t => t.id === data.id)
+  if (index !== -1) {
+    items[index] = {
+      ...items[index],
+      text: data.text,
+      status: data.status,
+      reminder: parseReminder(data.reminder)
+    }
+  }
+}
+
+// 本地排序函数：未完成 > 进行中 > 暂停 > 已取消 > 已完成；同状态按创建时间排序（新的在前）
 function sortTodosLocally(todos) {
   return [...todos].sort((a, b) => {
-    // 先按状态排序：已完成（completed、cancelled）在后
-    const aCompleted = a.status === 'completed' || a.status === 'cancelled'
-    const bCompleted = b.status === 'completed' || b.status === 'cancelled'
-    
-    if (aCompleted && !bCompleted) return 1  // a完成，b未完成，b在前
-    if (!aCompleted && bCompleted) return -1  // a未完成，b完成，a在前
-    
+    // 定义状态优先级：数字越小优先级越高
+    const statusPriority = (status) => {
+      switch (status) {
+        case 'todo': return 1           // 未完成 - 最高优先级
+        case 'in-progress': return 2    // 进行中
+        case 'pending': return 3        // 暂停
+        case 'cancelled': return 4      // 已取消
+        case 'completed': return 5      // 已完成 - 最低优先级
+        default: return 6               // 其他状态
+      }
+    }
+
+    const aPriority = statusPriority(a.status)
+    const bPriority = statusPriority(b.status)
+
+    if (aPriority !== bPriority) {
+      // 优先级不同，按优先级排序（数字小的在前）
+      return aPriority - bPriority
+    }
+
     // 同状态按创建时间排序（新的在前）
-    const aTime = new Date(a.created_at).getTime()
-    const bTime = new Date(b.created_at).getTime()
+    const aTime = dayjs(a.created_at).valueOf()
+    const bTime = dayjs(b.created_at).valueOf()
     return bTime - aTime
   })
-}
-
-// 从 todo 对象获取提醒时间
-function getReminderTime(todo) {
-  if (!todo.reminder) return null
-  const reminder = todo.reminder
-  return reminder.repeatTime || null
-}
-
-// 格式化提醒时间显示
-function formatReminderTime(timeStr) {
-  if (!timeStr) return ''
-  const date = dayjs(timeStr)
-  const dateStr = date.format('MM/DD')
-  const timeStr2 = date.format('HH:mm')
-  return `${dateStr} ${timeStr2}`
 }
 
 // 从后端加载指定日期的待办事项
@@ -140,15 +183,7 @@ async function createTodo(data) {
     })
 
     // 优化：直接添加到本地数据，避免重新加载导致的闪屏
-    const newTodo = {
-      id: result,
-      date: data.date,
-      text: data.text,
-      status: data.status || 'todo',
-      reminder: data.reminder ? JSON.parse(data.reminder) : null,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    }
+    const newTodo = createTodoItem(data, result)
     
     todayTodos.value.push(newTodo)
     monthTodos.value.push(newTodo)
@@ -175,20 +210,8 @@ async function updateTodo(data) {
     })
 
     // 优化：直接更新本地数据，避免重新加载导致的闪屏
-    const updateItem = (items) => {
-      const index = items.findIndex(t => t.id === data.id)
-      if (index !== -1) {
-        items[index] = {
-          ...items[index],
-          text: data.text,
-          status: data.status,
-          reminder: data.reminder ? JSON.parse(data.reminder) : null
-        }
-      }
-    }
-    
-    updateItem(todayTodos.value)
-    updateItem(monthTodos.value)
+    updateTodoItemInArray(todayTodos.value, data)
+    updateTodoItemInArray(monthTodos.value, data)
     
     // 应用排序
     todayTodos.value = sortTodosLocally(todayTodos.value)
@@ -218,12 +241,15 @@ async function deleteTodo(id) {
 
 // 切换待办完成状态
 async function toggleTodoStatus(todo) {
-  const newStatus = todo.status === 'completed' ? 'todo' : 'completed'
+  // 如果是已完成、暂停或已取消，变成待办；否则变成已完成
+  const newStatus = ['completed', 'pending', 'cancelled'].includes(todo.status) 
+    ? 'todo' 
+    : 'completed'
   await updateTodo({
     id: todo.id,
     text: todo.text,
     status: newStatus,
-    reminder: todo.reminder ? JSON.stringify(todo.reminder) : null
+    reminder: stringifyReminder(todo.reminder)
   })
 }
 
