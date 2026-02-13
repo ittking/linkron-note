@@ -328,7 +328,7 @@ async function handleImageUpload(event) {
       // 使用抽离的工具方法保存图片
       const workDirectory = await getWorkDirectory()
       const imageUrl = await saveImage(file, workDirectory)
-      // imageUrl 现在已经是完整 URL: http://iterm.localhost/resources/images/...
+      // imageUrl 现在已经是完整 URL: http://linkron.localhost/resources/images/...
 
       // 添加到图片列表
       images.value.push(imageUrl)

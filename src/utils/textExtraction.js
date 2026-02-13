@@ -63,9 +63,9 @@ export async function getFileMetadata(filePath) {
  * @returns {string} 完整路径
  */
 function getFullPath(filePath, workDirectory) {
-  // 如果是完整 URL (http://iterm.localhost/resources/...)，提取相对路径
-  if (filePath.startsWith('http://iterm.localhost/resources/')) {
-    const relativePath = filePath.replace('http://iterm.localhost/resources/', '')
+  // 如果是完整 URL (http://linkron.localhost/resources/...)，提取相对路径
+  if (filePath.startsWith('http://linkron.localhost/resources/')) {
+    const relativePath = filePath.replace('http://linkron.localhost/resources/', '')
     const separator = workDirectory.endsWith('/') || workDirectory.endsWith('\\') ? '' : '/'
     return `${workDirectory}${separator}resources/${relativePath}`
   }

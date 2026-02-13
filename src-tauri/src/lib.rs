@@ -38,7 +38,7 @@ pub fn run() {
         .plugin(tauri_plugin_store::Builder::new().build())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_notification::init())
-        .register_uri_scheme_protocol("iterm", protocol::iterm_protocol_handler)
+        .register_uri_scheme_protocol("linkron", protocol::iterm_protocol_handler)
         .setup(|app| {
             window_manager::setup_window_manager(app)
         })

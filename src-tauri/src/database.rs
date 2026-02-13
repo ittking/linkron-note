@@ -53,7 +53,7 @@ pub fn get_database_path(work_directory: Option<String>) -> Result<String, Strin
         let app_data_dir = dirs::data_local_dir()
             .ok_or("Failed to get app data directory")?;
         let mut path = PathBuf::from(app_data_dir);
-        path.push("iterm");
+        path.push("linkron");
 
         std::fs::create_dir_all(&path)
             .map_err(|e| format!("Failed to create directory: {}", e))?;

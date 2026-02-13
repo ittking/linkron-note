@@ -11,7 +11,7 @@ import { revealItemInDir } from '@tauri-apps/plugin-opener'
  * @param {File} file - 文件对象
  * @param {string} type - 文件类型 ('image' | 'file')
  * @param {string} workDirectory - 工作目录路径
- * @returns {Promise<string>} 文件完整 URL (http://iterm.localhost/resources/...)
+ * @returns {Promise<string>} 文件完整 URL (http://linkron.localhost/resources/...)
  */
 export async function saveFile(file, type = 'file', workDirectory) {
   try {
@@ -29,7 +29,7 @@ export async function saveFile(file, type = 'file', workDirectory) {
       workDirectory
     })
     
-    // result 现在是完整 URL: http://iterm.localhost/resources/...
+    // result 现在是完整 URL: http://linkron.localhost/resources/...
     return result
   } catch (error) {
     console.error('文件保存失败:', error)
@@ -41,7 +41,7 @@ export async function saveFile(file, type = 'file', workDirectory) {
  * 保存图片文件（向后兼容）
  * @param {File} file - 图片文件对象
  * @param {string} workDirectory - 工作目录路径
- * @returns {Promise<string>} 图片完整 URL (http://iterm.localhost/resources/images/...)
+ * @returns {Promise<string>} 图片完整 URL (http://linkron.localhost/resources/images/...)
  */
 export async function saveImage(file, workDirectory) {
   return saveFile(file, 'image', workDirectory)
@@ -61,7 +61,7 @@ export async function saveFiles(files, type = 'file', workDirectory) {
 
 /**
  * 删除资源文件
- * @param {string} url - 资源 URL (如: http://iterm.localhost/resources/images/1234567890-1234.png)
+ * @param {string} url - 资源 URL (如: http://linkron.localhost/resources/images/1234567890-1234.png)
  * @param {string} workDirectory - 工作目录路径
  * @returns {Promise<void>}
  */
@@ -91,7 +91,7 @@ export async function deleteResources(urls, workDirectory) {
 /**
  * 获取资源 URL（已废弃，后端直接返回完整 URL）
  * @param {string} relativePath - 文件相对路径
- * @returns {Promise<string>} 资源 URL (http://iterm.localhost/resources/...)
+ * @returns {Promise<string>} 资源 URL (http://linkron.localhost/resources/...)
  * @deprecated 后端 save_file/save_image 现在直接返回完整 URL，不再需要此方法
  */
 export async function getResourceUrl(relativePath) {
@@ -105,7 +105,7 @@ export async function getResourceUrl(relativePath) {
 
 /**
  * 在文件夹中显示文件
- * @param {string} protocolUrl - 协议 URL (http://iterm.localhost/resources/files/xxx.txt)
+ * @param {string} protocolUrl - 协议 URL (http://linkron.localhost/resources/files/xxx.txt)
  * @param {string} workDirectory - 工作目录路径
  * @returns {Promise<void>}
  */

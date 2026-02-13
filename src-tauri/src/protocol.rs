@@ -24,7 +24,7 @@ fn get_base_directory<R: tauri::Runtime>(app_handle: &AppHandle<R>) -> PathBuf {
         .unwrap_or_else(|| {
             dirs::data_local_dir()
                 .map(|mut p| {
-                    p.push("iterm");
+                    p.push("linkron");
                     p
                 })
                 .unwrap_or_else(|| PathBuf::from("."))
@@ -88,8 +88,8 @@ fn build_error_response(status: u16, body: &'static str) -> Response<Vec<u8>> {
         })
 }
 
-/// iterm:// 自定义协议处理器
-/// 统一使用 http://iterm.localhost/resources/ 格式
+/// linkron:// 自定义协议处理器
+/// 统一使用 http://linkron.localhost/resources/ 格式
 pub fn iterm_protocol_handler<R: tauri::Runtime>(
     ctx: UriSchemeContext<'_, R>,
     request: Request<Vec<u8>>,

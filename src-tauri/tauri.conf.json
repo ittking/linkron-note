@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "iterm",
+  "productName": "linkron",
   "version": "0.1.0",
-  "identifier": "com.administrator.iterm",
+  "identifier": "com.administrator.linkron",
   "build": {
     "beforeDevCommand": "pnpm dev",
     "devUrl": "http://localhost:1420",
@@ -13,7 +13,7 @@
     "macOSPrivateApi": true,
     "windows": [
       {
-        "title": "iterm",
+        "title": "linkron",
         "label": "main",
         "width": 360,
         "height": 780,

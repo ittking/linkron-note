@@ -1942,39 +1942,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "iterm"
-version = "0.1.0"
-dependencies = [
- "chrono",
- "cocoa",
- "dirs 5.0.1",
- "encoding_rs",
- "http",
- "lazy_static",
- "mime_guess",
- "objc",
- "objc2 0.5.2",
- "objc2-app-kit 0.2.2",
- "portable-pty",
- "rand 0.8.5",
- "regex",
- "reqwest",
- "rusqlite",
- "serde",
- "serde_json",
- "tauri",
- "tauri-build",
- "tauri-plugin-dialog",
- "tauri-plugin-notification",
- "tauri-plugin-opener",
- "tauri-plugin-store",
- "tokio",
- "ulid",
- "windows 0.58.0",
- "winreg 0.52.0",
-]
-
-[[package]]
 name = "itoa"
 version = "1.0.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2145,6 +2112,39 @@ dependencies = [
  "cc",
  "pkg-config",
  "vcpkg",
+]
+
+[[package]]
+name = "linkron"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "cocoa",
+ "dirs 5.0.1",
+ "encoding_rs",
+ "http",
+ "lazy_static",
+ "mime_guess",
+ "objc",
+ "objc2 0.5.2",
+ "objc2-app-kit 0.2.2",
+ "portable-pty",
+ "rand 0.8.5",
+ "regex",
+ "reqwest",
+ "rusqlite",
+ "serde",
+ "serde_json",
+ "tauri",
+ "tauri-build",
+ "tauri-plugin-dialog",
+ "tauri-plugin-notification",
+ "tauri-plugin-opener",
+ "tauri-plugin-store",
+ "tokio",
+ "ulid",
+ "windows 0.58.0",
+ "winreg 0.52.0",
 ]
 
 [[package]]
