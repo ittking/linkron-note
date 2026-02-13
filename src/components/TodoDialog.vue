@@ -199,6 +199,22 @@ watch(() => props.show, (newVal) => {
   }
 })
 
+// 监听待办内容变化，清除错误提示
+watch(newTodoText, () => {
+  if (newTodoText.value.trim()) {
+    todoTextError.value = ''
+  }
+})
+
+// 监听提醒时间变化，清除错误提示
+watch([formReminderTime, formRepeatTime], () => {
+  if (formReminderType.value === 'once' && formReminderTime.value.trim()) {
+    reminderTimeError.value = ''
+  } else if (formReminderType.value === 'repeat' && formRepeatTime.value.trim()) {
+    reminderTimeError.value = ''
+  }
+})
+
 // 关闭对话框
 function closeDialog() {
   emit('update:show', false)
@@ -293,7 +309,7 @@ function deleteTodo() {
       </h3>
 
       <!-- 内容输入 -->
-      <textarea v-model="newTodoText" @keyup.enter.exact="saveTodo" @keyup.enter.shift.exact.prevent
+      <textarea v-model="newTodoText"
         placeholder="输入待办事项..."
         class="w-full min-h-[80px] px-3 py-2 border border-primary/50 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-transparent resize-none text-sm"
         :class="{ 'border-error ring-error': todoTextError }"></textarea>

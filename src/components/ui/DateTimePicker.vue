@@ -106,15 +106,17 @@ const initValue = () => {
       selectedHour.value = date.format('HH')
       selectedMinute.value = date.format('mm')
     } else {
-      // 无效日期，使用默认值
+      // 无效日期，使用默认值（当前时间）
       selectedDate.value = dayjs().format('YYYY-MM-DD')
-      selectedHour.value = '00'
-      selectedMinute.value = '00'
+      selectedHour.value = dayjs().format('HH')
+      selectedMinute.value = dayjs().format('mm')
     }
   } else {
-    selectedDate.value = dayjs().format('YYYY-MM-DD')
-    selectedHour.value = '00'
-    selectedMinute.value = '00'
+    // 使用当前时间作为默认值
+    const now = dayjs()
+    selectedDate.value = now.format('YYYY-MM-DD')
+    selectedHour.value = now.format('HH')
+    selectedMinute.value = now.format('mm')
   }
   tempSelectedDate.value = selectedDate.value
   tempSelectedHour.value = selectedHour.value
