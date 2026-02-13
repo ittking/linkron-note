@@ -32,9 +32,9 @@ pub struct TodoReminder {
     #[serde(rename = "repeatTime")]
     pub repeat_time: Option<String>,
     #[serde(rename = "repeatDayOfWeek")]
-    pub repeat_day_of_week: Option<u32>,
+    pub repeat_day_of_week: Option<Vec<u32>>,
     #[serde(rename = "repeatDayOfMonth")]
-    pub repeat_day_of_month: Option<u32>,
+    pub repeat_day_of_month: Option<Vec<u32>>,
     #[serde(rename = "repeatMonth")]
     pub repeat_month: Option<u32>,
     #[serde(rename = "lastNotified")]

@@ -30,31 +30,15 @@ export function useReminder() {
   function shouldSendOneTimeReminder(reminder, currentTime) {
     if (!reminder.repeatTime) return false
 
-    console.log('检查一次性提醒:')
-    console.log('  提醒时间原始值:', reminder.repeatTime)
-    
     const reminderTime = dayjs(reminder.repeatTime)
-    console.log('  提醒时间解析结果:', reminderTime)
-    console.log('  提醒时间是否有效:', reminderTime.isValid())
-    
-    if (!reminderTime.isValid()) {
-      console.log('  提醒时间无效')
-      return false
-    }
+    if (!reminderTime.isValid()) return false
 
     // 检查年月日时分是否精确匹配
     const reminderDateTime = reminderTime.format('YYYY-MM-DD HH:mm')
     const currentDateTime = currentTime.format('YYYY-MM-DD HH:mm')
 
-    console.log('  提醒时间格式化后:', reminderDateTime)
-    console.log('  当前时间格式化后:', currentDateTime)
-    console.log('  当前秒数:', currentTime.second())
-    console.log('  时间是否匹配:', reminderDateTime === currentDateTime)
-
     // 只有在秒数为0且时间匹配时才提醒
-    const result = currentTime.second() === 0 && reminderDateTime === currentDateTime
-    console.log('  最终结果:', result)
-    return result
+    return currentTime.second() === 0 && reminderDateTime === currentDateTime
   }
 
   // 判断是否应该发送重复提醒
