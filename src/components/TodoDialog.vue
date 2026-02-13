@@ -34,10 +34,14 @@ const formReminderTime = ref('')
 const formRepeatTime = ref('')
 const formRepeatType = ref('day')
 const formRepeatInterval = ref(1)
-const formRepeatWeekdays = ref([1, 3, 5])
+const formRepeatWeekdays = ref([1])  // 默认选中周一
 const formRepeatMonthDays = ref([1])
 const formRepeatYearMonth = ref(1)
 const formRepeatYearDay = ref(1)
+
+// 错误提示
+const todoTextError = ref('')
+const reminderTimeError = ref('')
 
 // 状态常量
 const STATUS_OPTIONS = [
@@ -105,16 +109,22 @@ function resetForm() {
   formRepeatTime.value = ''
   formRepeatType.value = 'day'
   formRepeatInterval.value = 1
-  formRepeatWeekdays.value = [1, 3, 5]
+  formRepeatWeekdays.value = [1]  // 默认选中周一
   formRepeatMonthDays.value = [1]
   formRepeatYearMonth.value = 1
   formRepeatYearDay.value = 1
+  todoTextError.value = ''  // 清除错误提示
+  reminderTimeError.value = ''  // 清除错误提示
 }
 
 // 切换星期选择
 function toggleWeekday(value) {
   const index = formRepeatWeekdays.value.indexOf(value)
   if (index > -1) {
+    // 如果是最后一个选中的，不允许取消
+    if (formRepeatWeekdays.value.length === 1) {
+      return
+    }
     formRepeatWeekdays.value.splice(index, 1)
   } else {
     formRepeatWeekdays.value.push(value)
@@ -125,6 +135,10 @@ function toggleWeekday(value) {
 function toggleMonthDay(value) {
   const index = formRepeatMonthDays.value.indexOf(value)
   if (index > -1) {
+    // 如果是最后一个选中的，不允许取消
+    if (formRepeatMonthDays.value.length === 1) {
+      return
+    }
     formRepeatMonthDays.value.splice(index, 1)
   } else {
     formRepeatMonthDays.value.push(value)
@@ -193,7 +207,24 @@ function closeDialog() {
 
 // 保存待办
 function saveTodo() {
-  if (!newTodoText.value.trim()) return
+  // 清除之前的错误
+  todoTextError.value = ''
+  reminderTimeError.value = ''
+
+  // 验证待办内容
+  if (!newTodoText.value.trim()) {
+    todoTextError.value = '请输入待办内容'
+    return
+  }
+
+  // 如果开启了提醒设置，验证提醒时间
+  if (formReminderEnabled.value) {
+    const reminderTime = formReminderType.value === 'once' ? formReminderTime.value : formRepeatTime.value
+    if (!reminderTime || !reminderTime.trim()) {
+      reminderTimeError.value = '请设置提醒时间'
+      return
+    }
+  }
 
   // 构建提醒配置
   let reminder = null
@@ -264,10 +295,12 @@ function deleteTodo() {
       <!-- 内容输入 -->
       <textarea v-model="newTodoText" @keyup.enter.exact="saveTodo" @keyup.enter.shift.exact.prevent
         placeholder="输入待办事项..."
-        class="w-full min-h-[80px] px-3 py-2 border border-primary/50 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-transparent resize-none text-sm mb-4"></textarea>
+        class="w-full min-h-[80px] px-3 py-2 border border-primary/50 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-transparent resize-none text-sm"
+        :class="{ 'border-error ring-error': todoTextError }"></textarea>
+      <div v-if="todoTextError" class="text-xs text-error mt-1">{{ todoTextError }}</div>
 
       <!-- 状态选择 -->
-      <div class="mb-4">
+      <div class="my-4">
         <label class="block text-sm font-medium text-base-content mb-2">状态</label>
         <div class="flex flex-wrap gap-2">
           <button v-for="status in STATUS_OPTIONS" :key="status.value" @click="formStatus = status.value"
@@ -308,6 +341,7 @@ function deleteTodo() {
               :clearable="true"
               placeholder="选择提醒时间"
             />
+            <div v-if="reminderTimeError && formReminderType === 'once'" class="text-xs text-error mt-1">{{ reminderTimeError }}</div>
           </div>
 
           <!-- 重复提醒 -->
@@ -384,6 +418,7 @@ function deleteTodo() {
                 mode="time"
                 placeholder="选择提醒时间"
               />
+              <div v-if="reminderTimeError && formReminderType === 'repeat'" class="text-xs text-error mt-1">{{ reminderTimeError }}</div>
             </div>
           </div>
         </div>
