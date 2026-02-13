@@ -88,10 +88,29 @@ const dropdownPosition = ref({
 // 初始化值
 const initValue = () => {
   if (props.modelValue) {
-    const date = dayjs(props.modelValue)
-    selectedDate.value = date.format('YYYY-MM-DD')
-    selectedHour.value = date.format('HH')
-    selectedMinute.value = date.format('mm')
+    let date
+    if (props.mode === 'time') {
+      // time 模式下，modelValue 可能是 HH:mm 或 YYYY-MM-DDTHH:mm
+      if (props.modelValue.includes('T')) {
+        date = dayjs(props.modelValue)
+      } else {
+        // 只有时间部分，用今天的日期补全
+        date = dayjs(`${dayjs().format('YYYY-MM-DD')}T${props.modelValue}`)
+      }
+    } else {
+      date = dayjs(props.modelValue)
+    }
+
+    if (date.isValid()) {
+      selectedDate.value = date.format('YYYY-MM-DD')
+      selectedHour.value = date.format('HH')
+      selectedMinute.value = date.format('mm')
+    } else {
+      // 无效日期，使用默认值
+      selectedDate.value = dayjs().format('YYYY-MM-DD')
+      selectedHour.value = '00'
+      selectedMinute.value = '00'
+    }
   } else {
     selectedDate.value = dayjs().format('YYYY-MM-DD')
     selectedHour.value = '00'
