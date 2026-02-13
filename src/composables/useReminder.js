@@ -1,10 +1,12 @@
 import { ref } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
 import { isPermissionGranted, requestPermission, sendNotification } from '@tauri-apps/plugin-notification'
+import { useWorkDirectory } from './useWorkDirectory'
 
 export function useReminder() {
   const reminders = ref([])
   const isChecking = ref(false)
+  const { getWorkDirectory } = useWorkDirectory()
 
   // 请求通知权限
   async function requestNotificationPermission() {
@@ -37,10 +39,18 @@ export function useReminder() {
 
     try {
       isChecking.value = true
-      reminders.value = await invoke('get_reminders')
+      const workDirectory = await getWorkDirectory()
+      console.log('获取工作目录:', workDirectory)
+      const result = await invoke('get_reminders', { workDirectory })
+      console.log('获取到的提醒数据 (原始):', result)
+      console.log('数据类型:', typeof result)
+      console.log('是否为数组:', Array.isArray(result))
+      console.log('数组长度:', result ? result.length : 'N/A')
+      reminders.value = result
 
       // 发送通知
       for (const reminder of reminders.value) {
+        console.log('发送通知:', reminder)
         await sendNotification({
           title: '待办提醒',
           body: `${new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })} - ${reminder.text}`

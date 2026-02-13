@@ -1,6 +1,5 @@
 use rusqlite::{Connection, Result as SqliteResult, params};
 use serde::{Deserialize, Serialize};
-use chrono::Datelike;
 
 /// 待办事项提醒类型
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
@@ -268,6 +267,46 @@ pub fn get_reminders(conn: &Connection) -> SqliteResult<Vec<Todo>> {
 
 
 
+    // 先查询所有待办事项用于调试
+
+    let mut all_stmt = conn.prepare(
+
+        "SELECT id, date, text, status, reminder FROM todos"
+
+    )?;
+
+    let all_todos: Vec<(i64, String, String, String, String)> = all_stmt.query_map([], |row| {
+
+        Ok((
+
+            row.get(0)?,
+
+            row.get(1)?,
+
+            row.get(2)?,
+
+            row.get(3)?,
+
+            row.get(4)?,
+
+        ))
+
+    })?.collect::<Result<Vec<_>, _>>()?;
+
+
+
+    println!("数据库中总共有 {} 个待办事项:", all_todos.len());
+
+    for (id, date, text, status, reminder) in &all_todos {
+
+        println!("  id={}, date={}, text='{}', status='{}', reminder='{}'",
+
+            id, date, text, status, reminder);
+
+    }
+
+
+
     let mut stmt = conn.prepare(
 
 
@@ -276,7 +315,15 @@ pub fn get_reminders(conn: &Connection) -> SqliteResult<Vec<Todo>> {
 
 
 
+
+
+
+
          FROM todos
+
+
+
+
 
 
 
@@ -284,11 +331,23 @@ pub fn get_reminders(conn: &Connection) -> SqliteResult<Vec<Todo>> {
 
 
 
+
+
+
+
          AND reminder IS NOT NULL
 
 
 
+
+
+
+
          ORDER BY date, created_at ASC"
+
+
+
+
 
 
 
@@ -304,7 +363,15 @@ pub fn get_reminders(conn: &Connection) -> SqliteResult<Vec<Todo>> {
 
 
 
+
+
+
+
         let reminder_json: String = row.get(4)?;
+
+
+
+
 
 
 
@@ -312,7 +379,19 @@ pub fn get_reminders(conn: &Connection) -> SqliteResult<Vec<Todo>> {
 
 
 
+
+
+
+
+
+
+
+
         Ok(Todo {
+
+
+
+
 
 
 
@@ -320,7 +399,15 @@ pub fn get_reminders(conn: &Connection) -> SqliteResult<Vec<Todo>> {
 
 
 
+
+
+
+
             date: row.get(1)?,
+
+
+
+
 
 
 
@@ -328,7 +415,15 @@ pub fn get_reminders(conn: &Connection) -> SqliteResult<Vec<Todo>> {
 
 
 
+
+
+
+
             status: row.get(3)?,
+
+
+
+
 
 
 
@@ -336,11 +431,23 @@ pub fn get_reminders(conn: &Connection) -> SqliteResult<Vec<Todo>> {
 
 
 
+
+
+
+
             created_at: row.get(5)?,
 
 
 
+
+
+
+
             updated_at: row.get(6)?,
+
+
+
+
 
 
 
@@ -360,7 +467,39 @@ pub fn get_reminders(conn: &Connection) -> SqliteResult<Vec<Todo>> {
 
 
 
+    println!("get_reminders: 过滤后查询到 {} 个待办事项", todos.len());
 
+
+
+    for todo in &todos {
+
+
+
+        println!("  待办: {} (id: {}, status: {})", todo.text, todo.id, todo.status);
+
+
+
+        if let Some(ref reminder) = todo.reminder {
+
+
+
+            println!("    提醒类型: {:?}", reminder.reminder_type);
+
+
+
+            println!("    提醒时间: {:?}", reminder.repeat_time);
+
+
+
+            println!("    上次通知: {:?}", reminder.last_notified);
+
+
+
+        }
+
+
+
+    }
 
 
 
@@ -372,11 +511,15 @@ pub fn get_reminders(conn: &Connection) -> SqliteResult<Vec<Todo>> {
 
 
 
-    let current_time = chrono::Utc::now();
+    let current_time = chrono::Local::now();
 
 
 
-    let current_minute = current_time.format("%Y-%m-%d %H:%M").to_string();
+    println!("当前时间: {}", current_time.format("%Y-%m-%d %H:%M"));
+
+
+
+
 
 
 
@@ -388,19 +531,53 @@ pub fn get_reminders(conn: &Connection) -> SqliteResult<Vec<Todo>> {
 
 
 
+
+
+
+
         if let Some(reminder) = &todo.reminder {
 
 
 
-            // 检查是否已经在当前分钟发送过通知
 
-            if let Some(ref last_notified) = reminder.last_notified {
 
-                if last_notified == &current_minute {
 
-                    continue; // 当前分钟已通知过，跳过
 
-                }
+            // 重复提醒：直接返回，不做时间校验
+
+
+
+            if reminder.reminder_type == ReminderType::Repeat {
+
+
+
+
+
+
+
+                println!("  重复提醒，直接返回: {}", todo.text);
+
+
+
+
+
+
+
+                filtered_todos.push(todo);
+
+
+
+
+
+
+
+                continue;
+
+
+
+
+
+
 
             }
 
@@ -410,65 +587,123 @@ pub fn get_reminders(conn: &Connection) -> SqliteResult<Vec<Todo>> {
 
 
 
-            match reminder.reminder_type {
 
 
 
-                ReminderType::OneTime => {
+
+            // 一次性提醒：检查时间是否过期
 
 
 
-                    if let Some(ref repeat_time) = reminder.repeat_time {
+            if reminder.reminder_type == ReminderType::OneTime {
 
 
 
-                        // 尝试解析 ISO 格式 (2025-02-13T14:30)
-
-                        if let Ok(reminder_time) = chrono::NaiveDateTime::parse_from_str(
-
-                            repeat_time,
-
-                            "%Y-%m-%dT%H:%M"
-
-                        ) {
-
-                            let reminder_minute = reminder_time.format("%Y-%m-%d %H:%M").to_string();
 
 
 
-                            // 如果当前分钟正好匹配提醒时间
 
-                            if current_minute == reminder_minute {
+                if let Some(ref repeat_time) = reminder.repeat_time {
 
-                                filtered_todos.push(todo);
 
-                            }
+
+
+
+
+
+                    if let Ok(reminder_time) = chrono::NaiveDateTime::parse_from_str(
+
+
+
+
+
+
+
+                        repeat_time,
+
+
+
+
+
+
+
+                        "%Y-%m-%dT%H:%M"
+
+
+
+
+
+
+
+                    ) {
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                        // 如果提醒时间在当前时间之后，添加到提醒列表
+
+
+
+
+
+
+
+                        if reminder_time > current_time.naive_local() {
+
+
+
+
+
+
+
+                            println!("  一次性提醒，未过期: {} (提醒时间: {})", todo.text, repeat_time);
+
+
+
+
+
+
+
+                            filtered_todos.push(todo);
+
+
+
+
+
+
+
+                        } else {
+
+
+
+
+
+
+
+                            println!("  一次性提醒，已过期: {} (提醒时间: {})", todo.text, repeat_time);
+
+
+
+
+
+
 
                         }
 
-                    }
-
-                }
 
 
 
-                ReminderType::Repeat => {
-
-
-
-                    // 检查重复提醒逻辑
-
-
-
-                    let should_remind = should_send_remind(&todo.date, reminder, &current_time, &current_minute);
-
-
-
-                    if should_remind {
-
-
-
-                        filtered_todos.push(todo);
 
 
 
@@ -476,15 +711,23 @@ pub fn get_reminders(conn: &Connection) -> SqliteResult<Vec<Todo>> {
 
 
 
+
+
+
+
                 }
 
 
 
-                ReminderType::None => {}
+
 
 
 
             }
+
+
+
+
 
 
 
@@ -492,7 +735,21 @@ pub fn get_reminders(conn: &Connection) -> SqliteResult<Vec<Todo>> {
 
 
 
+
+
+
+
     }
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -504,83 +761,10 @@ pub fn get_reminders(conn: &Connection) -> SqliteResult<Vec<Todo>> {
 
 
 
-}
 
-/// 判断是否应该发送提醒
-fn should_send_remind(date: &str, reminder: &TodoReminder, current_time: &chrono::DateTime<chrono::Utc>, _current_minute: &str) -> bool {
-    let todo_date = match chrono::NaiveDate::parse_from_str(date, "%Y-%m-%d") {
-        Ok(d) => d,
-        Err(_) => return false,
-    };
 
-    let current_date = current_time.date_naive();
 
-    // 先检查日期是否匹配
-    let date_matched = match reminder.repeat_rule {
-        Some(RepeatRule::Day) => {
-            if let Some(interval) = reminder.repeat_interval {
-                let days_diff = (current_date - todo_date).num_days();
-                days_diff >= 0 && days_diff % (interval as i64) == 0
-            } else {
-                current_date == todo_date
-            }
-        }
-        Some(RepeatRule::Weekday) => {
-            if let Some(day_of_week) = reminder.repeat_day_of_week {
-                current_date.weekday().num_days_from_monday() as u32 == day_of_week - 1
-            } else {
-                false
-            }
-        }
-        Some(RepeatRule::Month) => {
-            if let Some(day_of_month) = reminder.repeat_day_of_month {
-                if current_date.day() == day_of_month {
-                    if let Some(month) = reminder.repeat_month {
-                        current_date.month() as u32 == month
-                    } else {
-                        true
-                    }
-                } else {
-                    false
-                }
-            } else {
-                false
-            }
-        }
-        Some(RepeatRule::Year) => {
-            if let Some(day_of_month) = reminder.repeat_day_of_month {
-                if let Some(month) = reminder.repeat_month {
-                    current_date.month() as u32 == month && current_date.day() == day_of_month
-                } else {
-                    false
-                }
-            } else {
-                false
-            }
-        }
-        None => false,
-    };
 
-    if !date_matched {
-        return false;
-    }
-
-    // 检查时间是否精确匹配（精确到分钟）
-    if let Some(ref repeat_time) = reminder.repeat_time {
-        if let Ok(reminder_time_naive) = chrono::NaiveDateTime::parse_from_str(
-            repeat_time,
-            "%Y-%m-%dT%H:%M"
-        ) {
-            let reminder_minute = reminder_time_naive.format("%H:%M").to_string();
-            let current_time_only = current_time.format("%H:%M").to_string();
-            // 如果当前时间精确匹配提醒时间（小时和分钟都相同）
-            current_time_only == reminder_minute
-        } else {
-            false
-        }
-    } else {
-        false
-    }
 }
 
 /// 统计待办事项数量（排除已完成、已取消、已暂停）
