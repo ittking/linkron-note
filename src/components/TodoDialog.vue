@@ -86,6 +86,12 @@ const dayOptions = Array.from({ length: 31 }, (_, i) => ({
   value: i + 1
 }))
 
+// 每隔天数选项（1-31天）
+const intervalDayOptions = Array.from({ length: 31 }, (_, i) => ({
+  label: `${i + 1}天`,
+  value: i + 1
+}))
+
 // 是否是编辑模式
 const isEditing = computed(() => !!props.todo)
 
@@ -302,11 +308,14 @@ function deleteTodo() {
             </div>
 
             <!-- 按天重复 -->
-            <div v-if="formRepeatType === 'day'" class="flex items-center gap-2">
-              <span class="text-xs text-base-content/60">每隔</span>
-              <input type="number" v-model="formRepeatInterval" min="1" max="365"
-                class="w-16 px-2 py-1 border border-base-200 rounded text-sm text-center">
-              <span class="text-xs text-base-content/60">天</span>
+            <div v-if="formRepeatType === 'day'">
+              <label class="block text-xs text-base-content/60 mb-1.5">重复间隔</label>
+              <Select
+                v-model="formRepeatInterval"
+                :options="intervalDayOptions"
+                placeholder="选择间隔天数"
+                size="sm"
+              />
             </div>
 
             <!-- 按星期重复 -->
