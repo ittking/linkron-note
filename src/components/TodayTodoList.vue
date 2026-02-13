@@ -48,15 +48,26 @@ watch(selectedDate, () => {
   emit('date-change', selectedDate.value)
 })
 
+// 状态颜色映射
+const STATUS_COLORS = {
+  'todo': '#6B7280',
+  'in-progress': '#3B82F6',
+  'completed': '#10B981',
+  'pending': '#F59E0B',
+  'cancelled': '#EF4444'
+}
+
 // 从 todo 对象获取提醒时间
 function getReminderTime(todo) {
   if (!todo.reminder) return null
   const reminder = todo.reminder
-  return reminder.repeat_time || reminder.repeatTime || null
+  // 两种提醒类型都返回完整的日期时间格式，DateTimePicker mode="datetime" 需要完整格式
+  return reminder.repeat_time || null
 }
 
 // 格式化提醒时间显示
 function formatReminderTime(timeStr) {
+  if (timeStr === 'REPEAT') return '' // 重复提醒不显示具体时间
   if (!timeStr) return ''
   const date = dayjs(timeStr)
   const dateStr = date.format('MM/DD')
@@ -73,7 +84,7 @@ function createTodo() {
   if (selectedReminderTime.value) {
     reminder = JSON.stringify({
       reminder_type: 'onetime',
-      repeat_time: selectedReminderTime.value
+      repeat_time: selectedReminderTime.value // 一次性提醒：完整日期时间
     })
   }
 
@@ -102,9 +113,10 @@ function deleteTodo(todo) {
 function updateReminderTime(todo, value) {
   let reminder = null
   if (value) {
+    // 今日待办中设置时间，统一使用一次性提醒
     reminder = JSON.stringify({
       reminder_type: 'onetime',
-      repeat_time: value
+      repeat_time: value // 完整日期时间格式
     })
   }
 
@@ -270,7 +282,9 @@ const sortedTodos = computed(() => {
                       'text-base-content/70': hasValue
                     }">
                     <Clock :size="12" />
-                    {{ hasValue ? formatReminderTime(getReminderTime(todo)) : '今日' }}
+                    <span v-if="todo.reminder?.reminder_type === 'repeat'">今日</span>
+                    <span v-else-if="hasValue">{{ formatReminderTime(getReminderTime(todo)) }}</span>
+                    <span v-else>今日</span>
                   </div>
                 </template>
               </DateTimePicker>

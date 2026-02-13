@@ -136,8 +136,24 @@ watch(() => props.show, (newVal) => {
       formReminderEnabled.value = true
       const reminder = props.todo.reminder
       formReminderType.value = reminder.reminder_type === 'onetime' ? 'once' : (reminder.reminder_type === 'repeat' ? 'repeat' : 'none')
+      
+      // 一次性提醒：使用 repeat_time（完整日期时间）
       formReminderTime.value = reminder.repeat_time || ''
-      formRepeatTime.value = reminder.repeat_time || ''
+      
+      // 重复提醒：使用 repeat_time（只有 HH:mm），需要转换为完整格式供 time 模式使用
+      if (reminder.reminder_type === 'repeat' && reminder.repeat_time) {
+        const timeValue = reminder.repeat_time
+        // 检查是否已经是完整格式
+        if (timeValue.includes('T') || timeValue.includes('-')) {
+          // 已经是完整格式，直接使用
+          formRepeatTime.value = timeValue
+        } else {
+          // 只有 HH:mm，补全为完整格式
+          formRepeatTime.value = `${dayjs().format('YYYY-MM-DD')}T${timeValue}`
+        }
+      } else {
+        formRepeatTime.value = ''
+      }
 
       if (reminder.reminder_type === 'repeat' && reminder.repeat_rule) {
         const rule = reminder.repeat_rule
@@ -179,13 +195,16 @@ function saveTodo() {
     if (formReminderType.value === 'once') {
       reminder = JSON.stringify({
         reminder_type: 'onetime',
-        repeat_time: formReminderTime.value
+        repeat_time: formReminderTime.value // 一次性提醒：完整日期时间
       })
     } else if (formReminderType.value === 'repeat') {
+      // 重复提醒：将 HH:mm 转换为今日的完整日期时间
+      const timeOnly = formRepeatTime.value || ''
+      const fullDateTime = timeOnly ? `${dayjs().format('YYYY-MM-DD')}T${timeOnly}` : ''
       reminder = JSON.stringify({
         reminder_type: 'repeat',
+        repeat_time: fullDateTime,
         repeat_rule: formRepeatType.value,
-        repeat_time: formRepeatTime.value,
         repeat_interval: formRepeatType.value === 'day' ? formRepeatInterval.value : undefined,
         repeat_day_of_week: formRepeatType.value === 'weekday' ? formRepeatWeekdays.value[0] : undefined,
         repeat_day_of_month: formRepeatType.value === 'month' ? formRepeatMonthDays.value[0] : undefined,
