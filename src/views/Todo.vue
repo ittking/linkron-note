@@ -47,6 +47,23 @@ function getStatusColor(status) {
   return STATUS_COLORS[status] || STATUS_COLORS['todo']
 }
 
+// 本地排序函数：未完成的在前，已完成的在后；同状态下按创建时间排序（新的在前）
+function sortTodosLocally(todos) {
+  return [...todos].sort((a, b) => {
+    // 先按状态排序：已完成（completed、cancelled）在后
+    const aCompleted = a.status === 'completed' || a.status === 'cancelled'
+    const bCompleted = b.status === 'completed' || b.status === 'cancelled'
+    
+    if (aCompleted && !bCompleted) return 1  // a完成，b未完成，b在前
+    if (!aCompleted && bCompleted) return -1  // a未完成，b完成，a在前
+    
+    // 同状态按创建时间排序（新的在前）
+    const aTime = new Date(a.created_at).getTime()
+    const bTime = new Date(b.created_at).getTime()
+    return bTime - aTime
+  })
+}
+
 // 从 todo 对象获取提醒时间
 function getReminderTime(todo) {
   if (!todo.reminder) return null
@@ -103,7 +120,7 @@ async function createTodo(data) {
   try {
     const workDirectory = await getWorkDirectory()
     
-    await invoke('create_todo', {
+    const result = await invoke('create_todo', {
       date: data.date,
       text: data.text,
       status: data.status || 'todo',
@@ -111,9 +128,22 @@ async function createTodo(data) {
       workDirectory
     })
 
-    // 重新加载数据
-    await loadTodayTodos()
-    await loadMonthTodos()
+    // 优化：直接添加到本地数据，避免重新加载导致的闪屏
+    const newTodo = {
+      id: result,
+      date: data.date,
+      text: data.text,
+      status: data.status || 'todo',
+      reminder: data.reminder ? JSON.parse(data.reminder) : null,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    }
+    
+    todayTodos.value.push(newTodo)
+    monthTodos.value.push(newTodo)
+    
+    // 应用排序
+    todayTodos.value = sortTodosLocally(todayTodos.value)
   } catch (error) {
     console.error('创建待办失败:', error)
     throw error
@@ -133,9 +163,24 @@ async function updateTodo(data) {
       workDirectory
     })
 
-    // 重新加载数据
-    await loadTodayTodos()
-    await loadMonthTodos()
+    // 优化：直接更新本地数据，避免重新加载导致的闪屏
+    const updateItem = (items) => {
+      const index = items.findIndex(t => t.id === data.id)
+      if (index !== -1) {
+        items[index] = {
+          ...items[index],
+          text: data.text,
+          status: data.status,
+          reminder: data.reminder ? JSON.parse(data.reminder) : null
+        }
+      }
+    }
+    
+    updateItem(todayTodos.value)
+    updateItem(monthTodos.value)
+    
+    // 应用排序
+    todayTodos.value = sortTodosLocally(todayTodos.value)
   } catch (error) {
     console.error('更新待办失败:', error)
     throw error
@@ -151,9 +196,9 @@ async function deleteTodo(id) {
       workDirectory
     })
 
-    // 重新加载数据
-    await loadTodayTodos()
-    await loadMonthTodos()
+    // 优化：直接从本地数据中移除，避免重新加载导致的闪屏
+    todayTodos.value = todayTodos.value.filter(t => t.id !== id)
+    monthTodos.value = monthTodos.value.filter(t => t.id !== id)
   } catch (error) {
     console.error('删除待办失败:', error)
     throw error
