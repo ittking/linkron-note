@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, nextTick, watch } from 'vue'
+import { ref, computed, nextTick, watch, onMounted, onBeforeUnmount } from 'vue'
 import { Check, Clock, X, MoreHorizontal, Repeat } from 'lucide-vue-next'
 import dayjs from 'dayjs'
 import dayjsLocale from 'dayjs/locale/zh-cn'
@@ -22,6 +22,26 @@ const emit = defineEmits(['create', 'update', 'delete', 'toggle-status', 'date-c
 
 const newTodoText = ref('')
 const selectedReminderTime = ref('')
+
+// 实时时钟
+const currentTime = ref('')
+let timer = null
+
+// 更新当前时间
+function updateCurrentTime() {
+  currentTime.value = dayjs().format('HH:mm:ss')
+}
+
+onMounted(() => {
+  updateCurrentTime()
+  timer = setInterval(updateCurrentTime, 1000)
+})
+
+onBeforeUnmount(() => {
+  if (timer) {
+    clearInterval(timer)
+  }
+})
 
 // 编辑状态
 const editingTodoId = ref(null)
@@ -244,7 +264,7 @@ const sortedTodos = computed(() => props.todos)
   <div class="today-todo-list h-full flex flex-col bg-base-100 max-w-200 mx-auto pb-2">
     <!-- 顶部：日期选择 -->
     <div class="px-6 py-3 border-b border-base-200">
-      <div class="flex items-center justify-center">
+      <div class="flex items-center justify-between">
         <DateTimePicker v-model="selectedDate" mode="date" placeholder="选择日期">
           <template #default="{ toggle }">
             <div @click="toggle"
@@ -253,6 +273,10 @@ const sortedTodos = computed(() => props.todos)
             </div>
           </template>
         </DateTimePicker>
+        <div class="flex items-center gap-1 text-sm text-base-content/60">
+          <Clock :size="14" />
+          <span>{{ currentTime }}</span>
+        </div>
       </div>
     </div>
 

@@ -42,23 +42,26 @@ impl ReminderTask {
     ) -> Result<(), String> {
         use rusqlite::Connection;
         use chrono::Local;
-        
+
         // 获取数据库路径
         let db_path = crate::database::get_database_path(work_directory.clone())?;
-        
+
         // 直接打开数据库连接
         let conn = Connection::open(&db_path)
             .map_err(|e| format!("Failed to open database: {}", e))?;
-        
+
         // 获取需要提醒的待办事项
         let todos = crate::todo::get_reminders(&conn)
             .map_err(|e| format!("Failed to get reminders: {}", e))?;
-        
-        // 为每个待办发送系统通知
+
+        // 获取当前分钟
+        let current_minute = chrono::Utc::now().format("%Y-%m-%d %H:%M").to_string();
+
+        // 为每个待办发送系统通知并更新 last_notified
         for todo in todos {
             let title = "待办提醒";
             let body = format!("{} - {}", Local::now().format("%H:%M"), todo.text);
-            
+
             // 使用 Tauri 通知插件发送通知
             app_handle.notification()
                 .builder()
@@ -66,8 +69,20 @@ impl ReminderTask {
                 .body(body)
                 .show()
                 .map_err(|e| format!("Failed to send notification: {}", e))?;
+
+            // 更新待办事项的 last_notified 字段
+            if let Some(mut reminder) = todo.reminder {
+                reminder.last_notified = Some(current_minute.clone());
+                let reminder_json = serde_json::to_string(&reminder)
+                    .map_err(|e| format!("Failed to serialize reminder: {}", e))?;
+
+                conn.execute(
+                    "UPDATE todos SET reminder = ?1 WHERE id = ?2",
+                    rusqlite::params![reminder_json, todo.id]
+                ).map_err(|e| format!("Failed to update reminder: {}", e))?;
+            }
         }
-        
+
         Ok(())
     }
 }
