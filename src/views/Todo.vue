@@ -80,21 +80,26 @@ function formatReminderTime(timeStr) {
   return `${dateStr} ${timeStr2}`
 }
 
-// 从后端加载今日待办事项
-async function loadTodayTodos() {
+// 从后端加载指定日期的待办事项
+async function loadTodayTodos(date = today.value) {
   loading.value = true
   try {
     const workDirectory = await getWorkDirectory()
-    const data = await invoke('get_today_todos', { 
-      todayDate: today.value,
+    const data = await invoke('get_todos_by_date', { 
+      date,
       workDirectory 
     })
     todayTodos.value = data
   } catch (error) {
-    console.error('加载今日待办事项失败:', error)
+    console.error('加载待办事项失败:', error)
   } finally {
     loading.value = false
   }
+}
+
+// 处理日期变化
+function handleDateChange(date) {
+  loadTodayTodos(date)
 }
 
 // 从后端加载月度待办事项
@@ -262,6 +267,7 @@ onMounted(() => {
       @update="updateTodo"
       @delete="deleteTodo"
       @toggle-status="toggleTodoStatus"
+      @date-change="handleDateChange"
     />
 
     <!-- 悬浮切换按钮 -->

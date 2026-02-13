@@ -386,6 +386,29 @@ function clearValue() {
   closeDropdown()
 }
 
+// 选择今日/此刻
+function selectNowOrToday() {
+  const now = dayjs()
+  if (props.mode === 'date') {
+    selectedDate.value = now.format('YYYY-MM-DD')
+    tempSelectedDate.value = selectedDate.value
+  } else if (props.mode === 'time') {
+    selectedHour.value = now.format('HH')
+    selectedMinute.value = now.format('mm')
+    tempSelectedHour.value = selectedHour.value
+    tempSelectedMinute.value = selectedMinute.value
+  } else {
+    selectedDate.value = now.format('YYYY-MM-DD')
+    selectedHour.value = now.format('HH')
+    selectedMinute.value = now.format('mm')
+    tempSelectedDate.value = selectedDate.value
+    tempSelectedHour.value = selectedHour.value
+    tempSelectedMinute.value = selectedMinute.value
+  }
+  closeDropdown()
+  emitValue()
+}
+
 function emitValue() {
   let value = ''
   if (props.mode === 'date') {
@@ -590,14 +613,19 @@ defineExpose({
 
           <!-- 底部按钮 -->
           <div class="flex items-center justify-between px-3 py-2 border-t border-base-200">
-            <button
-              v-if="hasValue && clearable"
-              @click="clearValue"
-              class="px-3 py-1 text-xs text-error hover:bg-error/10 rounded transition-colors"
-            >
-              清空
-            </button>
-            <div v-else></div>
+            <div class="flex items-center gap-2">
+              <button
+                v-if="hasValue && clearable"
+                @click="clearValue"
+                class="px-3 py-1 text-xs text-error hover:bg-error/10 rounded transition-colors"
+              >
+                清空
+              </button>
+              <button @click="selectNowOrToday"
+                class="px-3 py-1 text-xs text-primary hover:bg-primary/10 rounded transition-colors">
+                {{ mode === 'time' ? '此刻' : '今日' }}
+              </button>
+            </div>
             <div class="flex items-center gap-2">
               <button @click="cancel"
                 class="px-3 py-1 text-xs border border-base-200 rounded hover:bg-base-200 transition-colors">

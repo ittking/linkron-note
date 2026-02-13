@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, nextTick } from 'vue'
+import { ref, computed, nextTick, watch } from 'vue'
 import { Check, Clock, X } from 'lucide-vue-next'
 import dayjs from 'dayjs'
 import dayjsLocale from 'dayjs/locale/zh-cn'
@@ -18,7 +18,7 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['create', 'update', 'delete', 'toggle-status'])
+const emit = defineEmits(['create', 'update', 'delete', 'toggle-status', 'date-change'])
 
 const newTodoText = ref('')
 const selectedReminderTime = ref('')
@@ -27,11 +27,25 @@ const selectedReminderTime = ref('')
 const editingTodoId = ref(null)
 const editingTodoText = ref('')
 
-// 获取今日显示的日期信息
-const todayDisplay = computed(() => {
+// 选中的日期
+const selectedDate = ref(dayjs().format('YYYY-MM-DD'))
+
+// 获取显示的日期信息
+const displayDateInfo = computed(() => {
+  const date = dayjs(selectedDate.value)
+  const today = dayjs()
+  const isToday = date.isSame(today, 'day')
+  const prefix = isToday ? '今日' : ''
+  const fullDate = `${date.format('YYYY年M月D日')}`
+  const weekday = date.format('dddd')
   return {
-    full: `今日 · ${dayjs().format('YYYY年M月D日')} · ${dayjs().format('dddd')}`
+    full: isToday ? `${prefix} · ${fullDate} · ${weekday}` : `${fullDate} · ${weekday}`
   }
+})
+
+// 监听日期变化，重新加载待办事项
+watch(selectedDate, () => {
+  emit('date-change', selectedDate.value)
 })
 
 // 状态颜色映射
@@ -73,7 +87,7 @@ function createTodo() {
   }
 
   emit('create', {
-    date: dayjs().format('YYYY-MM-DD'),
+    date: selectedDate.value,
     text: newTodoText.value,
     status: 'todo',
     reminder
@@ -155,15 +169,42 @@ function updateTodoText(todo) {
 }
 
 // 后端已排序，直接使用
-const sortedTodos = computed(() => props.todos)
+const sortedTodos = computed(() => {
+  return [...props.todos].sort((a, b) => {
+    // 先按状态排序：已完成（completed、cancelled）在后
+    const aCompleted = a.status === 'completed' || a.status === 'cancelled'
+    const bCompleted = b.status === 'completed' || b.status === 'cancelled'
+    
+    if (aCompleted && !bCompleted) return 1  // a完成，b未完成，b在前
+    if (!aCompleted && bCompleted) return -1  // a未完成，b完成，a在前
+    
+    // 同状态按创建时间排序（新的在前）
+    const aTime = new Date(a.created_at).getTime()
+    const bTime = new Date(b.created_at).getTime()
+    return bTime - aTime
+  })
+})
 </script>
 
 <template>
   <div class="today-todo-list h-full flex flex-col bg-base-100 max-w-200 mx-auto pb-2">
-    <!-- 顶部：今日日期 -->
+    <!-- 顶部：日期选择 -->
     <div class="px-6 py-3 border-b border-base-200">
-      <div class="text-center text-sm text-base-content/80 font-medium">
-        {{ todayDisplay.full }}
+      <div class="flex items-center justify-center">
+        <DateTimePicker
+          v-model="selectedDate"
+          mode="date"
+          placeholder="选择日期"
+        >
+          <template #default="{ toggle }">
+            <div 
+              @click="toggle"
+              class="text-sm text-base-content/80 font-medium cursor-pointer hover:text-primary transition-colors"
+            >
+              {{ displayDateInfo.full }}
+            </div>
+          </template>
+        </DateTimePicker>
       </div>
     </div>
 
