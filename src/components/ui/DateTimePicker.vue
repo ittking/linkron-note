@@ -680,7 +680,7 @@ defineExpose({
               </button>
               <button @click="selectNowOrToday"
                 class="px-3 py-1 text-xs text-primary hover:bg-primary/10 rounded transition-colors">
-                {{ mode === 'time' ? '此刻' : '今日' }}
+                {{ mode === 'datetime' ? '此刻' : '今日' }}
               </button>
             </div>
             <div v-else></div>
