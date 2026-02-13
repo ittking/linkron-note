@@ -1,6 +1,6 @@
 <script setup>
 import { ref, computed, nextTick, watch } from 'vue'
-import { Check, Clock, X, MoreHorizontal } from 'lucide-vue-next'
+import { Check, Clock, X, MoreHorizontal, Repeat } from 'lucide-vue-next'
 import dayjs from 'dayjs'
 import dayjsLocale from 'dayjs/locale/zh-cn'
 import DateTimePicker from './ui/DateTimePicker.vue'
@@ -61,18 +61,56 @@ const STATUS_COLORS = {
 function getReminderTime(todo) {
   if (!todo.reminder) return null
   const reminder = todo.reminder
-  // 两种提醒类型都返回完整的日期时间格式，DateTimePicker mode="datetime" 需要完整格式
+  // 重复提醒：返回 HH:mm 格式（用于 time 模式）
+  if (reminder.reminder_type === 'repeat' && reminder.repeat_time) {
+    return dayjs(reminder.repeat_time).format('HH:mm')
+  }
+  // 一次性提醒：返回完整日期时间格式（用于 datetime 模式）
   return reminder.repeat_time || null
 }
 
 // 格式化提醒时间显示
-function formatReminderTime(timeStr) {
-  if (timeStr === 'REPEAT') return '' // 重复提醒不显示具体时间
+function formatReminderTime(timeStr, todo) {
   if (!timeStr) return ''
-  const date = dayjs(timeStr)
-  const dateStr = date.format('MM/DD')
-  const timeStr2 = date.format('HH:mm')
-  return `${dateStr} ${timeStr2}`
+  if (!todo.reminder) return ''
+
+  const reminder = todo.reminder
+  if (reminder.reminder_type === 'repeat') {
+    // 重复提醒：根据重复类型显示不同的文本
+    // 使用完整的 repeat_time 来解析时间
+    const fullTime = reminder.repeat_time || timeStr
+    const dateObj = dayjs(fullTime)
+    const time = dateObj.isValid() ? dateObj.format('HH:mm') : ''
+    const rule = reminder.repeat_rule
+
+    if (rule === 'day') {
+      const interval = reminder.repeat_interval || 1
+      return interval === 1 ? `每天: ${time}` : `每${interval}天: ${time}`
+    } else if (rule === 'weekday') {
+      const weekdays = reminder.repeat_day_of_week
+      const weekdayArray = Array.isArray(weekdays) ? weekdays : [weekdays]
+      const weekdayNames = ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
+      const selectedDays = weekdayArray.map(day => weekdayNames[day]).join('、')
+      return `每周: ${selectedDays} ${time}`
+    } else if (rule === 'month') {
+      const days = reminder.repeat_day_of_month
+      const dayArray = Array.isArray(days) ? days : [days]
+      const selectedDays = dayArray.join('、')
+      return `每月: ${selectedDays}日 ${time}`
+    } else if (rule === 'year') {
+      const month = reminder.repeat_month || 1
+      const day = reminder.repeat_day_of_month || 1
+      return `每年: ${month}月${day}日 ${time}`
+    }
+    return time
+  } else {
+    // 一次性提醒：显示完整日期时间
+    const date = dayjs(timeStr)
+    if (!date.isValid()) return ''
+    const dateStr = date.format('MM/DD')
+    const timeStr2 = date.format('HH:mm')
+    return `${dateStr} ${timeStr2}`
+  }
 }
 
 // 创建待办事项
@@ -113,10 +151,28 @@ function deleteTodo(todo) {
 function updateReminderTime(todo, value) {
   let reminder = null
   if (value) {
-    // 今日待办中设置时间，统一使用一次性提醒
+    // 获取原有的提醒类型
+    const originalReminderType = todo.reminder?.reminder_type || 'onetime'
+    let timeValue
+
+    if (originalReminderType === 'onetime') {
+      // 一次性提醒：保持完整的日期时间格式
+      timeValue = value
+    } else {
+      // 重复提醒：将 HH:mm 转换为今日的完整日期时间
+      const timeOnly = value || ''
+      timeValue = timeOnly ? `${dayjs().format('YYYY-MM-DD')}T${timeOnly}` : ''
+    }
+
     reminder = JSON.stringify({
-      reminder_type: 'onetime',
-      repeat_time: value // 完整日期时间格式
+      reminder_type: originalReminderType,
+      repeat_time: timeValue,
+      // 保持原有的重复规则
+      repeat_rule: todo.reminder?.repeat_rule,
+      repeat_interval: todo.reminder?.repeat_interval,
+      repeat_day_of_week: todo.reminder?.repeat_day_of_week,
+      repeat_day_of_month: todo.reminder?.repeat_day_of_month,
+      repeat_month: todo.reminder?.repeat_month
     })
   }
 
@@ -273,18 +329,19 @@ const sortedTodos = computed(() => {
             <!-- 提醒时间 -->
             <div class="mt-3">
               <DateTimePicker :model-value="getReminderTime(todo)"
-                @update:model-value="(value) => updateReminderTime(todo, value)" mode="datetime"
+                @update:model-value="(value) => updateReminderTime(todo, value)"
+                :mode="todo.reminder?.reminder_type === 'repeat' ? 'time' : 'datetime'"
                 :min="dayjs().format('YYYY-MM-DDTHH:mm')" :clearable="true">
                 <template #default="{ toggle, hasValue }">
                   <div @click="toggle"
-                    class="flex items-center gap-1 text-xs cursor-pointer hover:text-primary transition-colors" :class="{
+                    class="flex items-start gap-1 text-xs cursor-pointer hover:text-primary transition-colors" :class="{
                       'text-base-content/50': !hasValue,
                       'text-base-content/70': hasValue
                     }">
-                    <Clock :size="12" />
-                    <span v-if="todo.reminder?.reminder_type === 'repeat'">今日</span>
-                    <span v-else-if="hasValue">{{ formatReminderTime(getReminderTime(todo)) }}</span>
-                    <span v-else>今日</span>
+                    <Repeat v-if="hasValue && todo.reminder?.reminder_type === 'repeat'" :size="12" />
+                    <Clock v-else :size="12" />
+                    <span v-if="hasValue">{{ formatReminderTime(getReminderTime(todo), todo) }}</span>
+                    <span v-if="!hasValue">今日</span>
                   </div>
                 </template>
               </DateTimePicker>
@@ -297,7 +354,7 @@ const sortedTodos = computed(() => {
             title="编辑">
             <MoreHorizontal :size="14" />
           </button>
-          
+
           <!-- 删除按钮 -->
           <button @click="deleteTodo(todo)"
             class="flex-shrink-0 p-1 text-base-content/40 hover:text-error hover:bg-error/10 rounded transition-colors opacity-0 group-hover:opacity-100"

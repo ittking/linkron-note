@@ -168,9 +168,9 @@ watch(() => props.show, (newVal) => {
         if (rule === 'day') {
           formRepeatInterval.value = reminder.repeat_interval || 1
         } else if (rule === 'weekday') {
-          formRepeatWeekdays.value = [reminder.repeat_day_of_week || 1]
+          formRepeatWeekdays.value = Array.isArray(reminder.repeat_day_of_week) ? reminder.repeat_day_of_week : [reminder.repeat_day_of_week || 1]
         } else if (rule === 'month') {
-          formRepeatMonthDays.value = [reminder.repeat_day_of_month || 1]
+          formRepeatMonthDays.value = Array.isArray(reminder.repeat_day_of_month) ? reminder.repeat_day_of_month : [reminder.repeat_day_of_month || 1]
         } else if (rule === 'year') {
           formRepeatYearMonth.value = reminder.repeat_month || 1
           formRepeatYearDay.value = reminder.repeat_day_of_month || 1
@@ -204,16 +204,30 @@ function saveTodo() {
         repeat_time: formReminderTime.value // 一次性提醒：完整日期时间
       })
     } else if (formReminderType.value === 'repeat') {
-      // 重复提醒：将 HH:mm 转换为今日的完整日期时间
-      const timeOnly = formRepeatTime.value || ''
+      // 重复提醒：将时间转换为今日的完整日期时间
+      const timeInput = formRepeatTime.value || ''
+      let timeOnly = ''
+      
+      // 检查是否已经是完整格式
+      if (timeInput.includes('T')) {
+        // 已经是完整格式，提取 HH:mm 部分
+        const dateObj = dayjs(timeInput)
+        if (dateObj.isValid()) {
+          timeOnly = dateObj.format('HH:mm')
+        }
+      } else {
+        // 只有 HH:mm 格式，直接使用
+        timeOnly = timeInput
+      }
+      
       const fullDateTime = timeOnly ? `${dayjs().format('YYYY-MM-DD')}T${timeOnly}` : ''
       reminder = JSON.stringify({
         reminder_type: 'repeat',
         repeat_time: fullDateTime,
         repeat_rule: formRepeatType.value,
         repeat_interval: formRepeatType.value === 'day' ? formRepeatInterval.value : undefined,
-        repeat_day_of_week: formRepeatType.value === 'weekday' ? formRepeatWeekdays.value[0] : undefined,
-        repeat_day_of_month: formRepeatType.value === 'month' ? formRepeatMonthDays.value[0] : undefined,
+        repeat_day_of_week: formRepeatType.value === 'weekday' ? formRepeatWeekdays.value : undefined,
+        repeat_day_of_month: formRepeatType.value === 'month' ? formRepeatMonthDays.value : undefined,
         repeat_month: formRepeatType.value === 'year' ? formRepeatYearMonth.value : undefined
       })
     }
