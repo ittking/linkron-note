@@ -74,7 +74,7 @@ function sortTodosLocally(todos) {
 function getReminderTime(todo) {
   if (!todo.reminder) return null
   const reminder = todo.reminder
-  return reminder.repeat_time || reminder.repeatTime || null
+  return reminder.repeatTime || null
 }
 
 // 格式化提醒时间显示

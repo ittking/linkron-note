@@ -62,11 +62,11 @@ function getReminderTime(todo) {
   if (!todo.reminder) return null
   const reminder = todo.reminder
   // 重复提醒：返回 HH:mm 格式（用于 time 模式）
-  if (reminder.reminder_type === 'repeat' && reminder.repeat_time) {
-    return dayjs(reminder.repeat_time).format('HH:mm')
+  if (reminder.type === 'repeat' && reminder.repeatTime) {
+    return dayjs(reminder.repeatTime).format('HH:mm')
   }
   // 一次性提醒：返回完整日期时间格式（用于 datetime 模式）
-  return reminder.repeat_time || null
+  return reminder.repeatTime || null
 }
 
 // 格式化提醒时间显示
@@ -75,31 +75,31 @@ function formatReminderTime(timeStr, todo) {
   if (!todo.reminder) return ''
 
   const reminder = todo.reminder
-  if (reminder.reminder_type === 'repeat') {
+  if (reminder.type === 'repeat') {
     // 重复提醒：根据重复类型显示不同的文本
-    // 使用完整的 repeat_time 来解析时间
-    const fullTime = reminder.repeat_time || timeStr
+    // 使用完整的 repeatTime 来解析时间
+    const fullTime = reminder.repeatTime || timeStr
     const dateObj = dayjs(fullTime)
     const time = dateObj.isValid() ? dateObj.format('HH:mm') : ''
-    const rule = reminder.repeat_rule
+    const rule = reminder.repeatRule
 
     if (rule === 'day') {
-      const interval = reminder.repeat_interval || 1
+      const interval = reminder.repeatInterval || 1
       return interval === 1 ? `每天: ${time}` : `每${interval}天: ${time}`
     } else if (rule === 'weekday') {
-      const weekdays = reminder.repeat_day_of_week
+      const weekdays = reminder.repeatDayOfWeek
       const weekdayArray = Array.isArray(weekdays) ? weekdays : [weekdays]
       const weekdayNames = ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
       const selectedDays = weekdayArray.map(day => weekdayNames[day]).join('、')
       return `每周: ${selectedDays} ${time}`
     } else if (rule === 'month') {
-      const days = reminder.repeat_day_of_month
+      const days = reminder.repeatDayOfMonth
       const dayArray = Array.isArray(days) ? days : [days]
       const selectedDays = dayArray.join('、')
       return `每月: ${selectedDays}日 ${time}`
     } else if (rule === 'year') {
-      const month = reminder.repeat_month || 1
-      const day = reminder.repeat_day_of_month || 1
+      const month = reminder.repeatMonth || 1
+      const day = reminder.repeatDayOfMonth || 1
       return `每年: ${month}月${day}日 ${time}`
     }
     return time
@@ -121,8 +121,8 @@ function createTodo() {
   let reminder = null
   if (selectedReminderTime.value) {
     reminder = JSON.stringify({
-      reminder_type: 'onetime',
-      repeat_time: selectedReminderTime.value // 一次性提醒：完整日期时间
+      type: 'onetime',
+      repeatTime: selectedReminderTime.value // 一次性提醒：完整日期时间
     })
   }
 
@@ -152,7 +152,7 @@ function updateReminderTime(todo, value) {
   let reminder = null
   if (value) {
     // 获取原有的提醒类型
-    const originalReminderType = todo.reminder?.reminder_type || 'onetime'
+    const originalReminderType = todo.reminder?.type || 'onetime'
     let timeValue
 
     if (originalReminderType === 'onetime') {
@@ -165,14 +165,14 @@ function updateReminderTime(todo, value) {
     }
 
     reminder = JSON.stringify({
-      reminder_type: originalReminderType,
-      repeat_time: timeValue,
+      type: originalReminderType,
+      repeatTime: timeValue,
       // 保持原有的重复规则
-      repeat_rule: todo.reminder?.repeat_rule,
-      repeat_interval: todo.reminder?.repeat_interval,
-      repeat_day_of_week: todo.reminder?.repeat_day_of_week,
-      repeat_day_of_month: todo.reminder?.repeat_day_of_month,
-      repeat_month: todo.reminder?.repeat_month
+      repeatRule: todo.reminder?.repeatRule,
+      repeatInterval: todo.reminder?.repeatInterval,
+      repeatDayOfWeek: todo.reminder?.repeatDayOfWeek,
+      repeatDayOfMonth: todo.reminder?.repeatDayOfMonth,
+      repeatMonth: todo.reminder?.repeatMonth
     })
   }
 
@@ -330,7 +330,7 @@ const sortedTodos = computed(() => {
             <div class="mt-3">
               <DateTimePicker :model-value="getReminderTime(todo)"
                 @update:model-value="(value) => updateReminderTime(todo, value)"
-                :mode="todo.reminder?.reminder_type === 'repeat' ? 'time' : 'datetime'"
+                :mode="todo.reminder?.type === 'repeat' ? 'time' : 'datetime'"
                 :min="dayjs().format('YYYY-MM-DDTHH:mm')" :clearable="true">
                 <template #default="{ toggle, hasValue }">
                   <div @click="toggle"
@@ -340,7 +340,7 @@ const sortedTodos = computed(() => {
                       'text-base-content/70': hasValue
                     }">
                     <span>
-                      <Repeat v-if="hasValue && todo.reminder?.reminder_type === 'repeat'" :size="14" />
+                      <Repeat v-if="hasValue && todo.reminder?.type === 'repeat'" :size="14" />
                       <Clock v-else :size="14" />
                     </span>
                     <span v-if="hasValue">{{ formatReminderTime(getReminderTime(todo), todo) }}</span>
