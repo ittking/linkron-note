@@ -1,6 +1,6 @@
 <script setup>
 import { ref, computed, nextTick, watch } from 'vue'
-import { Check, Clock, X } from 'lucide-vue-next'
+import { Check, Clock, X, MoreHorizontal } from 'lucide-vue-next'
 import dayjs from 'dayjs'
 import dayjsLocale from 'dayjs/locale/zh-cn'
 import DateTimePicker from './ui/DateTimePicker.vue'
@@ -18,7 +18,7 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['create', 'update', 'delete', 'toggle-status', 'date-change'])
+const emit = defineEmits(['create', 'update', 'delete', 'toggle-status', 'date-change', 'open-edit'])
 
 const newTodoText = ref('')
 const selectedReminderTime = ref('')
@@ -47,15 +47,6 @@ const displayDateInfo = computed(() => {
 watch(selectedDate, () => {
   emit('date-change', selectedDate.value)
 })
-
-// 状态颜色映射
-const STATUS_COLORS = {
-  'todo': '#6B7280',
-  'in-progress': '#3B82F6',
-  'completed': '#10B981',
-  'pending': '#F59E0B',
-  'cancelled': '#EF4444'
-}
 
 // 从 todo 对象获取提醒时间
 function getReminderTime(todo) {
@@ -166,6 +157,11 @@ function updateTodoText(todo) {
   })
 
   cancelEditing()
+}
+
+// 打开编辑对话框
+function openEditDialog(todo) {
+  emit('open-edit', selectedDate.value, todo)
 }
 
 // 后端已排序，直接使用
@@ -281,6 +277,13 @@ const sortedTodos = computed(() => {
             </div>
           </div>
 
+          <!-- 更多操作按钮 -->
+          <button @click="openEditDialog(todo)"
+            class="flex-shrink-0 p-1 text-base-content/40 hover:text-primary hover:bg-primary/10 rounded transition-colors opacity-0 group-hover:opacity-100"
+            title="编辑">
+            <MoreHorizontal :size="14" />
+          </button>
+          
           <!-- 删除按钮 -->
           <button @click="deleteTodo(todo)"
             class="flex-shrink-0 p-1 text-base-content/40 hover:text-error hover:bg-error/10 rounded transition-colors opacity-0 group-hover:opacity-100"

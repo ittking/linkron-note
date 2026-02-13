@@ -3,6 +3,7 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
 import CalendarTodo from '@/components/CalendarTodo.vue'
 import TodayTodoList from '@/components/TodayTodoList.vue'
+import TodoDialog from '@/components/TodoDialog.vue'
 import { Calendar, CheckSquare } from 'lucide-vue-next'
 import dayjs from 'dayjs'
 import { useWorkDirectory } from '@/composables/useWorkDirectory'
@@ -23,28 +24,33 @@ const todayTodos = ref([])
 const monthTodos = ref([])
 const loading = ref(false)
 
-// 状态颜色映射
-const STATUS_COLORS = {
-  'todo': '#6B7280',
-  'in-progress': '#3B82F6',
-  'completed': '#10B981',
-  'pending': '#F59E0B',
-  'cancelled': '#EF4444'
-}
-
 // 获取今日日期字符串
 const today = computed(() => dayjs().format('YYYY-MM-DD'))
 
-// 今日显示的日期信息
-const todayDisplay = computed(() => {
-  return {
-    full: `今日 · ${dayjs().format('YYYY年M月D日')} · ${dayjs().format('dddd')}`
-  }
-})
+// 编辑对话框状态
+const showEditDialog = ref(false)
+const editDialogDate = ref('')
+const editDialogTodo = ref(null)
 
-// 获取状态颜色
-function getStatusColor(status) {
-  return STATUS_COLORS[status] || STATUS_COLORS['todo']
+// 打开编辑对话框
+function openEditDialog(date, todo = null) {
+  editDialogDate.value = date
+  editDialogTodo.value = todo
+  showEditDialog.value = true
+}
+
+// 处理编辑对话框保存
+function handleDialogSave(data) {
+  if (data.id) {
+    updateTodo(data)
+  } else {
+    createTodo(data)
+  }
+}
+
+// 处理编辑对话框删除
+function handleDialogDelete(id) {
+  deleteTodo(id)
 }
 
 // 本地排序函数：未完成的在前，已完成的在后；同状态下按创建时间排序（新的在前）
@@ -256,6 +262,7 @@ onMounted(() => {
       @create="createTodo"
       @update="updateTodo"
       @delete="deleteTodo"
+      @open-edit="openEditDialog"
     />
     
     <!-- 今日列表视图 -->
@@ -268,6 +275,16 @@ onMounted(() => {
       @delete="deleteTodo"
       @toggle-status="toggleTodoStatus"
       @date-change="handleDateChange"
+      @open-edit="openEditDialog"
+    />
+
+    <!-- 编辑对话框 -->
+    <TodoDialog
+      v-model:show="showEditDialog"
+      :date="editDialogDate"
+      :todo="editDialogTodo"
+      @save="handleDialogSave"
+      @delete="handleDialogDelete"
     />
 
     <!-- 悬浮切换按钮 -->

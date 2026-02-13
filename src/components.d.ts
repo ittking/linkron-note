@@ -32,6 +32,8 @@ declare module 'vue' {
     TerminalTab: typeof import('./components/TerminalTab.vue')['default']
     ThemeSetting: typeof import('./components/ThemeSetting.vue')['default']
     TodayTodoList: typeof import('./components/TodayTodoList.vue')['default']
+    TodoDialog: typeof import('./components/TodoDialog.vue')['default']
+    TodoEditDialog: typeof import('./components/TodoEditDialog.vue')['default']
     Toggle: typeof import('./components/ui/Toggle.vue')['default']
     XTerm: typeof import('./components/XTerm.vue')['default']
   }
