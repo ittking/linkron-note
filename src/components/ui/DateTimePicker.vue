@@ -396,12 +396,22 @@ function handleResize() {
   }
 }
 
+// 点击外部关闭下拉框
+function handleClickOutside(event) {
+  if (dropdownRef.value && !dropdownRef.value.contains(event.target) && 
+      triggerRef.value && !triggerRef.value.contains(event.target)) {
+    closeDropdown()
+  }
+}
+
 onMounted(() => {
   window.addEventListener('resize', handleResize)
+  window.addEventListener('click', handleClickOutside)
 })
 
 onBeforeUnmount(() => {
   window.removeEventListener('resize', handleResize)
+  window.removeEventListener('click', handleClickOutside)
 })
 
 defineExpose({

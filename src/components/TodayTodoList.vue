@@ -154,7 +154,7 @@ const sortedTodos = computed(() => props.todos)
     </div>
 
     <!-- 待办列表 -->
-    <div class="flex-1 overflow-auto p-4 pt-0">
+    <div class="flex-1 overflow-auto p-4 pt-0 no-scrollbar">
       <div v-if="loading" class="flex justify-center py-8">
         <span class="loading loading-spinner text-primary"></span>
       </div>

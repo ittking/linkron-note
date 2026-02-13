@@ -453,15 +453,26 @@ pub fn get_today_todos(conn: &Connection, today_date: &str) -> SqliteResult<Vec<
         }
     }
 
-    // 按创建时间排序（新的在前）
+    // 排序：未完成的在前，已完成的在后；同状态按创建时间排序（新的在前）
     result.sort_by(|a, b| {
-        let a_time = chrono::DateTime::parse_from_rfc3339(&a.created_at)
-            .unwrap_or_else(|_| chrono::Utc::now().into())
-            .timestamp();
-        let b_time = chrono::DateTime::parse_from_rfc3339(&b.created_at)
-            .unwrap_or_else(|_| chrono::Utc::now().into())
-            .timestamp();
-        b_time.cmp(&a_time)
+        // 先按状态排序：已完成（completed、cancelled）在后
+        let a_completed = a.status == "completed" || a.status == "cancelled";
+        let b_completed = b.status == "completed" || b.status == "cancelled";
+        
+        match (a_completed, b_completed) {
+            (true, false) => std::cmp::Ordering::Greater,  // a完成，b未完成，b在前
+            (false, true) => std::cmp::Ordering::Less,     // a未完成，b完成，a在前
+            _ => {
+                // 同状态按创建时间排序（新的在前）
+                let a_time = chrono::DateTime::parse_from_rfc3339(&a.created_at)
+                    .unwrap_or_else(|_| chrono::Utc::now().into())
+                    .timestamp();
+                let b_time = chrono::DateTime::parse_from_rfc3339(&b.created_at)
+                    .unwrap_or_else(|_| chrono::Utc::now().into())
+                    .timestamp();
+                b_time.cmp(&a_time)
+            }
+        }
     });
 
     Ok(result)
