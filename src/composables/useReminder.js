@@ -19,14 +19,6 @@ export function useReminder() {
         permissionGranted = permission === 'granted'
       }
 
-      // 发送启动通知
-      if (permissionGranted) {
-        await sendNotification({
-          title: 'iFlow 启动',
-          body: '消息通知已启动，待办事项提醒将正常工作'
-        })
-      }
-
       return permissionGranted
     } catch (error) {
       console.error('Failed to request notification permission:', error)
@@ -38,17 +30,31 @@ export function useReminder() {
   function shouldSendOneTimeReminder(reminder, currentTime) {
     if (!reminder.repeatTime) return false
 
+    console.log('检查一次性提醒:')
+    console.log('  提醒时间原始值:', reminder.repeatTime)
+    
     const reminderTime = dayjs(reminder.repeatTime)
-    if (!reminderTime.isValid()) return false
-
-    // 只有在秒数为0时才检查
-    if (currentTime.second() !== 0) return false
+    console.log('  提醒时间解析结果:', reminderTime)
+    console.log('  提醒时间是否有效:', reminderTime.isValid())
+    
+    if (!reminderTime.isValid()) {
+      console.log('  提醒时间无效')
+      return false
+    }
 
     // 检查年月日时分是否精确匹配
     const reminderDateTime = reminderTime.format('YYYY-MM-DD HH:mm')
     const currentDateTime = currentTime.format('YYYY-MM-DD HH:mm')
 
-    return reminderDateTime === currentDateTime
+    console.log('  提醒时间格式化后:', reminderDateTime)
+    console.log('  当前时间格式化后:', currentDateTime)
+    console.log('  当前秒数:', currentTime.second())
+    console.log('  时间是否匹配:', reminderDateTime === currentDateTime)
+
+    // 只有在秒数为0且时间匹配时才提醒
+    const result = currentTime.second() === 0 && reminderDateTime === currentDateTime
+    console.log('  最终结果:', result)
+    return result
   }
 
   // 判断是否应该发送重复提醒
@@ -57,9 +63,6 @@ export function useReminder() {
 
     const reminderTime = dayjs(reminder.repeatTime)
     if (!reminderTime.isValid()) return false
-
-    // 只有在秒数为0时才检查
-    if (currentTime.second() !== 0) return false
 
     // 检查时分是否匹配
     const reminderHourMinute = reminderTime.format('HH:mm')
@@ -74,35 +77,38 @@ export function useReminder() {
     const rule = reminder.repeatRule
 
     // 根据重复规则判断是否应该提醒
+    let shouldRemind = false
+
     if (rule === 'day') {
       const interval = reminder.repeatInterval || 1
       const daysDiff = currentDate.diff(todoDate, 'day')
-      return daysDiff >= 0 && daysDiff % interval === 0
+      shouldRemind = daysDiff >= 0 && daysDiff % interval === 0
     } else if (rule === 'weekday') {
       const weekdays = reminder.repeatDayOfWeek
       const currentWeekday = currentDate.day()
       if (Array.isArray(weekdays)) {
-        return weekdays.includes(currentWeekday)
+        shouldRemind = weekdays.includes(currentWeekday)
       } else {
-        return currentWeekday === weekdays
+        shouldRemind = currentWeekday === weekdays
       }
     } else if (rule === 'month') {
       const days = reminder.repeatDayOfMonth
       const currentDay = currentDate.date()
       if (Array.isArray(days)) {
-        return days.includes(currentDay)
+        shouldRemind = days.includes(currentDay)
       } else {
-        return currentDay === days
+        shouldRemind = currentDay === days
       }
     } else if (rule === 'year') {
       const month = reminder.repeatMonth
       const day = reminder.repeatDayOfMonth
       const currentMonth = currentDate.month() + 1
       const currentDay = currentDate.date()
-      return currentMonth === month && currentDay === day
+      shouldRemind = currentMonth === month && currentDay === day
     }
 
-    return false
+    // 只有在秒数为0且应该提醒时才返回true
+    return currentTime.second() === 0 && shouldRemind
   }
 
   // 获取需要提醒的待办事项
@@ -135,7 +141,7 @@ export function useReminder() {
         }
 
         if (shouldNotify) {
-          await sendNotification({
+          sendNotification({
             title: '待办提醒',
             body: `${todo.text} - ${currentTime.format('HH:mm')}`
           })

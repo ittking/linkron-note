@@ -363,7 +363,7 @@ pub fn get_reminders(conn: &Connection) -> SqliteResult<Vec<Todo>> {
 
 
 
-    let todos: Vec<Todo> = todos.collect::<Result<Vec<_>, _>>()?;
+    let todos: Vec<Todo> = todos.collect::<SqliteResult<Vec<_>>>()?;
 
 
 
@@ -415,7 +415,39 @@ pub fn get_reminders(conn: &Connection) -> SqliteResult<Vec<Todo>> {
 
 
 
-                            if reminder_time > current_time.naive_local() {
+                            // 转换为本地时间进行比较
+
+
+
+                            let reminder_local = reminder_time.and_local_timezone(chrono::Local).unwrap();
+
+
+
+                            
+
+
+
+                            // 计算时间差
+
+
+
+                            let time_diff = current_time.signed_duration_since(reminder_local);
+
+
+
+                            
+
+
+
+                            // 只有在当前时间的前后10秒内才返回
+
+
+
+                            // 这样可以避免边界情况下的过期判断问题
+
+
+
+                            if time_diff.num_seconds() >= -10 && time_diff.num_seconds() <= 10 {
 
 
 
@@ -440,6 +472,10 @@ pub fn get_reminders(conn: &Connection) -> SqliteResult<Vec<Todo>> {
 
 
                 ReminderType::Repeat => {
+
+
+
+                    // 重复提醒不做时间限制，直接返回
 
 
 
