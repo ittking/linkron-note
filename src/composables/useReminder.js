@@ -135,7 +135,6 @@ export function useReminder() {
         }
 
         if (shouldNotify) {
-          console.log('发送通知:', todo.text)
           await sendNotification({
             title: '待办提醒',
             body: `${todo.text} - ${currentTime.format('HH:mm')}`

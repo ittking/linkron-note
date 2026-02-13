@@ -364,12 +364,9 @@ pub async fn get_todos_by_month(year: i32, month: i32, work_directory: Option<St
 /// Tauri 命令：获取需要提醒的待办事项
 #[tauri::command]
 pub async fn get_reminders(work_directory: Option<String>) -> Result<Vec<Todo>, String> {
-    println!("get_reminders 命令被调用, work_directory: {:?}", work_directory);
     let db_path = get_database_path(work_directory)?;
-    println!("数据库路径: {}", db_path);
     let db = Database::new(&db_path).map_err(|e| format!("Failed to open database: {}", e))?;
     let result = todo::get_reminders(&db.conn).map_err(|e| format!("Failed to get reminders: {}", e))?;
-    println!("get_reminders 返回结果: {} 个待办事项", result.len());
     Ok(result)
 }
 

@@ -267,43 +267,11 @@ pub fn get_reminders(conn: &Connection) -> SqliteResult<Vec<Todo>> {
 
 
 
-    // 先查询所有待办事项用于调试
-
-    let mut all_stmt = conn.prepare(
-
-        "SELECT id, date, text, status, reminder FROM todos"
-
-    )?;
-
-    let all_todos: Vec<(i64, String, String, String, String)> = all_stmt.query_map([], |row| {
-
-        Ok((
-
-            row.get(0)?,
-
-            row.get(1)?,
-
-            row.get(2)?,
-
-            row.get(3)?,
-
-            row.get(4)?,
-
-        ))
-
-    })?.collect::<Result<Vec<_>, _>>()?;
+    let current_time = chrono::Local::now();
 
 
 
-    println!("数据库中总共有 {} 个待办事项:", all_todos.len());
 
-    for (id, date, text, status, reminder) in &all_todos {
-
-        println!("  id={}, date={}, text='{}', status='{}', reminder='{}'",
-
-            id, date, text, status, reminder);
-
-    }
 
 
 
@@ -315,15 +283,7 @@ pub fn get_reminders(conn: &Connection) -> SqliteResult<Vec<Todo>> {
 
 
 
-
-
-
-
          FROM todos
-
-
-
-
 
 
 
@@ -331,23 +291,11 @@ pub fn get_reminders(conn: &Connection) -> SqliteResult<Vec<Todo>> {
 
 
 
-
-
-
-
          AND reminder IS NOT NULL
 
 
 
-
-
-
-
          ORDER BY date, created_at ASC"
-
-
-
-
 
 
 
@@ -363,15 +311,7 @@ pub fn get_reminders(conn: &Connection) -> SqliteResult<Vec<Todo>> {
 
 
 
-
-
-
-
         let reminder_json: String = row.get(4)?;
-
-
-
-
 
 
 
@@ -379,19 +319,7 @@ pub fn get_reminders(conn: &Connection) -> SqliteResult<Vec<Todo>> {
 
 
 
-
-
-
-
-
-
-
-
         Ok(Todo {
-
-
-
-
 
 
 
@@ -399,15 +327,7 @@ pub fn get_reminders(conn: &Connection) -> SqliteResult<Vec<Todo>> {
 
 
 
-
-
-
-
             date: row.get(1)?,
-
-
-
-
 
 
 
@@ -415,15 +335,7 @@ pub fn get_reminders(conn: &Connection) -> SqliteResult<Vec<Todo>> {
 
 
 
-
-
-
-
             status: row.get(3)?,
-
-
-
-
 
 
 
@@ -431,23 +343,11 @@ pub fn get_reminders(conn: &Connection) -> SqliteResult<Vec<Todo>> {
 
 
 
-
-
-
-
             created_at: row.get(5)?,
 
 
 
-
-
-
-
             updated_at: row.get(6)?,
-
-
-
-
 
 
 
@@ -467,59 +367,11 @@ pub fn get_reminders(conn: &Connection) -> SqliteResult<Vec<Todo>> {
 
 
 
-    println!("get_reminders: 过滤后查询到 {} 个待办事项", todos.len());
 
-
-
-    for todo in &todos {
-
-
-
-        println!("  待办: {} (id: {}, status: {})", todo.text, todo.id, todo.status);
-
-
-
-        if let Some(ref reminder) = todo.reminder {
-
-
-
-            println!("    提醒类型: {:?}", reminder.reminder_type);
-
-
-
-            println!("    提醒时间: {:?}", reminder.repeat_time);
-
-
-
-            println!("    上次通知: {:?}", reminder.last_notified);
-
-
-
-        }
-
-
-
-    }
-
-
-
-    // 过滤需要提醒的待办事项
 
 
 
     let mut filtered_todos = Vec::new();
-
-
-
-    let current_time = chrono::Local::now();
-
-
-
-    println!("当前时间: {}", current_time.format("%Y-%m-%d %H:%M"));
-
-
-
-
 
 
 
@@ -531,171 +383,47 @@ pub fn get_reminders(conn: &Connection) -> SqliteResult<Vec<Todo>> {
 
 
 
-
-
-
-
         if let Some(reminder) = &todo.reminder {
 
 
 
+            match reminder.reminder_type {
 
 
 
+                ReminderType::OneTime => {
 
-            // 重复提醒：直接返回，不做时间校验
 
 
+                    if let Some(ref repeat_time) = reminder.repeat_time {
 
-            if reminder.reminder_type == ReminderType::Repeat {
 
 
+                        if let Ok(reminder_time) = chrono::NaiveDateTime::parse_from_str(
 
 
 
+                            repeat_time,
 
 
-                println!("  重复提醒，直接返回: {}", todo.text);
 
+                            "%Y-%m-%dT%H:%M"
 
 
 
+                        ) {
 
 
 
-                filtered_todos.push(todo);
+                            if reminder_time > current_time.naive_local() {
 
 
 
+                                filtered_todos.push(todo);
 
 
 
-
-                continue;
-
-
-
-
-
-
-
-            }
-
-
-
-
-
-
-
-
-
-
-
-            // 一次性提醒：检查时间是否过期
-
-
-
-            if reminder.reminder_type == ReminderType::OneTime {
-
-
-
-
-
-
-
-                if let Some(ref repeat_time) = reminder.repeat_time {
-
-
-
-
-
-
-
-                    if let Ok(reminder_time) = chrono::NaiveDateTime::parse_from_str(
-
-
-
-
-
-
-
-                        repeat_time,
-
-
-
-
-
-
-
-                        "%Y-%m-%dT%H:%M"
-
-
-
-
-
-
-
-                    ) {
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-                        // 如果提醒时间在当前时间之后，添加到提醒列表
-
-
-
-
-
-
-
-                        if reminder_time > current_time.naive_local() {
-
-
-
-
-
-
-
-                            println!("  一次性提醒，未过期: {} (提醒时间: {})", todo.text, repeat_time);
-
-
-
-
-
-
-
-                            filtered_todos.push(todo);
-
-
-
-
-
-
-
-                        } else {
-
-
-
-
-
-
-
-                            println!("  一次性提醒，已过期: {} (提醒时间: {})", todo.text, repeat_time);
-
-
-
-
+                            }
 
 
 
@@ -703,15 +431,7 @@ pub fn get_reminders(conn: &Connection) -> SqliteResult<Vec<Todo>> {
 
 
 
-
-
-
-
                     }
-
-
-
-
 
 
 
@@ -719,7 +439,19 @@ pub fn get_reminders(conn: &Connection) -> SqliteResult<Vec<Todo>> {
 
 
 
+                ReminderType::Repeat => {
 
+
+
+                    filtered_todos.push(todo);
+
+
+
+                }
+
+
+
+                ReminderType::None => {}
 
 
 
@@ -727,15 +459,7 @@ pub fn get_reminders(conn: &Connection) -> SqliteResult<Vec<Todo>> {
 
 
 
-
-
-
-
         }
-
-
-
-
 
 
 
@@ -747,21 +471,7 @@ pub fn get_reminders(conn: &Connection) -> SqliteResult<Vec<Todo>> {
 
 
 
-
-
-
-
-
-
-
-
-
-
     Ok(filtered_todos)
-
-
-
-
 
 
 
