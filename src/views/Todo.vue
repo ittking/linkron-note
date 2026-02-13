@@ -138,7 +138,8 @@ async function loadTodayTodos(date = today.value) {
       date,
       workDirectory 
     })
-    todayTodos.value = data
+    // 应用前端排序确保顺序正确
+    todayTodos.value = sortTodosLocally(data)
   } catch (error) {
     console.error('加载待办事项失败:', error)
   } finally {
@@ -161,7 +162,8 @@ async function loadMonthTodos() {
       month: calendarMonth.value,
       workDirectory 
     })
-    monthTodos.value = data
+    // 应用前端排序确保顺序正确
+    monthTodos.value = sortTodosLocally(data)
   } catch (error) {
     console.error('加载月度待办事项失败:', error)
   } finally {
