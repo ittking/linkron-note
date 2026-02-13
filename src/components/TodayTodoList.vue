@@ -151,20 +151,20 @@ function updateTodoText(todo) {
     cancelEditing()
     return
   }
-  
+
   // 保持原有的提醒配置不变
   let reminder = null
   if (todo.reminder) {
     reminder = JSON.stringify(todo.reminder)
   }
-  
+
   emit('update', {
     id: todo.id,
     text: editingTodoText.value.trim(),
     status: todo.status,
     reminder
   })
-  
+
   cancelEditing()
 }
 
@@ -174,10 +174,10 @@ const sortedTodos = computed(() => {
     // 先按状态排序：已完成（completed、cancelled）在后
     const aCompleted = a.status === 'completed' || a.status === 'cancelled'
     const bCompleted = b.status === 'completed' || b.status === 'cancelled'
-    
+
     if (aCompleted && !bCompleted) return 1  // a完成，b未完成，b在前
     if (!aCompleted && bCompleted) return -1  // a未完成，b完成，a在前
-    
+
     // 同状态按创建时间排序（新的在前）
     const aTime = new Date(a.created_at).getTime()
     const bTime = new Date(b.created_at).getTime()
@@ -191,16 +191,10 @@ const sortedTodos = computed(() => {
     <!-- 顶部：日期选择 -->
     <div class="px-6 py-3 border-b border-base-200">
       <div class="flex items-center justify-center">
-        <DateTimePicker
-          v-model="selectedDate"
-          mode="date"
-          placeholder="选择日期"
-        >
+        <DateTimePicker v-model="selectedDate" mode="date" placeholder="选择日期">
           <template #default="{ toggle }">
-            <div 
-              @click="toggle"
-              class="text-sm text-base-content/80 font-medium cursor-pointer hover:text-primary transition-colors"
-            >
+            <div @click="toggle"
+              class="text-sm text-base-content/80 font-medium cursor-pointer hover:text-primary transition-colors">
               {{ displayDateInfo.full }}
             </div>
           </template>
@@ -211,29 +205,17 @@ const sortedTodos = computed(() => {
     <!-- 输入区域 -->
     <div class="p-4">
       <div class="flex items-center gap-2">
-        <input
-          v-model="newTodoText"
-          @keyup.enter="createTodo"
-          type="text"
-          placeholder="输入待办事项，按回车创建..."
-          class="flex-1 px-3 py-2 border border-base-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-transparent text-sm h-[34px]"
-        />
-        <DateTimePicker
-          v-model="selectedReminderTime"
-          mode="datetime"
-          :min="dayjs().format('YYYY-MM-DDTHH:mm')"
-          :clearable="true"
-        >
+        <input v-model="newTodoText" @keyup.enter="createTodo" type="text" placeholder="输入待办事项，按回车创建..."
+          class="flex-1 px-3 py-2 border border-base-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-transparent text-sm h-[34px]" />
+        <DateTimePicker v-model="selectedReminderTime" mode="datetime" :min="dayjs().format('YYYY-MM-DDTHH:mm')"
+          :clearable="true">
           <template #default="{ toggle }">
-            <button
-              @click="toggle"
+            <button @click="toggle"
               class="rounded-md transition-colors flex-shrink-0 border border-base-200 h-[34px] w-[34px] flex items-center justify-center"
               :class="{
                 'text-primary bg-primary/10 border-primary/30': !!selectedReminderTime,
                 'text-base-content/40 hover:text-primary hover:bg-primary/5 hover:border-primary/30': !selectedReminderTime
-              }"
-              title="设置提醒时间"
-            >
+              }" title="设置提醒时间">
               <Clock :size="16" />
             </button>
           </template>
@@ -247,72 +229,50 @@ const sortedTodos = computed(() => {
         <span class="loading loading-spinner text-primary"></span>
       </div>
 
-      <div v-else-if="sortedTodos.length === 0" class="flex flex-col items-center justify-center h-full text-base-content/40 text-center py-12">
+      <div v-else-if="sortedTodos.length === 0"
+        class="flex flex-col items-center justify-center h-full text-base-content/40 text-center py-12">
         <Check :size="48" class="mb-3 opacity-50" />
         <div class="text-sm">今日暂无待办事项</div>
       </div>
 
       <div v-else class="space-y-3">
-        <div
-          v-for="todo in sortedTodos"
-          :key="todo.id"
-          class="group flex items-start gap-3 p-3 bg-primary/5 rounded-lg"
-        >
+        <div v-for="todo in sortedTodos" :key="todo.id"
+          class="group flex items-start gap-3 p-3 bg-primary/5 rounded-lg">
           <!-- 圆形 Checkbox -->
-          <button
-            @click="toggleTodoStatus(todo)"
-            class="flex-shrink-0 w-4 h-4 rounded-full border-2 flex items-center justify-center transition-all"
-            :style="{
+          <button @click="toggleTodoStatus(todo)"
+            class="flex-shrink-0 w-4 h-4 rounded-full border-2 flex items-center justify-center transition-all" :style="{
               borderColor: todo.status === 'completed' ? 'rgba(16, 185, 129, 0.5)' : STATUS_COLORS[todo.status],
               backgroundColor: 'transparent'
-            }"
-          >
-            <div v-if="todo.status === 'completed'" class="w-1.5 h-1.5 rounded-full" style="background-color: #10B981"></div>
+            }">
+            <div v-if="todo.status === 'completed'" class="w-1.5 h-1.5 rounded-full" style="background-color: #10B981">
+            </div>
           </button>
 
           <!-- 待办内容 -->
-          <div class="flex-1 min-w-0">
+          <div class="flex-1 min-w-0 line-height-1">
             <!-- 编辑模式 -->
-            <input
-              v-if="editingTodoId === todo.id"
-              :id="`todo-input-${todo.id}`"
-              v-model="editingTodoText"
-              @blur="updateTodoText(todo)"
-              @keyup.enter="updateTodoText(todo)"
-              @keyup.esc="cancelEditing"
-              class="w-full text-sm bg-transparent border-none focus:outline-none focus:ring-0 p-0"
-            />
+            <input v-if="editingTodoId === todo.id" :id="`todo-input-${todo.id}`" v-model="editingTodoText"
+              @blur="updateTodoText(todo)" @keyup.enter="updateTodoText(todo)" @keyup.esc="cancelEditing"
+              class="w-full text-sm bg-transparent border-none focus:outline-none focus:ring-0 p-0 !m-0" />
             <!-- 显示模式 -->
-            <div
-              v-else
-              @click="todo.status !== 'completed' && todo.status !== 'cancelled' && startEditing(todo)"
-              class="text-sm cursor-pointer"
-              :class="{
-                'line-through opacity-60': todo.status === 'completed' || todo.status === 'cancelled',
-                'hover:bg-base-200 px-1 -mx-1 rounded': todo.status !== 'completed' && todo.status !== 'cancelled'
-              }"
-            >
+            <div v-else @click="todo.status !== 'completed' && todo.status !== 'cancelled' && startEditing(todo)"
+              class="text-sm cursor-pointer" :class="{
+                'line-through opacity-60': todo.status === 'completed' || todo.status === 'cancelled'
+              }">
               {{ todo.text }}
             </div>
 
             <!-- 提醒时间 -->
             <div class="mt-3">
-              <DateTimePicker
-                :model-value="getReminderTime(todo)"
-                @update:model-value="(value) => updateReminderTime(todo, value)"
-                mode="datetime"
-                :min="dayjs().format('YYYY-MM-DDTHH:mm')"
-                :clearable="true"
-              >
+              <DateTimePicker :model-value="getReminderTime(todo)"
+                @update:model-value="(value) => updateReminderTime(todo, value)" mode="datetime"
+                :min="dayjs().format('YYYY-MM-DDTHH:mm')" :clearable="true">
                 <template #default="{ toggle, hasValue }">
-                  <div 
-                    @click="toggle"
-                    class="flex items-center gap-1 text-xs cursor-pointer hover:text-primary transition-colors"
-                    :class="{
+                  <div @click="toggle"
+                    class="flex items-center gap-1 text-xs cursor-pointer hover:text-primary transition-colors" :class="{
                       'text-base-content/50': !hasValue,
                       'text-base-content/70': hasValue
-                    }"
-                  >
+                    }">
                     <Clock :size="12" />
                     {{ hasValue ? formatReminderTime(getReminderTime(todo)) : '今日' }}
                   </div>
@@ -322,11 +282,9 @@ const sortedTodos = computed(() => {
           </div>
 
           <!-- 删除按钮 -->
-          <button
-            @click="deleteTodo(todo)"
+          <button @click="deleteTodo(todo)"
             class="flex-shrink-0 p-1 text-base-content/40 hover:text-error hover:bg-error/10 rounded transition-colors opacity-0 group-hover:opacity-100"
-            title="删除"
-          >
+            title="删除">
             <X :size="14" />
           </button>
         </div>
