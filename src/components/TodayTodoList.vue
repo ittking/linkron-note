@@ -67,8 +67,8 @@ function createTodo() {
   let reminder = null
   if (selectedReminderTime.value) {
     reminder = JSON.stringify({
-      type: 'onetime',
-      repeatTime: selectedReminderTime.value
+      reminder_type: 'onetime',
+      repeat_time: selectedReminderTime.value
     })
   }
 
@@ -98,8 +98,8 @@ function updateReminderTime(todo, value) {
   let reminder = null
   if (value) {
     reminder = JSON.stringify({
-      type: 'onetime',
-      repeatTime: value
+      reminder_type: 'onetime',
+      repeat_time: value
     })
   }
 
@@ -138,11 +138,17 @@ function updateTodoText(todo) {
     return
   }
   
+  // 保持原有的提醒配置不变
+  let reminder = null
+  if (todo.reminder) {
+    reminder = JSON.stringify(todo.reminder)
+  }
+  
   emit('update', {
     id: todo.id,
     text: editingTodoText.value.trim(),
     status: todo.status,
-    reminder: todo.reminder ? JSON.stringify(todo.reminder) : null
+    reminder
   })
   
   cancelEditing()

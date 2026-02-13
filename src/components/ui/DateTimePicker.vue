@@ -104,7 +104,21 @@ const initValue = () => {
 const displayValue = computed(() => {
   if (!props.modelValue) return props.placeholder
 
-  const date = dayjs(props.modelValue)
+  let date
+  if (props.mode === 'time') {
+    // time 模式下，modelValue 可能是 HH:mm 或 YYYY-MM-DDTHH:mm
+    if (props.modelValue.includes('T')) {
+      date = dayjs(props.modelValue)
+    } else {
+      // 只有时间部分，用今天的日期补全
+      date = dayjs(`${dayjs().format('YYYY-MM-DD')}T${props.modelValue}`)
+    }
+  } else {
+    date = dayjs(props.modelValue)
+  }
+
+  if (!date.isValid()) return props.placeholder
+
   const dateStr = date.format('YYYY/MM/DD')
   const timeStr = date.format('HH:mm')
 

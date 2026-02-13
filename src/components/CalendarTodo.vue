@@ -5,6 +5,7 @@ import dayjs from 'dayjs'
 import Button from './ui/Button.vue'
 import Toggle from './ui/Toggle.vue'
 import Select from './ui/Select.vue'
+import DateTimePicker from './ui/DateTimePicker.vue'
 
 dayjs.locale('zh-cn')
 
@@ -77,7 +78,7 @@ const formStatus = ref('todo')
 const formReminderEnabled = ref(false)
 const formReminderType = ref('once')
 const formReminderTime = ref('')
-const formRepeatTime = ref('09:00') // 重复提醒的具体时间
+const formRepeatTime = ref('') // 重复提醒的具体时间
 const formRepeatType = ref('day')
 const formRepeatInterval = ref(1)
 const formRepeatWeekdays = ref([1, 3, 5])
@@ -109,7 +110,7 @@ function resetForm() {
   formReminderEnabled.value = false
   formReminderType.value = 'once'
   formReminderTime.value = ''
-  formRepeatTime.value = '09:00'
+  formRepeatTime.value = ''
   formRepeatType.value = 'day'
   formRepeatInterval.value = 1
   formRepeatWeekdays.value = [1, 3, 5]
@@ -154,7 +155,7 @@ function openTodoDialog(dateStr, todo = null) {
       const reminder = todo.reminder
       formReminderType.value = reminder.reminder_type === 'onetime' ? 'once' : (reminder.reminder_type === 'repeat' ? 'repeat' : 'none')
       formReminderTime.value = reminder.repeat_time || ''
-      formRepeatTime.value = reminder.repeat_time || '09:00'
+      formRepeatTime.value = reminder.repeat_time || ''
 
       if (reminder.reminder_type === 'repeat' && reminder.repeat_rule) {
         const rule = reminder.repeat_rule
@@ -198,12 +199,12 @@ function saveTodo() {
   if (formReminderEnabled.value) {
     if (formReminderType.value === 'once') {
       reminder = JSON.stringify({
-        type: 'onetime',
+        reminder_type: 'onetime',
         repeat_time: formReminderTime.value
       })
     } else if (formReminderType.value === 'repeat') {
       reminder = JSON.stringify({
-        type: 'repeat',
+        reminder_type: 'repeat',
         repeat_rule: formRepeatType.value,
         repeat_time: formRepeatTime.value,
         repeat_interval: formRepeatType.value === 'day' ? formRepeatInterval.value : undefined,
@@ -476,8 +477,13 @@ const dayOptions = computed(() => {
             <!-- 一次性提醒 -->
             <div v-if="formReminderType === 'once'">
               <label class="block text-xs text-base-content/60 mb-1.5">提醒时间</label>
-              <input type="datetime-local" v-model="formReminderTime"
-                class="w-full px-3 py-1.5 border border-base-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/50">
+              <DateTimePicker
+                v-model="formReminderTime"
+                mode="datetime"
+                :min="dayjs().format('YYYY-MM-DDTHH:mm')"
+                :clearable="true"
+                placeholder="选择提醒时间"
+              />
             </div>
 
             <!-- 重复提醒 -->
@@ -546,8 +552,11 @@ const dayOptions = computed(() => {
               <!-- 重复提醒时间 -->
               <div>
                 <label class="block text-xs text-base-content/60 mb-1.5">提醒时间</label>
-                <input type="time" v-model="formRepeatTime"
-                  class="w-full px-3 py-1.5 border border-base-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/50">
+                <DateTimePicker
+                  v-model="formRepeatTime"
+                  mode="time"
+                  placeholder="选择提醒时间"
+                />
               </div>
             </div>
           </div>
