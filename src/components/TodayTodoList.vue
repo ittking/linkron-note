@@ -112,7 +112,7 @@ const sortedTodos = computed(() => props.todos)
 </script>
 
 <template>
-  <div class="today-todo-list h-full flex flex-col bg-base-100">
+  <div class="today-todo-list h-full flex flex-col bg-base-100 max-w-200 mx-auto pb-2">
     <!-- 顶部：今日日期 -->
     <div class="px-6 py-3 border-b border-base-200">
       <div class="text-center text-sm text-base-content/80 font-medium">
