@@ -40,6 +40,8 @@ const isOpen = ref(false)
 const dropdownRef = ref(null)
 const triggerRef = ref(null)
 const calendarRef = ref(null)
+const hourScrollRef = ref(null)
+const minuteScrollRef = ref(null)
 const timePickerHeight = ref('200px')
 
 // 临时值（用于确认前暂存）
@@ -268,10 +270,26 @@ const minuteOptions = computed(() => {
 
 function selectHour(hour) {
   tempSelectedHour.value = hour
+  nextTick(() => {
+    if (hourScrollRef.value) {
+      const element = hourScrollRef.value.querySelector(`[data-hour="${hour}"]`)
+      if (element) {
+        element.scrollIntoView({ block: 'start', behavior: 'smooth' })
+      }
+    }
+  })
 }
 
 function selectMinute(minute) {
   tempSelectedMinute.value = minute
+  nextTick(() => {
+    if (minuteScrollRef.value) {
+      const element = minuteScrollRef.value.querySelector(`[data-minute="${minute}"]`)
+      if (element) {
+        element.scrollIntoView({ block: 'start', behavior: 'smooth' })
+      }
+    }
+  })
 }
 
 function calculatePosition() {
@@ -332,7 +350,27 @@ function calculatePosition() {
 
       // 计算时间选择器高度
       calculateTimePickerHeight()
+
+      // 滚动到当前选中的时间
+      scrollToSelectedTime()
     }, 50)
+  })
+}
+
+function scrollToSelectedTime() {
+  nextTick(() => {
+    if (tempSelectedHour.value && hourScrollRef.value) {
+      const element = hourScrollRef.value.querySelector(`[data-hour="${tempSelectedHour.value}"]`)
+      if (element) {
+        element.scrollIntoView({ block: 'start', behavior: 'smooth' })
+      }
+    }
+    if (tempSelectedMinute.value && minuteScrollRef.value) {
+      const element = minuteScrollRef.value.querySelector(`[data-minute="${tempSelectedMinute.value}"]`)
+      if (element) {
+        element.scrollIntoView({ block: 'start', behavior: 'smooth' })
+      }
+    }
   })
 }
 
@@ -589,8 +627,8 @@ defineExpose({
               <div class="flex gap-1.5 flex-1 min-h-0">
                 <!-- 小时 -->
                 <div class="flex-1 border border-base-200 rounded overflow-hidden">
-                  <div class="overflow-y-auto custom-scrollbar h-full">
-                    <div v-for="hour in hourOptions" :key="hour.value" @click="selectHour(hour.value)"
+                  <div ref="hourScrollRef" class="overflow-y-auto custom-scrollbar h-full">
+                    <div v-for="hour in hourOptions" :key="hour.value" :data-hour="hour.value" @click="selectHour(hour.value)"
                       class="text-[10px] py-1.5 px-1 hover:bg-base-200 cursor-pointer text-center transition-colors"
                       :class="{ 'bg-primary/20 text-primary font-medium': tempSelectedHour === hour.value }">
                       {{ hour.label }}
@@ -599,8 +637,8 @@ defineExpose({
                 </div>
                 <!-- 分钟 -->
                 <div class="flex-1 border border-base-200 rounded overflow-hidden">
-                  <div class="overflow-y-auto custom-scrollbar h-full">
-                    <div v-for="minute in minuteOptions" :key="minute.value" @click="selectMinute(minute.value)"
+                  <div ref="minuteScrollRef" class="overflow-y-auto custom-scrollbar h-full">
+                    <div v-for="minute in minuteOptions" :key="minute.value" :data-minute="minute.value" @click="selectMinute(minute.value)"
                       class="text-[10px] py-1.5 px-1 hover:bg-base-200 cursor-pointer text-center transition-colors"
                       :class="{ 'bg-primary/20 text-primary font-medium': tempSelectedMinute === minute.value }">
                       {{ minute.label }}
