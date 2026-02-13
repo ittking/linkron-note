@@ -9,7 +9,6 @@ mod web_scraper;
 mod note;
 mod tag;
 mod todo;
-mod reminder;
 
 #[cfg(any(windows, target_os = "macos"))]
 mod window_manager;
@@ -41,13 +40,6 @@ pub fn run() {
         .plugin(tauri_plugin_notification::init())
         .register_uri_scheme_protocol("iterm", protocol::iterm_protocol_handler)
         .setup(|app| {
-            // 读取工作目录
-            let work_directory = protocol::read_work_directory(app.handle());
-            
-            // 创建并启动提醒任务管理器
-            let reminder_task = reminder::ReminderTask::new(app.handle().clone(), work_directory);
-            reminder_task.start();
-            
             window_manager::setup_window_manager(app)
         })
         .invoke_handler(tauri::generate_handler![
