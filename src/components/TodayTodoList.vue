@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, nextTick } from 'vue'
 import { Check, Clock, X } from 'lucide-vue-next'
 import dayjs from 'dayjs'
 import dayjsLocale from 'dayjs/locale/zh-cn'
@@ -22,6 +22,10 @@ const emit = defineEmits(['create', 'update', 'delete', 'toggle-status'])
 
 const newTodoText = ref('')
 const selectedReminderTime = ref('')
+
+// 编辑状态
+const editingTodoId = ref(null)
+const editingTodoText = ref('')
 
 // 获取今日显示的日期信息
 const todayDisplay = computed(() => {
@@ -107,6 +111,43 @@ function updateReminderTime(todo, value) {
   })
 }
 
+// 开始编辑
+function startEditing(todo) {
+  editingTodoId.value = todo.id
+  editingTodoText.value = todo.text
+  // 使用 nextTick 确保 DOM 更新后再聚焦
+  nextTick(() => {
+    const inputEl = document.getElementById(`todo-input-${todo.id}`)
+    if (inputEl) {
+      inputEl.focus()
+      inputEl.select()
+    }
+  })
+}
+
+// 取消编辑
+function cancelEditing() {
+  editingTodoId.value = null
+  editingTodoText.value = ''
+}
+
+// 更新待办文本
+function updateTodoText(todo) {
+  if (!editingTodoText.value.trim()) {
+    cancelEditing()
+    return
+  }
+  
+  emit('update', {
+    id: todo.id,
+    text: editingTodoText.value.trim(),
+    status: todo.status,
+    reminder: todo.reminder ? JSON.stringify(todo.reminder) : null
+  })
+  
+  cancelEditing()
+}
+
 // 后端已排序，直接使用
 const sortedTodos = computed(() => props.todos)
 </script>
@@ -184,10 +225,24 @@ const sortedTodos = computed(() => props.todos)
 
           <!-- 待办内容 -->
           <div class="flex-1 min-w-0">
+            <!-- 编辑模式 -->
+            <input
+              v-if="editingTodoId === todo.id"
+              :id="`todo-input-${todo.id}`"
+              v-model="editingTodoText"
+              @blur="updateTodoText(todo)"
+              @keyup.enter="updateTodoText(todo)"
+              @keyup.esc="cancelEditing"
+              class="w-full text-sm bg-transparent border-none focus:outline-none focus:ring-0 p-0"
+            />
+            <!-- 显示模式 -->
             <div
-              class="text-sm"
+              v-else
+              @click="todo.status !== 'completed' && todo.status !== 'cancelled' && startEditing(todo)"
+              class="text-sm cursor-pointer"
               :class="{
-                'line-through opacity-60': todo.status === 'completed' || todo.status === 'cancelled'
+                'line-through opacity-60': todo.status === 'completed' || todo.status === 'cancelled',
+                'hover:bg-base-200 px-1 -mx-1 rounded': todo.status !== 'completed' && todo.status !== 'cancelled'
               }"
             >
               {{ todo.text }}
