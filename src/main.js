@@ -7,7 +7,6 @@ import "./assets/tiptap.css";
 
 const app = createApp(App);
 
-// 使用 Router
 app.use(router);
 
 app.mount("#app");

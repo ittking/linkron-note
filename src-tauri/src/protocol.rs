@@ -4,7 +4,7 @@ use tauri::http::Request;
 use tauri::http::Response;
 
 /// 从配置文件读取工作目录
-fn read_work_directory<R: tauri::Runtime>(app_handle: &AppHandle<R>) -> Option<String> {
+pub fn read_work_directory<R: tauri::Runtime>(app_handle: &AppHandle<R>) -> Option<String> {
     let store_path = app_handle.path().app_data_dir().ok()?.join("settings.json");
     let content = std::fs::read_to_string(&store_path).ok()?;
     let json: serde_json::Value = serde_json::from_str(&content).ok()?;
