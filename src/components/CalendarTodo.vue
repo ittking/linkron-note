@@ -1,6 +1,6 @@
 <script setup>
 import { ref, computed } from 'vue'
-import { ChevronLeft, ChevronRight, X } from 'lucide-vue-next'
+import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, X } from 'lucide-vue-next'
 import dayjs from 'dayjs'
 import Button from './ui/Button.vue'
 import Toggle from './ui/Toggle.vue'
@@ -32,6 +32,25 @@ const emit = defineEmits(['month-change', 'create', 'update', 'delete', 'open-ed
 
 const currentYear = ref(props.year)
 const currentMonth = ref(props.month)
+const showYearPicker = ref(false)
+
+// 年份选择范围
+const yearRange = computed(() => {
+  const current = dayjs().year()
+  const startYear = current - 10
+  const endYear = current + 10
+  const years = []
+  for (let y = startYear; y <= endYear; y++) {
+    years.push(y)
+  }
+  return years
+})
+
+// 年份分页
+const yearPageStart = ref(0)
+const displayedYears = computed(() => {
+  return yearRange.value.slice(yearPageStart.value, yearPageStart.value + 12)
+})
 
 // 获取指定日期的待办事项
 function getTodosForDate(dateStr) {
@@ -53,6 +72,39 @@ function getStatusClass(status) {
 // 打开待办对话框
 function openTodoDialog(dateStr, todo = null) {
   emit('open-edit', dateStr, todo)
+}
+
+// 切换年份选择器
+function toggleYearPicker() {
+  showYearPicker.value = !showYearPicker.value
+}
+
+// 选择年份
+function selectYear(year) {
+  currentYear.value = year
+  showYearPicker.value = false
+  emit('month-change', { year: currentYear.value, month: currentMonth.value })
+}
+
+// 年份分页
+function prevYearPage() {
+  yearPageStart.value = Math.max(0, yearPageStart.value - 12)
+}
+
+function nextYearPage() {
+  yearPageStart.value = Math.min(yearRange.value.length - 12, yearPageStart.value + 12)
+}
+
+// 上一年
+function prevYear() {
+  currentYear.value--
+  emit('month-change', { year: currentYear.value, month: currentMonth.value })
+}
+
+// 下一年
+function nextYear() {
+  currentYear.value++
+  emit('month-change', { year: currentYear.value, month: currentMonth.value })
 }
 
 // 上个月
@@ -166,15 +218,47 @@ const calendarWeeks = computed(() => {
   <div class="calendar-todo h-full flex flex-col bg-base-100">
     <!-- 头部：月份导航 -->
     <div class="flex items-center justify-between px-6 py-4 border-b border-base-200">
-      <Button variant="ghost" size="sm" @click="prevMonth">
-        <ChevronLeft :size="20" />
-      </Button>
-      <h2 class="text-lg font-semibold text-base-content">
+      <div class="flex items-center gap-0.5">
+        <button @click="prevYear" class="p-0.5 hover:bg-base-200 rounded transition-colors" title="上一年">
+          <ChevronsLeft :size="16" />
+        </button>
+        <button @click="prevMonth" class="p-0.5 hover:bg-base-200 rounded transition-colors" title="上个月">
+          <ChevronLeft :size="16" />
+        </button>
+      </div>
+
+      <button @click="toggleYearPicker"
+        class="text-sm font-medium hover:bg-base-200 px-3 py-1 rounded transition-colors">
         {{ currentYear }}年{{ currentMonth }}月
-      </h2>
-      <Button variant="ghost" size="sm" @click="nextMonth">
-        <ChevronRight :size="20" />
-      </Button>
+      </button>
+
+      <div class="flex items-center gap-0.5">
+        <button @click="nextMonth" class="p-0.5 hover:bg-base-200 rounded transition-colors" title="下个月">
+          <ChevronRight :size="16" />
+        </button>
+        <button @click="nextYear" class="p-0.5 hover:bg-base-200 rounded transition-colors" title="下一年">
+          <ChevronsRight :size="16" />
+        </button>
+      </div>
+    </div>
+
+    <!-- 年份选择面板 -->
+    <div v-if="showYearPicker" class="px-6 py-2 border-b border-base-200 bg-base-50">
+      <div class="grid grid-cols-4 gap-1 max-w-md mx-auto">
+        <button v-for="year in displayedYears" :key="year" @click="selectYear(year)"
+          class="text-xs py-1 hover:bg-base-200 rounded transition-colors"
+          :class="{ 'bg-primary text-primary-content': year === currentYear }">
+          {{ year }}
+        </button>
+      </div>
+      <div class="flex justify-center gap-4 mt-2">
+        <button @click="prevYearPage" class="text-xs hover:bg-base-200 px-2 py-0.5 rounded">
+          上一页
+        </button>
+        <button @click="nextYearPage" class="text-xs hover:bg-base-200 px-2 py-0.5 rounded">
+          下一页
+        </button>
+      </div>
     </div>
 
     <!-- 日历主体 -->
