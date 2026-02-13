@@ -257,7 +257,15 @@ async function toggleTodoStatus(todo) {
 
 // 切换视图
 function toggleView() {
-  currentView.value = currentView.value === 'calendar' ? 'today' : 'calendar'
+  if (currentView.value === 'calendar') {
+    // 切换到今日列表，重新加载今日数据
+    currentView.value = 'today'
+    loadTodayTodos()
+  } else {
+    // 切换到日历视图
+    currentView.value = 'calendar'
+    loadMonthTodos()
+  }
 }
 
 // 处理月份变化

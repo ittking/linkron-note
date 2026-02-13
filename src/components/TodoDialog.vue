@@ -146,57 +146,115 @@ function toggleMonthDay(value) {
 }
 
 // 监听 show 和 todo 变化
+
 watch(() => props.show, (newVal) => {
+
   if (newVal && props.todo) {
+
     // 编辑模式
+
     newTodoText.value = props.todo.text
+
     formStatus.value = props.todo.status || 'todo'
 
-    if (props.todo.reminder) {
+
+
+    // 判断是否启用了提醒：必须是 onetime 或 repeat 类型，且有有效的 repeatTime
+
+    const reminder = props.todo.reminder
+
+    if (reminder && (reminder.type === 'onetime' || reminder.type === 'repeat') && reminder.repeatTime) {
+
       formReminderEnabled.value = true
-      const reminder = props.todo.reminder
-      formReminderType.value = reminder.type === 'onetime' ? 'once' : (reminder.type === 'repeat' ? 'repeat' : 'none')
+
+      formReminderType.value = reminder.type === 'onetime' ? 'once' : 'repeat'
+
       
+
       // 一次性提醒：使用 repeatTime（完整日期时间）
+
       formReminderTime.value = reminder.repeatTime || ''
+
       
+
       // 重复提醒：使用 repeatTime（只有 HH:mm），需要转换为完整格式供 time 模式使用
-      if (reminder.type === 'repeat' && reminder.repeatTime) {
+
+      if (reminder.type === 'repeat') {
+
         const timeValue = reminder.repeatTime
+
         // 检查是否已经是完整格式
+
         if (timeValue.includes('T') || timeValue.includes('-')) {
+
           // 已经是完整格式，直接使用
+
           formRepeatTime.value = timeValue
+
         } else {
+
           // 只有 HH:mm，补全为完整格式
+
           formRepeatTime.value = `${dayjs().format('YYYY-MM-DD')}T${timeValue}`
+
         }
+
       } else {
+
         formRepeatTime.value = ''
+
       }
+
+
 
       if (reminder.type === 'repeat' && reminder.repeatRule) {
+
         const rule = reminder.repeatRule
+
         formRepeatType.value = rule
 
+
+
         if (rule === 'day') {
+
           formRepeatInterval.value = reminder.repeatInterval || 1
+
         } else if (rule === 'weekday') {
+
           formRepeatWeekdays.value = Array.isArray(reminder.repeatDayOfWeek) ? reminder.repeatDayOfWeek : [reminder.repeatDayOfWeek || 1]
+
         } else if (rule === 'month') {
+
           formRepeatMonthDays.value = Array.isArray(reminder.repeatDayOfMonth) ? reminder.repeatDayOfMonth : [reminder.repeatDayOfMonth || 1]
+
         } else if (rule === 'year') {
+
           formRepeatYearMonth.value = reminder.repeatMonth || 1
+
           formRepeatYearDay.value = reminder.repeatDayOfMonth || 1
+
         }
+
       }
+
     } else {
+
+      // 没有启用提醒
+
       formReminderEnabled.value = false
+
     }
+
+
+
   } else if (newVal) {
+
     // 新增模式
+
     resetForm()
+
   }
+
 })
 
 // 监听待办内容变化，清除错误提示
