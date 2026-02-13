@@ -334,12 +334,15 @@ const sortedTodos = computed(() => {
                 :min="dayjs().format('YYYY-MM-DDTHH:mm')" :clearable="true">
                 <template #default="{ toggle, hasValue }">
                   <div @click="toggle"
-                    class="flex items-start gap-1 text-xs cursor-pointer hover:text-primary transition-colors" :class="{
+                    class="flex items-start gap-1 text-xs cursor-pointer hover:text-primary transition-colors leading-tight"
+                    :class="{
                       'text-base-content/50': !hasValue,
                       'text-base-content/70': hasValue
                     }">
-                    <Repeat v-if="hasValue && todo.reminder?.reminder_type === 'repeat'" :size="12" />
-                    <Clock v-else :size="12" />
+                    <span>
+                      <Repeat v-if="hasValue && todo.reminder?.reminder_type === 'repeat'" :size="14" />
+                      <Clock v-else :size="14" />
+                    </span>
                     <span v-if="hasValue">{{ formatReminderTime(getReminderTime(todo), todo) }}</span>
                     <span v-if="!hasValue">今日</span>
                   </div>

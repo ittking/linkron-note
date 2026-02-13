@@ -670,7 +670,7 @@ defineExpose({
 
           <!-- 底部按钮 -->
           <div class="flex items-center justify-between px-3 py-2 border-t border-base-200">
-            <div class="flex items-center gap-2">
+            <div v-if="mode !== 'time'" class="flex items-center gap-2">
               <button
                 v-if="hasValue && clearable"
                 @click="clearValue"
@@ -683,6 +683,7 @@ defineExpose({
                 {{ mode === 'time' ? '此刻' : '今日' }}
               </button>
             </div>
+            <div v-else></div>
             <div class="flex items-center gap-2">
               <button @click="cancel"
                 class="px-3 py-1 text-xs border border-base-200 rounded hover:bg-base-200 transition-colors">
