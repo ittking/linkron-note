@@ -2,6 +2,7 @@ import { ref } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
 import { isPermissionGranted, requestPermission, sendNotification } from '@tauri-apps/plugin-notification'
 import { useWorkDirectory } from './useWorkDirectory'
+import dayjs from 'dayjs'
 
 export function useReminder() {
   const reminders = ref([])
@@ -33,6 +34,77 @@ export function useReminder() {
     }
   }
 
+  // 判断是否应该发送一次性提醒
+  function shouldSendOneTimeReminder(reminder, currentTime) {
+    if (!reminder.repeatTime) return false
+
+    const reminderTime = dayjs(reminder.repeatTime)
+    if (!reminderTime.isValid()) return false
+
+    // 只有在秒数为0时才检查
+    if (currentTime.second() !== 0) return false
+
+    // 检查年月日时分是否精确匹配
+    const reminderDateTime = reminderTime.format('YYYY-MM-DD HH:mm')
+    const currentDateTime = currentTime.format('YYYY-MM-DD HH:mm')
+
+    return reminderDateTime === currentDateTime
+  }
+
+  // 判断是否应该发送重复提醒
+  function shouldSendRepeatReminder(reminder, todo, currentTime) {
+    if (!reminder.repeatTime) return false
+
+    const reminderTime = dayjs(reminder.repeatTime)
+    if (!reminderTime.isValid()) return false
+
+    // 只有在秒数为0时才检查
+    if (currentTime.second() !== 0) return false
+
+    // 检查时分是否匹配
+    const reminderHourMinute = reminderTime.format('HH:mm')
+    const currentHourMinute = currentTime.format('HH:mm')
+
+    if (reminderHourMinute !== currentHourMinute) return false
+
+    const todoDate = dayjs(todo.date)
+    if (!todoDate.isValid()) return false
+
+    const currentDate = dayjs()
+    const rule = reminder.repeatRule
+
+    // 根据重复规则判断是否应该提醒
+    if (rule === 'day') {
+      const interval = reminder.repeatInterval || 1
+      const daysDiff = currentDate.diff(todoDate, 'day')
+      return daysDiff >= 0 && daysDiff % interval === 0
+    } else if (rule === 'weekday') {
+      const weekdays = reminder.repeatDayOfWeek
+      const currentWeekday = currentDate.day()
+      if (Array.isArray(weekdays)) {
+        return weekdays.includes(currentWeekday)
+      } else {
+        return currentWeekday === weekdays
+      }
+    } else if (rule === 'month') {
+      const days = reminder.repeatDayOfMonth
+      const currentDay = currentDate.date()
+      if (Array.isArray(days)) {
+        return days.includes(currentDay)
+      } else {
+        return currentDay === days
+      }
+    } else if (rule === 'year') {
+      const month = reminder.repeatMonth
+      const day = reminder.repeatDayOfMonth
+      const currentMonth = currentDate.month() + 1
+      const currentDay = currentDate.date()
+      return currentMonth === month && currentDay === day
+    }
+
+    return false
+  }
+
   // 获取需要提醒的待办事项
   async function fetchReminders() {
     if (isChecking.value) return
@@ -40,21 +112,35 @@ export function useReminder() {
     try {
       isChecking.value = true
       const workDirectory = await getWorkDirectory()
-      console.log('获取工作目录:', workDirectory)
       const result = await invoke('get_reminders', { workDirectory })
-      console.log('获取到的提醒数据 (原始):', result)
-      console.log('数据类型:', typeof result)
-      console.log('是否为数组:', Array.isArray(result))
-      console.log('数组长度:', result ? result.length : 'N/A')
       reminders.value = result
 
+      if (!result || result.length === 0) {
+        return
+      }
+
+      const currentTime = dayjs()
+
       // 发送通知
-      for (const reminder of reminders.value) {
-        console.log('发送通知:', reminder)
-        await sendNotification({
-          title: '待办提醒',
-          body: `${new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })} - ${reminder.text}`
-        })
+      for (const todo of reminders.value) {
+        if (!todo.reminder) continue
+
+        const reminder = todo.reminder
+        let shouldNotify = false
+
+        if (reminder.type === 'onetime') {
+          shouldNotify = shouldSendOneTimeReminder(reminder, currentTime)
+        } else if (reminder.type === 'repeat') {
+          shouldNotify = shouldSendRepeatReminder(reminder, todo, currentTime)
+        }
+
+        if (shouldNotify) {
+          console.log('发送通知:', todo.text)
+          await sendNotification({
+            title: '待办提醒',
+            body: `${todo.text} - ${currentTime.format('HH:mm')}`
+          })
+        }
       }
     } catch (error) {
       console.error('Failed to fetch reminders:', error)
