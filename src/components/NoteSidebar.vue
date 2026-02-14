@@ -148,7 +148,7 @@ function handleTagClick(tag) {
     <div data-tauri-drag-region class="w-80 h-full bg-base-100 flex flex-col shadow-xl">
       <!-- 头部 -->
       <div data-tauri-drag-region class="flex items-center px-4 py-3 border-b border-base-300">
-        <h2 data-tauri-drag-region class="text-base font-semibold text-base-content">ITERM</h2>
+        <h2 data-tauri-drag-region class="text-base font-semibold text-base-content">LINKRON</h2>
         <div data-tauri-drag-region class="flex-1 h-full"></div>
         <button @click="emit('close')"
           class="w-7 h-7 rounded-md flex items-center justify-center text-base-content/50 hover:text-base-content hover:bg-base-200 transition-all duration-200">

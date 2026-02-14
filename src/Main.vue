@@ -84,7 +84,7 @@ onMounted(async () => {
         <!-- 左侧：终端图标和名称 -->
         <div class="flex items-center gap-2">
           <Terminal :size="16" class="text-primary" data-tauri-drag-region />
-          <span class="text-sm font-medium text-base-content" data-tauri-drag-region>ITERM</span>
+          <span class="text-sm font-medium text-base-content" data-tauri-drag-region>LINKRON</span>
         </div>
 
         <!-- 右侧：功能按钮 -->
