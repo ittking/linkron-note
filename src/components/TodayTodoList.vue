@@ -283,7 +283,7 @@ const sortedTodos = computed(() => props.todos)
     <!-- 输入区域 -->
     <div class="p-4">
       <div class="flex items-center gap-2">
-        <input v-model="newTodoText" @keyup.enter="createTodo" type="text" placeholder="输入待办事项，按回车创建..."
+        <input v-model="newTodoText" @keypress.enter="createTodo" type="text" placeholder="输入待办事项，按回车创建..."
           class="flex-1 px-3 py-2 border border-base-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-transparent text-sm h-[34px]" />
         <DateTimePicker v-model="selectedReminderTime" mode="datetime" :min="dayjs().format('YYYY-MM-DDTHH:mm')"
           :clearable="true">
@@ -319,15 +319,20 @@ const sortedTodos = computed(() => props.todos)
           <!-- 圆形 Checkbox -->
           <button @click="toggleTodoStatus(todo)"
             class="flex-shrink-0 w-4 h-4 rounded-full border-2 flex items-center justify-center transition-all" :style="{
-              borderColor: todo.status === 'completed' ? 'rgba(16, 185, 129, 0.5)' : 
-                       todo.status === 'cancelled' ? 'rgba(239, 68, 68, 0.5)' :
-                       todo.status === 'pending' ? 'rgba(245, 158, 11, 0.5)' :
-                       STATUS_COLORS[todo.status],
+              borderColor: todo.status === 'completed' ? 'rgba(16, 185, 129, 0.5)' :
+                todo.status === 'cancelled' ? 'rgba(239, 68, 68, 0.5)' :
+                  todo.status === 'pending' ? 'rgba(245, 158, 11, 0.5)' :
+                    STATUS_COLORS[todo.status],
               backgroundColor: 'transparent'
             }">
-            <div v-if="todo.status === 'completed'" class="w-1.5 h-1.5 rounded-full" style="background-color: #10B981"></div>
-            <div v-else-if="todo.status === 'cancelled'" class="w-1.5 h-1.5 rounded-full" style="background-color: #EF4444"></div>
-            <div v-else-if="todo.status === 'pending'" class="w-1.5 h-1.5 rounded-full" style="background-color: #F59E0B"></div>
+            <div v-if="todo.status === 'completed'" class="w-1.5 h-1.5 rounded-full" style="background-color: #10B981">
+            </div>
+            <div v-else-if="todo.status === 'cancelled'" class="w-1.5 h-1.5 rounded-full"
+              style="background-color: #EF4444">
+            </div>
+            <div v-else-if="todo.status === 'pending'" class="w-1.5 h-1.5 rounded-full"
+              style="background-color: #F59E0B">
+            </div>
           </button>
 
           <!-- 待办内容 -->
@@ -348,21 +353,23 @@ const sortedTodos = computed(() => props.todos)
             <div class="mt-3">
               <DateTimePicker :model-value="getReminderTime(todo)"
                 @update:model-value="(value) => updateReminderTime(todo, value)"
-                :mode="todo.reminder?.type === 'repeat' ? 'time' : 'datetime'"
-                :min="dayjs().format('YYYY-MM-DDTHH:mm')" :clearable="true">
+                :mode="todo.reminder?.type === 'repeat' ? 'time' : 'datetime'" :min="dayjs().format('YYYY-MM-DDTHH:mm')"
+                :clearable="true">
                 <template #default="{ toggle, hasValue }">
-                  <div @click="toggle"
-                    class="flex items-start gap-1 text-xs cursor-pointer hover:text-primary transition-colors leading-tight"
-                    :class="{
-                      'text-base-content/50': !hasValue,
-                      'text-base-content/70': hasValue
-                    }">
-                    <span>
-                      <Repeat v-if="hasValue && todo.reminder?.type === 'repeat'" :size="14" />
-                      <Clock v-else :size="14" />
-                    </span>
-                    <span v-if="hasValue">{{ formatReminderTime(getReminderTime(todo), todo) }}</span>
-                    <span v-if="!hasValue">今日</span>
+                  <div class="inline-block">
+                    <div @click="toggle"
+                      class="flex items-start gap-1 text-xs cursor-pointer hover:text-primary transition-colors leading-tight"
+                      :class="{
+                        'text-base-content/50': !hasValue,
+                        'text-base-content/70': hasValue
+                      }">
+                      <span>
+                        <Repeat v-if="hasValue && todo.reminder?.type === 'repeat'" :size="14" />
+                        <Clock v-else :size="14" />
+                      </span>
+                      <span v-if="hasValue">{{ formatReminderTime(getReminderTime(todo), todo) }}</span>
+                      <span v-if="!hasValue">今日</span>
+                    </div>
                   </div>
                 </template>
               </DateTimePicker>

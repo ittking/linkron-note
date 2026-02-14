@@ -22,7 +22,6 @@
         "center": true,
         "shadow": false,
         "skipTaskbar": false,
-        "transparent": true,
         "hiddenTitle": true,
         "alwaysOnTop": true,
         "decorations": false,
