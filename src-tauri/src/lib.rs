@@ -1,35 +1,15 @@
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
 mod autostart;
-mod filesystem;
-mod terminal;
 mod database;
-mod protocol;
 mod file_reader;
-mod web_scraper;
+mod filesystem;
 mod note;
+mod protocol;
 mod tag;
+mod terminal;
 mod todo;
-
-#[cfg(any(windows, target_os = "macos"))]
-mod window_manager;
-
-#[tauri::command]
-fn greet(name: &str) -> String {
-    format!("Hello, {}! You've been greeted from Rust!", name)
-}
-
-#[tauri::command]
-fn get_os() -> String {
-    if cfg!(target_os = "windows") {
-        "windows".to_string()
-    } else if cfg!(target_os = "macos") {
-        "macos".to_string()
-    } else if cfg!(target_os = "linux") {
-        "linux".to_string()
-    } else {
-        "unknown".to_string()
-    }
-}
+mod web_scraper;
+// mod window_manager;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -39,12 +19,8 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_notification::init())
         .register_uri_scheme_protocol("linkron", protocol::iterm_protocol_handler)
-        .setup(|app| {
-            window_manager::setup_window_manager(app)
-        })
+        // .setup(|app| window_manager::setup_window_manager(app))
         .invoke_handler(tauri::generate_handler![
-            greet,
-            get_os,
             autostart::set_autostart,
             autostart::is_autostart_enabled,
             filesystem::check_directory_exists,
