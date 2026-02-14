@@ -706,10 +706,10 @@ async function filterNotesByTags() {
 </script>
 
 <template>
-    <div class="h-full flex pb-2" @dragenter="handleDragEnter" @dragleave="handleDragLeave"
+    <div class="h-full pb-2" @dragenter="handleDragEnter" @dragleave="handleDragLeave"
         @dragover="handleDragOver" @drop="handleDrop">
         <!-- 主内容 -->
-        <div class="flex-1 flex flex-col max-w-200 mx-auto">
+        <div class="h-full flex flex-col max-w-200 mx-auto w-full">
 
             <!-- 编辑器区域 -->
             <div ref="editorContainerRef" class="p-3 relative">
