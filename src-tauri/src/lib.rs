@@ -9,7 +9,7 @@ mod tag;
 mod terminal;
 mod todo;
 mod web_scraper;
-// mod window_manager;
+mod window_manager;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -19,7 +19,7 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_notification::init())
         .register_uri_scheme_protocol("linkron", protocol::iterm_protocol_handler)
-        // .setup(|app| window_manager::setup_window_manager(app))
+        .setup(|app| window_manager::setup_window_manager(app))
         .invoke_handler(tauri::generate_handler![
             autostart::set_autostart,
             autostart::is_autostart_enabled,
