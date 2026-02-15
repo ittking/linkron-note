@@ -1,10 +1,18 @@
 import { useAIChat } from '../composables/useAIChat'
 import { useSettingStore } from '../store/settingStore'
+import MarkdownIt from 'markdown-it'
 
 /**
  * AI 优化工具
  * 根据网址匹配提示词，调用 AI 生成优化后的文本
  */
+
+// 初始化 Markdown-it
+const md = new MarkdownIt({
+  html: true,        // 允许 HTML 标签
+  linkify: true,     // 自动转换 URL
+  typographer: true  // 启用一些语言中立的替换 + 引号美化
+})
 
 /**
  * 优化网页内容
@@ -60,7 +68,10 @@ export async function optimizeWebContent(url, content) {
         const { generateContent } = useAIChat()
         const result = await generateContent(promptTemplate)
 
-        return { content: result, optimized: true }
+        // 将 Markdown 转换为 HTML
+        const htmlContent = md.render(result)
+
+        return { content: htmlContent, optimized: true }
       } catch (error) {
         console.error('AI 生成失败:', error)
         throw error
