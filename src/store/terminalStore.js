@@ -1,20 +1,28 @@
 import { reactive, computed, toRefs } from 'vue'
 import { ulid } from 'ulid'
+import { invoke } from '@tauri-apps/api/core'
 
 /**
  * 获取当前操作系统的默认 shell
+ * 使用后台的 get_os 方法判断操作系统类型
  */
-function getDefaultShell() {
-  const platform = window.navigator.platform.toLowerCase()
-  
-  if (platform.includes('win')) {
-    return 'powershell.exe'
-  } else if (platform.includes('mac')) {
-    return '/bin/zsh'
-  } else if (platform.includes('linux')) {
-    return '/bin/bash'
-  } else {
-    // 其他平台默认使用 bash
+async function getDefaultShell() {
+  try {
+    const os = await invoke('get_os')
+    
+    if (os === 'windows') {
+      return 'powershell.exe'
+    } else if (os === 'macos') {
+      return '/bin/zsh'
+    } else if (os === 'linux') {
+      return '/bin/bash'
+    } else {
+      // 其他平台默认使用 bash
+      return '/bin/bash'
+    }
+  } catch (error) {
+    console.error('获取操作系统类型失败，使用默认值:', error)
+    // 出错时默认使用 bash
     return '/bin/bash'
   }
 }
@@ -71,12 +79,13 @@ function getNextAvailableTabNumber() {
 /**
  * 创建新的终端 Tab
  */
-function createTab() {
+async function createTab() {
   const tabNumber = getNextAvailableTabNumber()
+  const shell = await getDefaultShell()
   const newTab = {
     id: `terminal-${ulid()}`,
     title: `T${tabNumber}`,
-    shell: getDefaultShell()
+    shell: shell
   }
   state.tabs.push(newTab)
   state.activeTabId = newTab.id

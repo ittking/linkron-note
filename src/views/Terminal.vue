@@ -53,8 +53,8 @@ const getCurrentDirectory = async () => {
   }
 }
 
-const addTerminal = () => {
-  terminalStore.createTab()
+const addTerminal = async () => {
+  await terminalStore.createTab()
 }
 
 const closeTerminal = async (id) => {
