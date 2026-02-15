@@ -8,7 +8,7 @@ use crate::tag;
 use crate::todo;
 
 // Re-export types from submodules
-pub use crate::note::{Note, NoteData, NoteUpdate};
+pub use crate::note::{Note, NoteData, NoteUpdate, NotesResponse};
 pub use crate::tag::Tag;
 pub use crate::todo::Todo;
 
@@ -91,7 +91,7 @@ pub async fn init_database(work_directory: Option<String>) -> Result<(), String>
 
 /// Tauri 命令：获取所有笔记（分页）
 #[tauri::command]
-pub async fn get_all_notes(page: u32, page_size: u32, work_directory: Option<String>) -> Result<Vec<Note>, String> {
+pub async fn get_all_notes(page: u32, page_size: u32, work_directory: Option<String>) -> Result<NotesResponse, String> {
     let db_path = get_database_path(work_directory)?;
     let db = Database::new(&db_path).map_err(|e| format!("Failed to open database: {}", e))?;
     note::get_all_notes(&db.conn, page, page_size).map_err(|e| format!("Failed to get notes: {}", e))
@@ -161,7 +161,7 @@ pub async fn delete_note(id: String, work_directory: Option<String>) -> Result<(
 
 /// Tauri 命令：搜索笔记
 #[tauri::command]
-pub async fn search_notes(keyword: String, work_directory: Option<String>) -> Result<Vec<Note>, String> {
+pub async fn search_notes(keyword: String, work_directory: Option<String>) -> Result<NotesResponse, String> {
     let db_path = get_database_path(work_directory)?;
     let db = Database::new(&db_path).map_err(|e| format!("Failed to open database: {}", e))?;
     note::search_notes(&db.conn, &keyword).map_err(|e| format!("Failed to search notes: {}", e))
@@ -280,7 +280,7 @@ pub fn pin_note(id: String, work_directory: Option<String>) -> Result<(), String
 
 /// Tauri 命令：根据标签筛选笔记
 #[tauri::command]
-pub fn get_notes_by_tags(tags: Vec<String>, work_directory: Option<String>) -> Result<Vec<Note>, String> {
+pub fn get_notes_by_tags(tags: Vec<String>, work_directory: Option<String>) -> Result<NotesResponse, String> {
     let db_path = get_database_path(work_directory)?;
     let db = Database::new(&db_path).map_err(|e| format!("Failed to open database: {}", e))?;
     note::get_notes_by_tags(&db.conn, tags).map_err(|e| format!("Failed to get notes by tags: {}", e))

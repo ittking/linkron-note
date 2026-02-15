@@ -22,6 +22,13 @@ pub struct Note {
     pub updated_at: String,
 }
 
+// 分页结果
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct NotesResponse {
+    pub notes: Vec<Note>,
+    pub total: i64,
+}
+
 // 创建笔记的数据结构
 #[derive(Debug, Deserialize)]
 pub struct NoteData {
@@ -67,12 +74,18 @@ pub fn init_tables(conn: &Connection) -> SqliteResult<()> {
 }
 
 /// 获取所有笔记（分页）
-pub fn get_all_notes(conn: &Connection, page: u32, page_size: u32) -> SqliteResult<Vec<Note>> {
+pub fn get_all_notes(conn: &Connection, page: u32, page_size: u32) -> SqliteResult<NotesResponse> {
     let offset = (page - 1) * page_size;
+    
+    // 获取总数
+    let total: i64 = conn.query_row("SELECT COUNT(*) FROM notes", [], |row| row.get(0))?;
+    
+    // 获取分页数据
     let mut stmt = conn.prepare(
         "SELECT id, type, content, source_url,
          COALESCE(pinned, 0) as pinned,
          created_at, updated_at,
+         extract_url
          FROM notes ORDER BY pinned DESC, created_at DESC LIMIT ? OFFSET ?"
     )?;
 
@@ -90,7 +103,12 @@ pub fn get_all_notes(conn: &Connection, page: u32, page_size: u32) -> SqliteResu
         })
     })?;
 
-    notes.collect()
+    let notes_vec: Vec<Note> = notes.collect::<SqliteResult<Vec<Note>>>()?;
+    
+    Ok(NotesResponse {
+        notes: notes_vec,
+        total,
+    })
 }
 
 /// 获取笔记总数
@@ -204,9 +222,17 @@ pub fn pin_note(conn: &Connection, id: &str) -> SqliteResult<()> {
 }
 
 /// 搜索笔记
-pub fn search_notes(conn: &Connection, keyword: &str) -> SqliteResult<Vec<Note>> {
+pub fn search_notes(conn: &Connection, keyword: &str) -> SqliteResult<NotesResponse> {
     let search_pattern = format!("%{}%", keyword);
 
+    // 获取总数
+    let total: i64 = conn.query_row(
+        "SELECT COUNT(*) FROM notes WHERE content LIKE ?1",
+        params![search_pattern],
+        |row| row.get(0)
+    )?;
+
+    // 获取笔记列表
     let mut stmt = conn.prepare(
         "SELECT id, type, content, source_url, extract_url,
          COALESCE(pinned, 0) as pinned,
@@ -215,7 +241,7 @@ pub fn search_notes(conn: &Connection, keyword: &str) -> SqliteResult<Vec<Note>>
          ORDER BY pinned DESC, created_at DESC"
     )?;
 
-    let notes = stmt.query_map(params![search_pattern], |row| {
+    let notes: Vec<Note> = stmt.query_map(params![search_pattern], |row| {
         let pinned: i32 = row.get(4)?;
         Ok(Note {
             id: row.get(0)?,
@@ -227,13 +253,16 @@ pub fn search_notes(conn: &Connection, keyword: &str) -> SqliteResult<Vec<Note>>
             created_at: row.get(5)?,
             updated_at: row.get(6)?,
         })
-    })?;
+    })?.collect::<SqliteResult<Vec<Note>>>()?;
 
-    notes.collect()
+    Ok(NotesResponse {
+        notes,
+        total,
+    })
 }
 
 /// 根据标签筛选笔记
-pub fn get_notes_by_tags(conn: &Connection, tags: Vec<String>) -> SqliteResult<Vec<Note>> {
+pub fn get_notes_by_tags(conn: &Connection, tags: Vec<String>) -> SqliteResult<NotesResponse> {
     if tags.is_empty() {
         return get_all_notes(conn, 1, 1000);
     }
@@ -248,6 +277,14 @@ pub fn get_notes_by_tags(conn: &Connection, tags: Vec<String>) -> SqliteResult<V
     }
 
     let where_clause = where_clauses.join(" OR ");
+    
+    // 获取总数
+    let count_sql = format!("SELECT COUNT(*) FROM notes WHERE {}", where_clause);
+    let mut count_stmt = conn.prepare(&count_sql)?;
+    let count_params_refs: Vec<&dyn rusqlite::ToSql> = all_params.iter().map(|p| p as &dyn rusqlite::ToSql).collect();
+    let total: i64 = count_stmt.query_row(count_params_refs.as_slice(), |row| row.get(0))?;
+    
+    // 获取笔记列表
     let sql = format!(
         "SELECT id, type, content, source_url,
          COALESCE(pinned, 0) as pinned,
@@ -260,7 +297,7 @@ pub fn get_notes_by_tags(conn: &Connection, tags: Vec<String>) -> SqliteResult<V
     let mut stmt = conn.prepare(&sql)?;
     let params_refs: Vec<&dyn rusqlite::ToSql> = all_params.iter().map(|p| p as &dyn rusqlite::ToSql).collect();
 
-    let notes = stmt.query_map(&params_refs[..], |row| {
+    let notes: Vec<Note> = stmt.query_map(&params_refs[..], |row| {
         let pinned: i32 = row.get(3)?;
         Ok(Note {
             id: row.get(0)?,
@@ -272,9 +309,12 @@ pub fn get_notes_by_tags(conn: &Connection, tags: Vec<String>) -> SqliteResult<V
             created_at: row.get(5)?,
             updated_at: row.get(6)?,
         })
-    })?;
+    })?.collect::<SqliteResult<Vec<Note>>>()?;
 
-    notes.collect()
+    Ok(NotesResponse {
+        notes,
+        total,
+    })
 }
 
 /// 根据标签获取笔记数量

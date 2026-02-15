@@ -266,11 +266,12 @@ async function loadNotes(reset = false) {
     isLoading.value = true
 
     try {
-        const newNotes = await noteStore.getNotes(currentPage.value, pageSize.value)
+        const result = await noteStore.getNotes(currentPage.value, pageSize.value)
+        const newNotes = result.notes || result || []
+        const total = result.total || 0
 
-        if (newNotes.length < pageSize.value) {
-            hasMore.value = false
-        }
+        // 使用 total 字段判断是否还有更多数据
+        hasMore.value = notes.value.length + newNotes.length < total
 
         if (reset) {
             notes.value = newNotes

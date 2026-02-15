@@ -32,14 +32,6 @@ export function useNoteStore() {
   }
 
   /**
-   * 获取笔记总数
-   */
-  async function getNotesCount() {
-    const workDirectory = await getWorkDirectory()
-    return await invoke('get_notes_count', { workDirectory })
-  }
-
-  /**
    * 获取单个笔记
    */
   async function getNote(id) {
@@ -125,7 +117,6 @@ export function useNoteStore() {
     getWorkDirectory,
     initDatabase,
     getNotes,
-    getNotesCount,
     getNote,
     addNote,
     updateNote,
