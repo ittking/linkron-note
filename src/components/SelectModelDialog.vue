@@ -58,7 +58,13 @@ function handleAddCustom() {
 }
 
 watch(() => props.show, (newVal) => {
-  if (!newVal) {
+  if (newVal) {
+    searchQuery.value = ''
+    customModel.value = ''
+    if (props.provider?.currentModel && !props.models.includes(props.provider.currentModel)) {
+      customModel.value = props.provider.currentModel
+    }
+  } else {
     searchQuery.value = ''
     customModel.value = ''
   }
@@ -77,7 +83,7 @@ watch(() => props.show, (newVal) => {
         </div>
 
         <div class="space-y-3 flex-1 overflow-hidden flex flex-col p-2">
-          <div class="flex gap-2 flex-shrink-0">
+          <div class="flex gap-2 flex-shrink-0 items-center">
             <div class="flex-1 relative">
               <Search :size="14" class="absolute left-2 top-1/2 -translate-y-1/2 text-base-content/40" />
               <Input 

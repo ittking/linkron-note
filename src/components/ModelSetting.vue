@@ -123,11 +123,7 @@ async function handleSelectModel(model) {
 async function handleAddCustomModel(modelName) {
   const index = providers.value.findIndex(p => p.id === currentProvider.value.id)
   if (index > -1) {
-    const provider = providers.value[index]
-    if (!provider.models.includes(modelName)) {
-      provider.models.push(modelName)
-    }
-    provider.currentModel = modelName
+    providers.value[index].currentModel = modelName
     selectedProviderId.value = currentProvider.value.id
     await saveProviders()
   }
@@ -166,7 +162,7 @@ const currentModels = computed(() => {
           <p class="text-xs mt-1">点击右上角按钮添加供应商</p>
         </div>
 
-        <div v-else class="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div v-else class="space-y-3">
           <ProviderCard
             v-for="provider in providers"
             :key="provider.id"
