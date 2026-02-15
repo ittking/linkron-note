@@ -62,8 +62,10 @@ fn set_window_on_all_desktops_macos(window: &WebviewWindow) {
         let ns_window: *mut Object = ns_window as *mut Object;
 
         unsafe {
-            // 设置窗口为浮动窗口级别（高于普通窗口，kCGFloatingWindowLevel = 3）
-            let _: () = msg_send![ns_window, setLevel: 3];
+            // 设置窗口为弹出菜单级别（高于状态栏，NSPopUpMenuWindowLevel = 101）
+            // 状态栏层级是 25 (NSStatusWindowLevel)
+            // 菜单栏层级是 24 (NSMainMenuWindowLevel)
+            let _: () = msg_send![ns_window, setLevel: 101];
 
             // 组合多个 collectionBehavior
             let mut behavior: NSUInteger = 0;
