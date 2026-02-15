@@ -267,12 +267,8 @@ async function loadNotes(reset = false) {
 
     try {
         const result = await noteStore.getNotes(currentPage.value, pageSize.value)
-        console.log('加载笔记结果:', result)
-        
         const newNotes = result.notes || []
         const total = result.total || 0
-        
-        console.log('newNotes 长度:', newNotes.length, 'total:', total)
 
         // 使用 total 字段判断是否还有更多数据
         hasMore.value = notes.value.length + newNotes.length < total
@@ -288,7 +284,6 @@ async function loadNotes(reset = false) {
         await nextTick()
         detectCroppedNote()
     } catch (error) {
-        console.error('加载笔记失败:', error)
         showToast('加载笔记失败: ' + error.message, 'error')
         // 加载失败时，假设没有更多数据，避免频繁重试
         hasMore.value = false
@@ -466,7 +461,6 @@ async function handleFileToEditor(file) {
                     showToast('AI 文章生成成功', 'success')
                 }
             } catch (error) {
-                console.error('AI 优化失败:', error)
                 showToast('AI 优化失败，使用原始内容: ' + error.message, 'error')
             }
             
@@ -510,7 +504,6 @@ async function handleDataToEditor(data) {
                     showToast('AI 文章生成成功', 'success')
                 }
             } catch (error) {
-                console.error('AI 优化失败:', error)
                 showToast('AI 优化失败，使用原始内容: ' + error.message, 'error')
             }
             
