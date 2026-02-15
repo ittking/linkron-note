@@ -1,5 +1,5 @@
 <script setup>
-import { Trash2, Edit2 } from 'lucide-vue-next'
+import { Trash2, Edit2, Shield } from 'lucide-vue-next'
 import Button from './ui/Button.vue'
 
 const props = defineProps({
@@ -8,6 +8,10 @@ const props = defineProps({
     required: true
   },
   isActive: {
+    type: Boolean,
+    default: false
+  },
+  isSystem: {
     type: Boolean,
     default: false
   }
@@ -48,11 +52,15 @@ function getPromptTypeBadgeClass(type) {
         <div class="flex-1 min-w-0">
           <div class="flex items-center gap-2 mb-1">
             <span class="font-medium text-sm truncate">{{ prompt.name }}</span>
-            <span class="badge badge-xs" :class="getPromptTypeBadgeClass(prompt.type)">
+            <span v-if="isSystem" class="badge badge-xs badge-primary flex items-center gap-1">
+              <Shield :size="10" />
+              系统默认
+            </span>
+            <span v-else class="badge badge-xs" :class="getPromptTypeBadgeClass(prompt.type)">
               {{ getPromptTypeLabel(prompt.type) }}
             </span>
           </div>
-          <p v-if="prompt.type === 'url'" class="text-xs text-base-content/60 font-mono">
+          <p v-if="prompt.type === 'url' && !isSystem" class="text-xs text-base-content/60 font-mono">
             {{ prompt.urlPattern }}
           </p>
           <p class="text-xs text-base-content/40 truncate mt-1">
@@ -63,7 +71,13 @@ function getPromptTypeBadgeClass(type) {
           <Button variant="ghost" size="icon-xs" @click.stop="$emit('edit', prompt)">
             <Edit2 :size="12" />
           </Button>
-          <Button variant="ghost" size="icon-xs" class="text-error hover:text-error" @click.stop="$emit('delete', prompt)">
+          <Button 
+            v-if="!isSystem"
+            variant="ghost" 
+            size="icon-xs" 
+            class="text-error hover:text-error" 
+            @click.stop="$emit('delete', prompt)"
+          >
             <Trash2 :size="12" />
           </Button>
         </div>

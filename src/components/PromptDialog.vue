@@ -2,7 +2,6 @@
 import { ref, watch } from 'vue'
 import Button from './ui/Button.vue'
 import Input from './ui/Input.vue'
-import Select from './ui/Select.vue'
 
 const props = defineProps({
   show: {
@@ -12,6 +11,10 @@ const props = defineProps({
   prompt: {
     type: Object,
     default: null
+  },
+  isSystem: {
+    type: Boolean,
+    default: false
   }
 })
 
@@ -20,17 +23,12 @@ const emit = defineEmits(['save', 'close'])
 const form = ref({
   id: null,
   name: '',
-  type: 'general',
+  type: 'url',
   urlPattern: '',
   template: ''
 })
 
 const errors = ref({})
-
-const promptTypeOptions = [
-  { label: '通用', value: 'general' },
-  { label: '网址匹配', value: 'url' }
-]
 
 watch(() => props.show, (newVal) => {
   if (newVal) {
@@ -46,7 +44,7 @@ watch(() => props.show, (newVal) => {
       form.value = {
         id: null,
         name: '',
-        type: 'general',
+        type: 'url',
         urlPattern: '',
         template: ''
       }
@@ -121,23 +119,12 @@ function handleCancel() {
             v-model="form.name"
             placeholder="输入提示词名称"
             :error="errors.name"
+            :disabled="isSystem"
           />
         </div>
 
-        <!-- 类型 -->
-        <div class="form-control">
-          <label class="label">
-            <span class="label-text">类型</span>
-          </label>
-          <Select
-            v-model="form.type"
-            :options="promptTypeOptions"
-            placeholder="请选择类型"
-          />
-        </div>
-
-        <!-- 网址匹配规则（仅网址匹配类型显示） -->
-        <div v-if="form.type === 'url'" class="form-control">
+        <!-- 网址匹配规则（仅网址匹配类型显示，且不是系统提示词时） -->
+        <div v-if="form.type === 'url' && !isSystem" class="form-control">
           <label class="label">
             <span class="label-text">网址匹配规则（正则表达式）</span>
           </label>

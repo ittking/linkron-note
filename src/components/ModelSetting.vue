@@ -153,6 +153,22 @@ async function loadPrompts() {
   try {
     const data = await settingStore.get('model.prompts', [])
     prompts.value = data || []
+    
+    // 如果没有系统默认提示词，添加一个
+    const hasSystemPrompt = prompts.value.some(p => p.isSystem)
+    if (!hasSystemPrompt) {
+      const systemPrompt = {
+        id: 'system-default-prompt',
+        name: '默认通用提示词',
+        type: 'general',
+        template: '请分析以下网页内容，提取关键信息并提供总结：\n\n{content}',
+        isSystem: true,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      }
+      prompts.value.unshift(systemPrompt)
+      await savePrompts()
+    }
   } catch (error) {
     console.error('Failed to load prompts:', error)
   }
@@ -179,8 +195,11 @@ function handleEditPrompt(prompt) {
 async function handleSavePrompt(data) {
   const index = prompts.value.findIndex(p => p.id === data.id)
   if (index > -1) {
+    // 保持 isSystem 属性
+    data.isSystem = prompts.value[index].isSystem
     prompts.value[index] = data
   } else {
+    data.isSystem = false
     prompts.value.push(data)
   }
   await savePrompts()
@@ -188,6 +207,11 @@ async function handleSavePrompt(data) {
 }
 
 async function handleDeletePrompt(prompt) {
+  if (prompt.isSystem) {
+    alert('系统默认提示词不能删除')
+    return
+  }
+
   if (!confirm(`确定要删除提示词 "${prompt.name}" 吗？`)) {
     return
   }
@@ -262,6 +286,7 @@ async function handleDeletePrompt(prompt) {
             v-for="prompt in prompts"
             :key="prompt.id"
             :prompt="prompt"
+            :is-system="prompt.isSystem"
             @delete="handleDeletePrompt"
             @edit="handleEditPrompt"
           />
@@ -289,6 +314,7 @@ async function handleDeletePrompt(prompt) {
   <PromptDialog
     v-model:show="showPromptDialog"
     :prompt="currentPrompt"
+    :is-system="currentPrompt?.isSystem || false"
     @save="handleSavePrompt"
     @close="showPromptDialog = false"
   />
