@@ -14,7 +14,7 @@ const settingStore = useSettingStore()
 const noteStore = useNoteStore()
 const configStore = useConfig()
 const appWindow = getCurrentWindow()
-const { isFullscreen, toggleFullscreen, maximizeWindow } = useWindowControl()
+const { isFullscreen, isMaximized, toggleFullscreen, maximizeWindow } = useWindowControl()
 
 const tabs = [
   { name: '笔记', path: '/note', icon: BookOpen },
@@ -119,9 +119,10 @@ onMounted(async () => {
           </button>
           <button
             class="btn btn-ghost btn-sm w-6 h-6 min-h-0 p-0 rounded hover:bg-base-200 text-base-content/60 hover:text-base-content flex items-center justify-center"
-            title="最大化/恢复"
+            :title="isMaximized ? '恢复' : '最大化'"
             @click="handleMaximizeWindow">
-            <Maximize2 :size="14" />
+            <Maximize2 v-if="!isMaximized" :size="14" />
+            <Minimize2 v-else :size="14" />
           </button>
         </div>
       </div>
