@@ -1,7 +1,10 @@
 <script setup>
 import { ref, watch } from 'vue'
+import { invoke } from '@tauri-apps/api/core'
 import Button from './ui/Button.vue'
 import Input from './ui/Input.vue'
+import InputWithAI from './ui/InputWithAI.vue'
+import { useSettingStore } from '../store/settingStore'
 
 const props = defineProps({
   show: {
@@ -20,6 +23,8 @@ const props = defineProps({
 
 const emit = defineEmits(['save', 'close'])
 
+const settingStore = useSettingStore()
+
 const form = ref({
   id: null,
   name: '',
@@ -29,6 +34,7 @@ const form = ref({
 })
 
 const errors = ref({})
+const isGeneratingRegex = ref(false)
 
 watch(() => props.show, (newVal) => {
   if (newVal) {
@@ -52,6 +58,59 @@ watch(() => props.show, (newVal) => {
     errors.value = {}
   }
 })
+
+async function handleGenerateRegex() {
+  if (!form.value.urlPattern.trim()) {
+    return
+  }
+
+  isGeneratingRegex.value = true
+  
+  try {
+    // 获取当前激活的模型配置
+    const providers = await settingStore.get('model.providers', [])
+    const activeProviderId = await settingStore.get('model.activeProviderId', null)
+    
+    if (!activeProviderId || providers.length === 0) {
+      alert('请先配置模型供应商')
+      return
+    }
+
+    const activeProvider = providers.find(p => p.id === activeProviderId)
+    if (!activeProvider || !activeProvider.currentModel) {
+      alert('请先选择模型')
+      return
+    }
+
+    // 调用 AI 生成正则表达式
+    const prompt = `请为以下网址生成一个正则表达式，用于匹配该网址及其所有子路径。只返回正则表达式本身，不要任何解释或额外文字。\n网址：${form.value.urlPattern}`
+    
+    const result = await invoke('generate_regex', {
+      prompt: prompt,
+      provider: activeProvider.provider,
+      apiKey: activeProvider.apiKey,
+      apiUrl: activeProvider.apiUrl,
+      model: activeProvider.currentModel
+    })
+
+    if (result && result.trim()) {
+      // 验证生成的正则表达式
+      try {
+        new RegExp(result.trim())
+        form.value.urlPattern = result.trim()
+        errors.value.urlPattern = null
+      } catch (e) {
+        console.error('生成的正则表达式无效:', e)
+        alert('生成的正则表达式格式错误，请手动调整')
+      }
+    }
+  } catch (error) {
+    console.error('生成正则表达式失败:', error)
+    alert('生成失败：' + error)
+  } finally {
+    isGeneratingRegex.value = false
+  }
+}
 
 function validateForm() {
   errors.value = {}
@@ -128,13 +187,15 @@ function handleCancel() {
           <label class="label">
             <span class="label-text">网址匹配规则（正则表达式）</span>
           </label>
-          <Input
+          <InputWithAI
             v-model="form.urlPattern"
-            placeholder="例如: ^https?://(www\\.)?github\\.com"
+            placeholder="输入网址，点击 AI 按钮自动生成正则表达式"
             :error="errors.urlPattern"
+            :loading="isGeneratingRegex"
+            @generate-regex="handleGenerateRegex"
           />
           <label class="label">
-            <span class="label-text-alt text-base-content/60">
+            <span class="label-text-alt text-[11px] text-base-content/40">
               匹配到网址后将使用此提示词
             </span>
           </label>
@@ -145,7 +206,7 @@ function handleCancel() {
           <label class="label">
             <span class="label-text">提示词模板</span>
           </label>
-          <div class="relative">
+          <div class="relative mt-1">
             <textarea
               v-model="form.template"
               class="w-full rounded-lg border bg-base-100 px-3 py-2 text-sm text-base-content outline-none transition-all duration-200 focus:ring-2 focus:ring-offset-2 focus:ring-offset-base-100 placeholder:text-base-content/40"
@@ -161,7 +222,7 @@ function handleCancel() {
             <span class="label-text-alt text-error">{{ errors.template }}</span>
           </label>
           <label v-else class="label">
-            <span class="label-text-alt text-base-content/60">
+            <span class="label-text-alt text-[11px] text-base-content/40">
               使用 {content} 作为网页内容占位符
             </span>
           </label>

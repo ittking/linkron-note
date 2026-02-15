@@ -60,21 +60,21 @@ function getPromptTypeBadgeClass(type) {
               {{ getPromptTypeLabel(prompt.type) }}
             </span>
           </div>
-          <p v-if="prompt.type === 'url' && !isSystem" class="text-xs text-base-content/60 font-mono">
+          <p v-if="prompt.type === 'url' && !isSystem" class="text-[11px] text-base-content/50 font-mono">
             {{ prompt.urlPattern }}
           </p>
-          <p class="text-xs text-base-content/40 truncate mt-1">
+          <p class="text-[11px] text-base-content/30 truncate mt-1">
             {{ prompt.template.substring(0, 50) }}{{ prompt.template.length > 50 ? '...' : '' }}
           </p>
         </div>
         <div class="flex gap-1">
-          <Button variant="ghost" size="icon-xs" @click.stop="$emit('edit', prompt)">
+          <Button variant="ghost" size="sm" @click.stop="$emit('edit', prompt)">
             <Edit2 :size="12" />
           </Button>
           <Button 
             v-if="!isSystem"
             variant="ghost" 
-            size="icon-xs" 
+            size="sm" 
             class="text-error hover:text-error" 
             @click.stop="$emit('delete', prompt)"
           >

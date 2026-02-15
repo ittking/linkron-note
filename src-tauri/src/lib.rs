@@ -1,4 +1,5 @@
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
+mod ai_generator;
 mod autostart;
 mod database;
 mod file_reader;
@@ -67,7 +68,8 @@ pub fn run() {
             file_reader::get_file_metadata,
             web_scraper::fetch_webpage_html,
             window_manager::get_os,
-            model_provider::load_provider_models
+            model_provider::load_provider_models,
+            ai_generator::generate_regex
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
