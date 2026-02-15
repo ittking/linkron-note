@@ -1,6 +1,6 @@
 import { ref } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
-import { getCurrentWindow, currentMonitor as getCurrentMonitor } from '@tauri-apps/api/window'
+import { getCurrentWindow, currentMonitor as getCurrentMonitor, LogicalSize, LogicalPosition } from '@tauri-apps/api/window'
 
 /**
  * 窗口控制 Composable
@@ -9,6 +9,7 @@ import { getCurrentWindow, currentMonitor as getCurrentMonitor } from '@tauri-ap
  */
 export function useWindowControl() {
   const isFullscreen = ref(false)
+  const isMaximized = ref(false)
   const currentOS = ref('unknown')
   const previousWindowState = ref({
     width: 0,
@@ -17,6 +18,7 @@ export function useWindowControl() {
     y: 0,
     resizable: false
   })
+  const previousMaximizedState = ref(null)
 
   /**
    * 获取当前窗口
@@ -80,12 +82,17 @@ export function useWindowControl() {
     const size = await window.innerSize()
     const position = await window.outerPosition()
     const resizable = await window.isResizable()
+    const scaleFactor = await window.scaleFactor()
+
+    // 将物理像素转换为逻辑像素
+    const logicalSize = size.toLogical(scaleFactor)
+    const logicalPosition = position.toLogical(scaleFactor)
 
     previousWindowState.value = {
-      width: size.width,
-      height: size.height,
-      x: position.x,
-      y: position.y,
+      width: logicalSize.width,
+      height: logicalSize.height,
+      x: logicalPosition.x,
+      y: logicalPosition.y,
       resizable
     }
 
@@ -105,8 +112,8 @@ export function useWindowControl() {
     const logicalPosition = monitorPosition.toLogical(scaleFactor)
 
     // 5. 设置窗口大小和位置，铺满当前显示器
-    await window.setSize(logicalSize)
-    await window.setPosition(logicalPosition)
+    await window.setSize(new LogicalSize(logicalSize.width, logicalSize.height))
+    await window.setPosition(new LogicalPosition(logicalPosition.x, logicalPosition.y))
     await window.setResizable(true)
   }
 
@@ -155,11 +162,17 @@ export function useWindowControl() {
   async function exitFullscreenMacOS(window) {
     const { width, height, x, y, resizable } = previousWindowState.value
 
+    // 验证值是否有效
+    if (width === 0 || height === 0 || x === undefined || y === undefined) {
+      console.error('保存的窗口状态无效')
+      return
+    }
+
     // 恢复窗口大小
-    await window.setSize({ width, height })
+    await window.setSize(new LogicalSize(width, height))
 
     // 恢复窗口位置
-    await window.setPosition({ x, y })
+    await window.setPosition(new LogicalPosition(x, y))
 
     // 恢复窗口可调整大小状态
     await window.setResizable(resizable)
@@ -174,8 +187,8 @@ export function useWindowControl() {
     // 恢复之前的窗口状态
     const { width, height, x, y, resizable } = previousWindowState.value
     
-    await window.setSize({ width, height })
-    await window.setPosition({ x, y })
+    await window.setSize(new LogicalSize(width, height))
+    await window.setPosition(new LogicalPosition(x, y))
     await window.setResizable(resizable)
   }
 
@@ -184,7 +197,7 @@ export function useWindowControl() {
    */
   async function setWindowSize(width, height) {
     const window = await getCurrentWebviewWindow()
-    await window.setSize({ width, height })
+    await window.setSize(new LogicalSize(width, height))
   }
 
   /**
@@ -192,7 +205,7 @@ export function useWindowControl() {
    */
   async function setWindowPosition(x, y) {
     const window = await getCurrentWebviewWindow()
-    await window.setPosition({ x, y })
+    await window.setPosition(new LogicalPosition(x, y))
   }
 
   /**
@@ -236,11 +249,100 @@ export function useWindowControl() {
   }
 
   /**
+   * macOS 专用：手动最大化实现
+   * 将窗口铺满当前显示器，坐标设为 0,0
+   */
+  async function enterMaximizeMacOS(window) {
+    // 1. 保存当前窗口状态
+    const size = await window.innerSize()
+    const position = await window.outerPosition()
+    const resizable = await window.isResizable()
+
+    // 确保 position 对象有效
+    const posX = position?.x ?? 0
+    const posY = position?.y ?? 0
+
+    previousMaximizedState.value = {
+      width: size.width,
+      height: size.height,
+      x: posX,
+      y: posY,
+      resizable
+    }
+
+    // 2. 获取当前鼠标所在的显示器
+    const currentMonitor = await getCurrentMonitor()
+    if (!currentMonitor) {
+      console.error('无法获取当前显示器信息')
+      return
+    }
+
+    // 3. 获取缩放因子（用于物理像素到逻辑像素的转换）
+    const scaleFactor = await window.scaleFactor()
+
+    // 4. 转换坐标：物理像素 -> 逻辑像素
+    const { size: monitorSize, position: monitorPosition } = currentMonitor
+    const logicalSize = monitorSize.toLogical(scaleFactor)
+
+    // 5. 设置窗口大小和位置，铺满当前显示器，坐标为 0,0（相对于当前显示器）
+    await window.setSize(new LogicalSize(logicalSize.width, logicalSize.height))
+    await window.setPosition(new LogicalPosition(0, 0))
+    await window.setResizable(true)
+  }
+
+  /**
+   * macOS 专用：手动恢复最大化
+   */
+  async function exitMaximizeMacOS(window) {
+    // 检查是否有保存的状态
+    if (!previousMaximizedState.value) {
+      console.error('没有保存的窗口状态，无法恢复')
+      return
+    }
+
+    const { width, height, x, y, resizable } = previousMaximizedState.value
+
+    // 验证值是否有效
+    if (width === 0 || height === 0 || x === undefined || y === undefined) {
+      console.error('保存的窗口状态无效')
+      return
+    }
+
+    // 恢复窗口大小
+    await window.setSize(new LogicalSize(width, height))
+
+    // 恢复窗口位置
+    await window.setPosition(new LogicalPosition(x, y))
+
+    // 恢复窗口可调整大小状态
+    await window.setResizable(resizable)
+  }
+
+  /**
    * 最大化窗口
+   * macOS: 手动实现最大化（铺满当前显示器，坐标 0,0）
+   * Windows: 使用原生 toggleMaximize API
    */
   async function maximizeWindow() {
     const window = await getCurrentWebviewWindow()
-    await window.toggleMaximize()
+    
+    if (isMaximized.value) {
+      // 退出最大化
+      if (currentOS.value === 'macos') {
+        await exitMaximizeMacOS(window)
+      } else {
+        await window.toggleMaximize()
+      }
+    } else {
+      // 进入最大化
+      if (currentOS.value === 'macos') {
+        await enterMaximizeMacOS(window)
+      } else {
+        await window.toggleMaximize()
+      }
+    }
+    
+    isMaximized.value = !isMaximized.value
   }
 
   /**
@@ -256,6 +358,7 @@ export function useWindowControl() {
 
   return {
     isFullscreen,
+    isMaximized,
     currentOS,
     toggleFullscreen,
     enterFullscreen,
