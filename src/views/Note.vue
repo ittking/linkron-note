@@ -92,9 +92,25 @@ const notes = ref([])
 const editorContent = ref('')
 const isDragging = ref(false)
 const isProcessing = ref(false)
+const processingCount = ref(0) // 处理计数器
 
 // 工作目录缓存
 let cachedWorkDirectory = null
+
+// 开始处理
+function startProcessing() {
+    processingCount.value++
+    isProcessing.value = true
+}
+
+// 结束处理
+function endProcessing() {
+    processingCount.value--
+    if (processingCount.value <= 0) {
+        processingCount.value = 0
+        isProcessing.value = false
+    }
+}
 
 // 获取缓存的工作目录
 async function getCachedWorkDirectory() {
@@ -331,10 +347,10 @@ async function handleEditorSubmit(noteData) {
 // 判断放置位置是否在编辑器范围内
 function isDropInEditor(clientX, clientY) {
     if (!editorContainerRef.value) return false
-    
+
     const rect = editorContainerRef.value.getBoundingClientRect()
     return clientX >= rect.left && clientX <= rect.right &&
-           clientY >= rect.top && clientY <= rect.bottom
+        clientY >= rect.top && clientY <= rect.bottom
 }
 
 // 拖拽事件处理
@@ -400,7 +416,7 @@ async function processFile(file, target = 'note') {
     if (isUrlFile(file.name)) {
         // 处理 .url 文件
         try {
-            isProcessing.value = true
+            startProcessing()
             const url = await extractUrlFromUrlFile(file)
             if (url && isValidUrl(url)) {
                 return { type: 'url', url: url }
@@ -412,7 +428,7 @@ async function processFile(file, target = 'note') {
             showToast('解析 .url 文件失败: ' + error.message, 'error')
             return null
         } finally {
-            isProcessing.value = false
+            endProcessing()
         }
     }
 
@@ -421,7 +437,7 @@ async function processFile(file, target = 'note') {
         return null
     }
 
-    isProcessing.value = true
+    startProcessing()
     try {
         const savedPath = await saveFile(file, 'file', workDirectory)
         const content = await extractTextFromFile(file, savedPath, workDirectory)
@@ -430,7 +446,7 @@ async function processFile(file, target = 'note') {
         showToast(`读取${getFileTypeDescription(file.name)}失败: ${error.message}`, 'error')
         return null
     } finally {
-        isProcessing.value = false
+        endProcessing()
     }
 }
 
@@ -442,8 +458,8 @@ async function handleFileToEditor(file) {
     if (result.type === 'url') {
         // .url 文件提取的 URL，爬取内容到编辑器
         try {
-            isProcessing.value = true
-            
+            startProcessing()
+
             // 第一步：获取网页内容
             const { content, images } = await scrapeWebPage(result.url)
             if (!content) {
@@ -456,20 +472,20 @@ async function handleFileToEditor(file) {
             try {
                 const { content: optimizedContent, optimized } = await optimizeWebContent(result.url, content)
                 finalContent = optimizedContent
-                
+
                 if (optimized) {
                     showToast('AI 文章生成成功', 'success')
                 }
             } catch (error) {
                 showToast('AI 优化失败，使用原始内容: ' + error.message, 'error')
             }
-            
+
             // 添加到编辑器
             editorContent.value += (editorContent.value ? '<br>' : '') + finalContent
         } catch (error) {
             showToast('网页抓取失败: ' + error.message, 'error')
         } finally {
-            isProcessing.value = false
+            endProcessing()
         }
         return
     }
@@ -485,8 +501,8 @@ async function handleDataToEditor(data) {
 
     if (isUrl) {
         try {
-            isProcessing.value = true
-            
+            startProcessing()
+
             // 第一步：获取网页内容
             const { content } = await scrapeWebPage(data)
             if (!content) {
@@ -499,20 +515,20 @@ async function handleDataToEditor(data) {
             try {
                 const { content: optimizedContent, optimized } = await optimizeWebContent(data, content)
                 finalContent = optimizedContent
-                
+
                 if (optimized) {
                     showToast('AI 文章生成成功', 'success')
                 }
             } catch (error) {
                 showToast('AI 优化失败，使用原始内容: ' + error.message, 'error')
             }
-            
+
             // 添加到编辑器
             editorContent.value += (editorContent.value ? '<br>' : '') + finalContent
         } catch (error) {
             showToast('网页抓取失败: ' + error.message, 'error')
         } finally {
-            isProcessing.value = false
+            endProcessing()
         }
         return
     }
@@ -561,17 +577,17 @@ async function createLinkNote(url) {
     }
 
     try {
-        isProcessing.value = true
-        
+        startProcessing()
+
         // 第一步：获取网页内容
         const { content } = await scrapeWebPage(url)
-        
+
         // 第二步：调用 AI 优化内容
         let finalContent = content
         try {
             const { content: optimizedContent, optimized } = await optimizeWebContent(url, content)
             finalContent = optimizedContent
-            
+
             if (optimized) {
                 showToast('AI 文章生成成功', 'success')
             } else {
@@ -582,7 +598,7 @@ async function createLinkNote(url) {
             showToast('AI 优化失败，使用原始内容: ' + error.message, 'error')
             finalContent = content
         }
-        
+
         const newNote = await noteStore.addNote({
             type: 'link',
             content: finalContent,
@@ -592,7 +608,7 @@ async function createLinkNote(url) {
     } catch (error) {
         showToast('链接抓取失败: ' + error.message, 'error')
     } finally {
-        isProcessing.value = false
+        endProcessing()
     }
 }
 
@@ -757,127 +773,131 @@ async function filterNotesByTags() {
 </script>
 
 <template>
-    <div class="h-full pb-2" @dragenter="handleDragEnter" @dragleave="handleDragLeave"
-        @dragover="handleDragOver" @drop="handleDrop">
+    <div class="h-full pb-2" @dragenter="handleDragEnter" @dragleave="handleDragLeave" @dragover="handleDragOver"
+        @drop="handleDrop">
         <!-- 主内容 -->
         <div class="h-full flex flex-col max-w-200 mx-auto w-full">
 
             <!-- 编辑器区域 -->
             <div ref="editorContainerRef" class="p-3 relative">
-            <!-- 编辑器拖拽遮罩 -->
-            <div v-if="isDragging"
-                class="absolute inset-0 bg-primary/2 border-2 border-dashed border-primary flex flex-col items-center justify-center z-10 transition-opacity duration-200 pointer-events-none">
-                <Download :size="32" class="text-primary mb-3 animate-bounce" />
-                <div class="text-sm font-medium text-primary mb-1">释放以添加到编辑器</div>
-                <div class="text-xs text-base-content/60">支持链接、文档、文字</div>
+                <!-- 编辑器拖拽遮罩 -->
+                <div v-if="isDragging"
+                    class="absolute inset-0 bg-primary/2 border-2 border-dashed border-primary flex flex-col items-center justify-center z-10 transition-opacity duration-200 pointer-events-none">
+                    <Download :size="32" class="text-primary mb-3 animate-bounce" />
+                    <div class="text-sm font-medium text-primary mb-1">释放以添加到编辑器</div>
+                    <div class="text-xs text-base-content/60">支持链接、文档、文字</div>
+                </div>
+
+                <NoteEditor ref="noteEditorRef" v-model="editorContent" placeholder="现在的想法是..."
+                    :is-scrolled-to-top="isNoteListScrolledToTop" :is-editing="isEditing"
+                    :should-clear="shouldClearEditor" @submit="handleEditorSubmit">
+                    <template #actions>
+                        <button v-if="isEditing" @click="handleCancelEdit"
+                            class="px-3 h-7 rounded-md flex items-center justify-center transition-all duration-200 bg-base-300 text-base-content/60 hover:bg-base-200 hover:text-base-content text-xs"
+                            title="取消编辑">
+                            取消
+                        </button>
+                    </template>
+                </NoteEditor>
             </div>
 
-            <NoteEditor ref="noteEditorRef" v-model="editorContent" placeholder="现在的想法是..." :is-scrolled-to-top="isNoteListScrolledToTop"
-                :is-editing="isEditing" :should-clear="shouldClearEditor"
-                @submit="handleEditorSubmit">
-                <template #actions>
-                    <button v-if="isEditing" @click="handleCancelEdit"
-                        class="px-3 h-7 rounded-md flex items-center justify-center transition-all duration-200 bg-base-300 text-base-content/60 hover:bg-base-200 hover:text-base-content text-xs"
-                        title="取消编辑">
-                        取消
-                    </button>
-                </template>
-            </NoteEditor>
-        </div>
-
-        <!-- 标签筛选栏 -->
-        <div v-if="isTagFilterMode" class="px-4 py-3 border-t border-base-200 bg-base-100">
-            <div class="flex items-center justify-between gap-2">
-                <!-- 左侧：标签列表 -->
-                <div class="flex items-center gap-2 flex-1 flex-wrap">
-                    <div class="flex flex-wrap items-center gap-1">
-                        <div v-for="tag in selectedTags" :key="tag"
-                            class="inline-flex items-center gap-1 px-2 py-1 bg-primary/10 text-primary rounded-md text-xs hover:bg-primary/20 transition-colors cursor-pointer group whitespace-normal"
-                            @click="removeTag(tag)">
-                            <span>#{{ tag }}</span>
-                            <button class="opacity-60 group-hover:opacity-100 transition-opacity">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <line x1="18" y1="6" x2="6" y2="18"></line>
-                                    <line x1="6" y1="6" x2="18" y2="18"></line>
-                                </svg>
-                            </button>
+            <!-- 标签筛选栏 -->
+            <div v-if="isTagFilterMode" class="px-4 py-3 border-t border-base-200 bg-base-100">
+                <div class="flex items-center justify-between gap-2">
+                    <!-- 左侧：标签列表 -->
+                    <div class="flex items-center gap-2 flex-1 flex-wrap">
+                        <div class="flex flex-wrap items-center gap-1">
+                            <div v-for="tag in selectedTags" :key="tag"
+                                class="inline-flex items-center gap-1 px-2 py-1 bg-primary/10 text-primary rounded-md text-xs hover:bg-primary/20 transition-colors cursor-pointer group whitespace-normal"
+                                @click="removeTag(tag)">
+                                <span>#{{ tag }}</span>
+                                <button class="opacity-60 group-hover:opacity-100 transition-opacity">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24"
+                                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                        stroke-linejoin="round">
+                                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                                    </svg>
+                                </button>
+                            </div>
                         </div>
                     </div>
+
+                    <!-- 右侧：操作和数量 -->
+                    <div class="flex items-center gap-3 flex-shrink-0">
+                        <button v-if="selectedTags.length > 1" @click="clearAllTags"
+                            class="text-xs text-base-content/40 hover:text-base-content/60 transition-colors">
+                            清空
+                        </button>
+                        <span class="text-xs text-base-content/60">共 {{ filteredNoteCount }} 条笔记</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 笔记列表 -->
+            <div class="flex-1 overflow-hidden relative">
+                <!-- 笔记列表拖拽遮罩 -->
+                <div v-if="isDragging"
+                    class="absolute inset-0 bg-primary/2 border-2 border-dashed border-primary flex flex-col items-center justify-center z-10 transition-opacity duration-200 pointer-events-none">
+                    <Download :size="48" class="text-primary mb-4 animate-bounce" />
+                    <div class="text-base font-medium text-primary mb-2">释放以创建笔记</div>
+                    <div class="text-sm text-base-content/60">支持链接、文档（md、txt）、文字</div>
                 </div>
 
-                <!-- 右侧：操作和数量 -->
-                <div class="flex items-center gap-3 flex-shrink-0">
-                    <button v-if="selectedTags.length > 1" @click="clearAllTags"
-                        class="text-xs text-base-content/40 hover:text-base-content/60 transition-colors">
-                        清空
+                <div ref="noteListRef" class="p-3 pt-0 h-full overflow-y-auto no-scrollbar relative"
+                    @scroll="handleNoteListScroll">
+                    <div v-if="notes.length === 0"
+                        class="flex flex-col select-none items-center justify-center h-full text-base-content/40 text-center p-5">
+                        <FileText :size="64" class="mb-4 opacity-50" />
+                        <div class="text-base font-medium mb-2 text-base-content/60">暂无笔记</div>
+                        <div class="text-sm leading-relaxed max-w-[240px]">拖拽链接或文字到这里创建笔记</div>
+                    </div>
+
+                    <NoteCard v-for="note in notes" :key="note.id" :ref="(ref) => setNoteCardRef(note.id, ref)"
+                        :note="note" @edit="handleMenuEdit" @delete="handleMenuDelete" @pin="handleMenuPin"
+                        @expand="handleNoteExpand" @collapse="handleNoteCollapse" />
+
+                    <!-- Loading 组件 -->
+                    <div v-if="isLoading" class="flex justify-center py-4">
+                        <span class="loading loading-spinner text-primary"></span>
+                    </div>
+
+                    <!-- 浮动收起按钮 -->
+                    <button v-if="shouldShowCollapseButton" @click="handleCollapseCroppedNote"
+                        class="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 bg-base-100 border border-base-200 shadow-lg px-4 py-2 rounded-lg text-xs text-primary hover:text-primary/80 flex items-center gap-1 transition-all duration-200">
+                        收起笔记
+                        <ChevronUp :size="14" />
                     </button>
-                    <span class="text-xs text-base-content/60">共 {{ filteredNoteCount }} 条笔记</span>
                 </div>
             </div>
-        </div>
 
-        <!-- 笔记列表 -->
-        <div class="flex-1 overflow-hidden relative">
-            <!-- 笔记列表拖拽遮罩 -->
-            <div v-if="isDragging"
-                class="absolute inset-0 bg-primary/2 border-2 border-dashed border-primary flex flex-col items-center justify-center z-10 transition-opacity duration-200 pointer-events-none">
-                <Download :size="48" class="text-primary mb-4 animate-bounce" />
-                <div class="text-base font-medium text-primary mb-2">释放以创建笔记</div>
-                <div class="text-sm text-base-content/60">支持链接、文档（md、txt）、文字</div>
+            <!-- Toast 提示 -->
+            <div
+                :class="['toast toast-end z-[200] px-4 py-3 rounded-lg shadow-lg transition-all duration-300', toastVisible ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0', toastType === 'success' ? 'bg-success text-success-content' : toastType === 'error' ? 'bg-error text-error-content' : 'bg-info text-info-content']">
+                {{ toastMessage }}
             </div>
 
-            <div ref="noteListRef" class="p-3 pt-0 h-full overflow-y-auto no-scrollbar relative" @scroll="handleNoteListScroll">
-                <div v-if="notes.length === 0"
-                    class="flex flex-col select-none items-center justify-center h-full text-base-content/40 text-center p-5">
-                    <FileText :size="64" class="mb-4 opacity-50" />
-                    <div class="text-base font-medium mb-2 text-base-content/60">暂无笔记</div>
-                    <div class="text-sm leading-relaxed max-w-[240px]">拖拽链接或文字到这里创建笔记</div>
-                </div>
-
-                <NoteCard v-for="note in notes" :key="note.id" :ref="(ref) => setNoteCardRef(note.id, ref)" :note="note"
-                    @edit="handleMenuEdit" @delete="handleMenuDelete" @pin="handleMenuPin"
-                    @expand="handleNoteExpand" @collapse="handleNoteCollapse" />
-
-                <!-- Loading 组件 -->
-                <div v-if="isLoading" class="flex justify-center py-4">
-                    <span class="loading loading-spinner text-primary"></span>
-                </div>
-
-                <!-- 浮动收起按钮 -->
-                <button v-if="shouldShowCollapseButton" @click="handleCollapseCroppedNote"
-                    class="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 bg-base-100 border border-base-200 shadow-lg px-4 py-2 rounded-lg text-xs text-primary hover:text-primary/80 flex items-center gap-1 transition-all duration-200">
-                    收起笔记
-                    <ChevronUp :size="14" />
-                </button>
+            <!-- 处理中 Loading 提示 -->
+            <div v-if="isProcessing"
+                class="fixed bottom-6 right-6 z-[300] flex items-center gap-2 px-4 py-3 bg-base-100 border border-base-300 rounded-lg shadow-lg">
+                <span class="loading loading-spinner loading-sm text-primary"></span>
+                <span class="text-sm text-base-content/80">处理中...</span>
             </div>
-        </div>
 
-        <!-- Toast 提示 -->
-        <div
-            :class="['toast toast-end z-[200] px-4 py-3 rounded-lg shadow-lg transition-all duration-300', toastVisible ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0', toastType === 'success' ? 'bg-success text-success-content' : toastType === 'error' ? 'bg-error text-error-content' : 'bg-info text-info-content']">
-            {{ toastMessage }}
-        </div>
-
-        <!-- 处理中 Loading 提示 -->
-        <div v-if="isProcessing" class="fixed bottom-6 right-6 z-[300] flex items-center gap-2 px-4 py-3 bg-base-100 border border-base-300 rounded-lg shadow-lg">
-            <span class="loading loading-spinner loading-sm text-primary"></span>
-            <span class="text-sm text-base-content/80">处理中...</span>
-        </div>
-
-        <!-- 确认对话框 -->
-        <dialog :open="confirmVisible" class="modal">
-            <div class="modal-box bg-base-200 border border-base-300">
-                <h3 class="font-bold text-lg text-base-content">{{ confirmTitle }}</h3>
-                <p class="py-4 text-base-content/60">{{ confirmContent }}</p>
-                <div class="modal-action">
-                    <Button variant="ghost" size="sm" @click="confirmVisible = false">取消</Button>
-                    <Button variant="error" size="sm" @click="handleConfirmOk">删除</Button>
+            <!-- 确认对话框 -->
+            <dialog :open="confirmVisible" class="modal">
+                <div class="modal-box bg-base-200 border border-base-300">
+                    <h3 class="font-bold text-lg text-base-content">{{ confirmTitle }}</h3>
+                    <p class="py-4 text-base-content/60">{{ confirmContent }}</p>
+                    <div class="modal-action">
+                        <Button variant="ghost" size="sm" @click="confirmVisible = false">取消</Button>
+                        <Button variant="error" size="sm" @click="handleConfirmOk">删除</Button>
+                    </div>
                 </div>
-            </div>
-            <form method="dialog" class="modal-backdrop bg-black/50">
-                <button @click="confirmVisible = false"></button>
-            </form>
-        </dialog>
+                <form method="dialog" class="modal-backdrop bg-black/50">
+                    <button @click="confirmVisible = false"></button>
+                </form>
+            </dialog>
         </div>
 
         <!-- 侧边栏悬浮图标 -->
