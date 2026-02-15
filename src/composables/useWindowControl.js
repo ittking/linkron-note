@@ -78,22 +78,26 @@ export function useWindowControl() {
    * 参考：https://juejin.cn/post/7585006378533453866
    */
   async function enterFullscreenMacOS(window) {
-    // 1. 保存当前窗口状态
-    const size = await window.innerSize()
-    const position = await window.outerPosition()
+    // 获取当前窗口的 resizable 状态
     const resizable = await window.isResizable()
     const scaleFactor = await window.scaleFactor()
 
-    // 将物理像素转换为逻辑像素
-    const logicalSize = size.toLogical(scaleFactor)
-    const logicalPosition = position.toLogical(scaleFactor)
+    // 1. 只在未保存状态时保存当前窗口状态
+    if (!previousWindowState.value || previousWindowState.value.width === 0) {
+      const size = await window.innerSize()
+      const position = await window.outerPosition()
 
-    previousWindowState.value = {
-      width: logicalSize.width,
-      height: logicalSize.height,
-      x: logicalPosition.x,
-      y: logicalPosition.y,
-      resizable
+      // 将物理像素转换为逻辑像素
+      const logicalSize = size.toLogical(scaleFactor)
+      const logicalPosition = position.toLogical(scaleFactor)
+
+      previousWindowState.value = {
+        width: logicalSize.width,
+        height: logicalSize.height,
+        x: logicalPosition.x,
+        y: logicalPosition.y,
+        resizable
+      }
     }
 
     // 2. 获取当前鼠标所在的显示器
@@ -123,22 +127,24 @@ export function useWindowControl() {
    * 原生全屏实现（Windows、Linux）
    */
   async function enterFullscreenNative(window) {
-    // 保存当前窗口状态
-    const size = await window.innerSize()
-    const position = await window.outerPosition()
-    const resizable = await window.isResizable()
-    const scaleFactor = await window.scaleFactor()
+    // 只在未保存状态时保存当前窗口状态
+    if (!previousWindowState.value || previousWindowState.value.width === 0) {
+      const size = await window.innerSize()
+      const position = await window.outerPosition()
+      const resizable = await window.isResizable()
+      const scaleFactor = await window.scaleFactor()
 
-    // 将物理像素转换为逻辑像素
-    const logicalSize = size.toLogical(scaleFactor)
-    const logicalPosition = position.toLogical(scaleFactor)
+      // 将物理像素转换为逻辑像素
+      const logicalSize = size.toLogical(scaleFactor)
+      const logicalPosition = position.toLogical(scaleFactor)
 
-    previousWindowState.value = {
-      width: logicalSize.width,
-      height: logicalSize.height,
-      x: logicalPosition.x,
-      y: logicalPosition.y,
-      resizable
+      previousWindowState.value = {
+        width: logicalSize.width,
+        height: logicalSize.height,
+        x: logicalPosition.x,
+        y: logicalPosition.y,
+        resizable
+      }
     }
 
     // 使用原生全屏 API
@@ -186,6 +192,9 @@ export function useWindowControl() {
 
     // 恢复窗口可调整大小状态
     await window.setResizable(resizable)
+
+    // 清空保存的状态
+    previousWindowState.value = null
   }
 
   /**
@@ -205,6 +214,9 @@ export function useWindowControl() {
 
     // 恢复窗口可调整大小状态
     await window.setResizable(resizable)
+
+    // 清空保存的状态
+    previousWindowState.value = null
   }
 
   /**
@@ -268,26 +280,30 @@ export function useWindowControl() {
    * 将窗口铺满当前显示器，坐标设为 0,0
    */
   async function enterMaximizeMacOS(window) {
-    // 1. 保存当前窗口状态
-    const size = await window.innerSize()
-    const position = await window.outerPosition()
+    // 获取当前窗口的 resizable 状态和缩放因子
     const resizable = await window.isResizable()
     const scaleFactor = await window.scaleFactor()
 
-    // 将物理像素转换为逻辑像素
-    const logicalSize = size.toLogical(scaleFactor)
-    const logicalPosition = position.toLogical(scaleFactor)
+    // 1. 只在未保存状态时保存当前窗口状态
+    if (!previousMaximizedState.value) {
+      const size = await window.innerSize()
+      const position = await window.outerPosition()
 
-    // 确保 position 对象有效
-    const posX = logicalPosition?.x ?? 0
-    const posY = logicalPosition?.y ?? 0
+      // 将物理像素转换为逻辑像素
+      const logicalSize = size.toLogical(scaleFactor)
+      const logicalPosition = position.toLogical(scaleFactor)
 
-    previousMaximizedState.value = {
-      width: logicalSize.width,
-      height: logicalSize.height,
-      x: posX,
-      y: posY,
-      resizable
+      // 确保 position 对象有效
+      const posX = logicalPosition?.x ?? 0
+      const posY = logicalPosition?.y ?? 0
+
+      previousMaximizedState.value = {
+        width: logicalSize.width,
+        height: logicalSize.height,
+        x: posX,
+        y: posY,
+        resizable
+      }
     }
 
     // 2. 获取当前鼠标所在的显示器
@@ -297,21 +313,18 @@ export function useWindowControl() {
       return
     }
 
-    // 3. 获取缩放因子（用于物理像素到逻辑像素的转换）
-    const scaleFactor2 = await window.scaleFactor()
-
-    // 4. 转换坐标：物理像素 -> 逻辑像素
+    // 3. 转换坐标：物理像素 -> 逻辑像素
     const { size: monitorSize, position: monitorPosition } = currentMonitor
-    const monitorLogicalSize = monitorSize.toLogical(scaleFactor2)
+    const monitorLogicalSize = monitorSize.toLogical(scaleFactor)
 
-    // 5. 先设置窗口为可调整大小
+    // 4. 先设置窗口为可调整大小
     await window.setResizable(true)
 
-    // 6. 设置窗口大小和位置，铺满当前显示器，坐标为 0,0（相对于当前显示器）
+    // 5. 设置窗口大小和位置，铺满当前显示器，坐标为 0,0（相对于当前显示器）
     await window.setSize(new LogicalSize(monitorLogicalSize.width, monitorLogicalSize.height))
     await window.setPosition(new LogicalPosition(0, 0))
 
-    // 7. 恢复原来的 resizable 状态
+    // 6. 恢复原来的 resizable 状态
     await window.setResizable(resizable)
   }
 
@@ -344,6 +357,9 @@ export function useWindowControl() {
 
     // 恢复窗口可调整大小状态
     await window.setResizable(resizable)
+
+    // 清空保存的状态
+    previousMaximizedState.value = null
   }
 
   /**
