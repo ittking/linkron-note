@@ -103,17 +103,14 @@ export function useWindowControl() {
       return
     }
 
-    // 3. 获取缩放因子（用于物理像素到逻辑像素的转换）
-    const scaleFactor = await window.scaleFactor()
-
-    // 4. 转换坐标：物理像素 -> 逻辑像素
+    // 3. 转换坐标：物理像素 -> 逻辑像素
     const { size: monitorSize, position: monitorPosition } = currentMonitor
-    const logicalSize = monitorSize.toLogical(scaleFactor)
-    const logicalPosition = monitorPosition.toLogical(scaleFactor)
+    const monitorLogicalSize = monitorSize.toLogical(scaleFactor)
+    const monitorLogicalPosition = monitorPosition.toLogical(scaleFactor)
 
-    // 5. 设置窗口大小和位置，铺满当前显示器
-    await window.setSize(new LogicalSize(logicalSize.width, logicalSize.height))
-    await window.setPosition(new LogicalPosition(logicalPosition.x, logicalPosition.y))
+    // 4. 设置窗口大小和位置，铺满当前显示器
+    await window.setSize(new LogicalSize(monitorLogicalSize.width, monitorLogicalSize.height))
+    await window.setPosition(new LogicalPosition(monitorLogicalPosition.x, monitorLogicalPosition.y))
     await window.setResizable(true)
   }
 
@@ -125,12 +122,17 @@ export function useWindowControl() {
     const size = await window.innerSize()
     const position = await window.outerPosition()
     const resizable = await window.isResizable()
+    const scaleFactor = await window.scaleFactor()
+
+    // 将物理像素转换为逻辑像素
+    const logicalSize = size.toLogical(scaleFactor)
+    const logicalPosition = position.toLogical(scaleFactor)
 
     previousWindowState.value = {
-      width: size.width,
-      height: size.height,
-      x: position.x,
-      y: position.y,
+      width: logicalSize.width,
+      height: logicalSize.height,
+      x: logicalPosition.x,
+      y: logicalPosition.y,
       resizable
     }
 
@@ -257,14 +259,19 @@ export function useWindowControl() {
     const size = await window.innerSize()
     const position = await window.outerPosition()
     const resizable = await window.isResizable()
+    const scaleFactor = await window.scaleFactor()
+
+    // 将物理像素转换为逻辑像素
+    const logicalSize = size.toLogical(scaleFactor)
+    const logicalPosition = position.toLogical(scaleFactor)
 
     // 确保 position 对象有效
-    const posX = position?.x ?? 0
-    const posY = position?.y ?? 0
+    const posX = logicalPosition?.x ?? 0
+    const posY = logicalPosition?.y ?? 0
 
     previousMaximizedState.value = {
-      width: size.width,
-      height: size.height,
+      width: logicalSize.width,
+      height: logicalSize.height,
       x: posX,
       y: posY,
       resizable
@@ -278,14 +285,14 @@ export function useWindowControl() {
     }
 
     // 3. 获取缩放因子（用于物理像素到逻辑像素的转换）
-    const scaleFactor = await window.scaleFactor()
+    const scaleFactor2 = await window.scaleFactor()
 
     // 4. 转换坐标：物理像素 -> 逻辑像素
     const { size: monitorSize, position: monitorPosition } = currentMonitor
-    const logicalSize = monitorSize.toLogical(scaleFactor)
+    const monitorLogicalSize = monitorSize.toLogical(scaleFactor2)
 
     // 5. 设置窗口大小和位置，铺满当前显示器，坐标为 0,0（相对于当前显示器）
-    await window.setSize(new LogicalSize(logicalSize.width, logicalSize.height))
+    await window.setSize(new LogicalSize(monitorLogicalSize.width, monitorLogicalSize.height))
     await window.setPosition(new LogicalPosition(0, 0))
     await window.setResizable(true)
   }
