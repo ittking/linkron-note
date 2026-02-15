@@ -83,6 +83,22 @@ fn set_window_on_all_desktops_macos(window: &WebviewWindow) {
     }
 }
 
+/// 获取当前操作系统类型
+#[tauri::command]
+pub fn get_os() -> String {
+    #[cfg(target_os = "macos")]
+    return "macos".to_string();
+
+    #[cfg(windows)]
+    return "windows".to_string();
+
+    #[cfg(target_os = "linux")]
+    return "linux".to_string();
+
+    #[cfg(not(any(target_os = "macos", windows, target_os = "linux")))]
+    return "unknown".to_string();
+}
+
 /// 初始化窗口管理器
 /// 这是一个便捷函数，用于在 Tauri app setup 中调用
 pub fn setup_window_manager(app: &App) -> Result<(), Box<dyn std::error::Error>> {

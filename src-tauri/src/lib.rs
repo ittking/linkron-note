@@ -64,7 +64,8 @@ pub fn run() {
             file_reader::read_text_file,
             file_reader::read_file_text,
             file_reader::get_file_metadata,
-            web_scraper::fetch_webpage_html
+            web_scraper::fetch_webpage_html,
+            window_manager::get_os
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
