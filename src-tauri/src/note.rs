@@ -90,7 +90,7 @@ pub fn get_all_notes(conn: &Connection, page: u32, page_size: u32) -> SqliteResu
     )?;
 
     let notes = stmt.query_map(params![page_size, offset], |row| {
-        let pinned: i32 = row.get(3)?;
+        let pinned: i32 = row.get(4)?;
         Ok(Note {
             id: row.get(0)?,
             note_type: row.get(1)?,
@@ -127,7 +127,7 @@ pub fn get_note(conn: &Connection, id: &str) -> SqliteResult<Option<Note>> {
     )?;
 
     let mut notes = stmt.query_map(params![id], |row| {
-        let pinned: i32 = row.get(3)?;
+        let pinned: i32 = row.get(4)?;
         Ok(Note {
             id: row.get(0)?,
             note_type: row.get(1)?,
@@ -136,7 +136,7 @@ pub fn get_note(conn: &Connection, id: &str) -> SqliteResult<Option<Note>> {
             extract_url: row.get(7)?,
             pinned: pinned == 1,
             created_at: row.get(5)?,
-            updated_at: row.get(7)?,
+            updated_at: row.get(6)?,
         })
     })?;
 
@@ -242,7 +242,7 @@ pub fn search_notes(conn: &Connection, keyword: &str) -> SqliteResult<NotesRespo
     )?;
 
     let notes: Vec<Note> = stmt.query_map(params![search_pattern], |row| {
-        let pinned: i32 = row.get(4)?;
+        let pinned: i32 = row.get(5)?;
         Ok(Note {
             id: row.get(0)?,
             note_type: row.get(1)?,
@@ -250,8 +250,8 @@ pub fn search_notes(conn: &Connection, keyword: &str) -> SqliteResult<NotesRespo
             source_url: row.get(3)?,
             extract_url: row.get(4)?,
             pinned: pinned == 1,
-            created_at: row.get(5)?,
-            updated_at: row.get(6)?,
+            created_at: row.get(6)?,
+            updated_at: row.get(7)?,
         })
     })?.collect::<SqliteResult<Vec<Note>>>()?;
 
@@ -298,7 +298,7 @@ pub fn get_notes_by_tags(conn: &Connection, tags: Vec<String>) -> SqliteResult<N
     let params_refs: Vec<&dyn rusqlite::ToSql> = all_params.iter().map(|p| p as &dyn rusqlite::ToSql).collect();
 
     let notes: Vec<Note> = stmt.query_map(&params_refs[..], |row| {
-        let pinned: i32 = row.get(3)?;
+        let pinned: i32 = row.get(4)?;
         Ok(Note {
             id: row.get(0)?,
             note_type: row.get(1)?,
