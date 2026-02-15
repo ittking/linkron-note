@@ -2,11 +2,13 @@
 import { ref, computed, onMounted } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
 import { useSettingStore } from '../store/settingStore'
-import { Bot, Plus } from 'lucide-vue-next'
+import { Bot, Plus, MessageSquare } from 'lucide-vue-next'
 import Button from './ui/Button.vue'
 import ProviderCard from './ProviderCard.vue'
 import AddProviderDialog from './AddProviderDialog.vue'
 import SelectModelDialog from './SelectModelDialog.vue'
+import PromptCard from './PromptCard.vue'
+import PromptDialog from './PromptDialog.vue'
 
 const settingStore = useSettingStore()
 
@@ -17,8 +19,14 @@ const showAddDialog = ref(false)
 const showSelectDialog = ref(false)
 const currentProvider = ref(null)
 
+// 提示词相关
+const prompts = ref([])
+const showPromptDialog = ref(false)
+const currentPrompt = ref(null)
+
 onMounted(async () => {
   await loadProviders()
+  await loadPrompts()
 })
 
 async function loadProviders() {
@@ -139,10 +147,62 @@ const currentModels = computed(() => {
   if (!currentProvider.value) return []
   return currentProvider.value.models || []
 })
+
+// 提示词相关功能
+async function loadPrompts() {
+  try {
+    const data = await settingStore.get('model.prompts', [])
+    prompts.value = data || []
+  } catch (error) {
+    console.error('Failed to load prompts:', error)
+  }
+}
+
+async function savePrompts() {
+  try {
+    await settingStore.set('model.prompts', prompts.value)
+  } catch (error) {
+    console.error('Failed to save prompts:', error)
+  }
+}
+
+function handleAddPrompt() {
+  currentPrompt.value = null
+  showPromptDialog.value = true
+}
+
+function handleEditPrompt(prompt) {
+  currentPrompt.value = prompt
+  showPromptDialog.value = true
+}
+
+async function handleSavePrompt(data) {
+  const index = prompts.value.findIndex(p => p.id === data.id)
+  if (index > -1) {
+    prompts.value[index] = data
+  } else {
+    prompts.value.push(data)
+  }
+  await savePrompts()
+  showPromptDialog.value = false
+}
+
+async function handleDeletePrompt(prompt) {
+  if (!confirm(`确定要删除提示词 "${prompt.name}" 吗？`)) {
+    return
+  }
+
+  const index = prompts.value.findIndex(p => p.id === prompt.id)
+  if (index > -1) {
+    prompts.value.splice(index, 1)
+    await savePrompts()
+  }
+}
 </script>
 
 <template>
   <div class="space-y-4">
+    <!-- 模型供应商模块 -->
     <div class="card bg-base-200 shadow-sm">
       <div class="card-body p-4">
         <div class="flex items-center justify-between mb-4">
@@ -176,6 +236,38 @@ const currentModels = computed(() => {
         </div>
       </div>
     </div>
+
+    <!-- 提示词模块 -->
+    <div class="card bg-base-200 shadow-sm">
+      <div class="card-body p-4">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="card-title text-sm font-medium flex items-center gap-2">
+            <MessageSquare :size="16" />
+            提示词
+          </h2>
+          <Button variant="primary" size="sm" @click="handleAddPrompt">
+            <Plus :size="14" />
+            添加
+          </Button>
+        </div>
+
+        <div v-if="prompts.length === 0" class="text-center py-8 text-base-content/40">
+          <MessageSquare :size="40" class="mx-auto mb-3 opacity-50" />
+          <p class="text-sm">暂无提示词配置</p>
+          <p class="text-xs mt-1">点击右上角按钮添加提示词</p>
+        </div>
+
+        <div v-else class="space-y-3">
+          <PromptCard
+            v-for="prompt in prompts"
+            :key="prompt.id"
+            :prompt="prompt"
+            @delete="handleDeletePrompt"
+            @edit="handleEditPrompt"
+          />
+        </div>
+      </div>
+    </div>
   </div>
 
   <AddProviderDialog
@@ -192,5 +284,12 @@ const currentModels = computed(() => {
     @load-models="handleLoadModelsInDialog"
     @add-custom="handleAddCustomModel"
     @close="showSelectDialog = false"
+  />
+
+  <PromptDialog
+    v-model:show="showPromptDialog"
+    :prompt="currentPrompt"
+    @save="handleSavePrompt"
+    @close="showPromptDialog = false"
   />
 </template>

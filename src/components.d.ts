@@ -24,6 +24,8 @@ declare module 'vue' {
     NoteHeatmap: typeof import('./components/NoteHeatmap.vue')['default']
     NoteSidebar: typeof import('./components/NoteSidebar.vue')['default']
     PreferencesSetting: typeof import('./components/PreferencesSetting.vue')['default']
+    PromptCard: typeof import('./components/PromptCard.vue')['default']
+    PromptDialog: typeof import('./components/PromptDialog.vue')['default']
     ProviderCard: typeof import('./components/ProviderCard.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
