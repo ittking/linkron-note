@@ -15,8 +15,6 @@ pub struct Note {
     #[serde(rename = "extractUrl")]
     pub extract_url: Option<String>,
     #[serde(default)]
-    pub images: Vec<String>,
-    #[serde(default)]
     pub pinned: bool,
     #[serde(rename = "createdAt")]
     pub created_at: String,
@@ -34,25 +32,12 @@ pub struct NoteData {
     pub source_url: Option<String>,
     #[serde(rename = "extractUrl")]
     pub extract_url: Option<String>,
-    #[serde(default)]
-    pub images: Vec<String>,
 }
 
 // 更新笔记的数据结构
 #[derive(Debug, Deserialize, Clone)]
 pub struct NoteUpdate {
     pub content: Option<String>,
-    pub images: Option<Vec<String>>,
-}
-
-/// 序列化图片数组为 JSON 字符串
-fn serialize_images(images: &Vec<String>) -> String {
-    serde_json::to_string(images).unwrap_or_else(|_| "[]".to_string())
-}
-
-/// 反序列化 JSON 字符串为图片数组
-fn deserialize_images(images_str: &str) -> Vec<String> {
-    serde_json::from_str(images_str).unwrap_or_default()
 }
 
 /// 初始化笔记表
@@ -64,15 +49,13 @@ pub fn init_tables(conn: &Connection) -> SqliteResult<()> {
             content TEXT NOT NULL,
             source_url TEXT,
             extract_url TEXT,
-            images TEXT DEFAULT '[]',
             created_at TEXT NOT NULL,
             updated_at TEXT NOT NULL
         )",
         [],
     )?;
 
-    // 检查并添加 images 列
-    conn.execute("ALTER TABLE notes ADD COLUMN images TEXT DEFAULT '[]'", []).ok();
+    // 检查并添加列（向后兼容）
     conn.execute("ALTER TABLE notes ADD COLUMN extract_url TEXT", []).ok();
     conn.execute("ALTER TABLE notes ADD COLUMN pinned INTEGER DEFAULT 0", []).ok();
 
@@ -88,26 +71,22 @@ pub fn get_all_notes(conn: &Connection, page: u32, page_size: u32) -> SqliteResu
     let offset = (page - 1) * page_size;
     let mut stmt = conn.prepare(
         "SELECT id, type, content, source_url,
-         COALESCE(images, '[]') as images,
          COALESCE(pinned, 0) as pinned,
          created_at, updated_at,
-         extract_url
          FROM notes ORDER BY pinned DESC, created_at DESC LIMIT ? OFFSET ?"
     )?;
 
     let notes = stmt.query_map(params![page_size, offset], |row| {
-        let images_str: String = row.get(4)?;
-        let pinned: i32 = row.get(5)?;
+        let pinned: i32 = row.get(3)?;
         Ok(Note {
             id: row.get(0)?,
             note_type: row.get(1)?,
             content: row.get(2)?,
             source_url: row.get(3)?,
-            extract_url: row.get(8)?,
-            images: deserialize_images(&images_str),
+            extract_url: row.get(7)?,
             pinned: pinned == 1,
-            created_at: row.get(6)?,
-            updated_at: row.get(7)?,
+            created_at: row.get(5)?,
+            updated_at: row.get(6)?,
         })
     })?;
 
@@ -123,7 +102,6 @@ pub fn count_notes(conn: &Connection) -> SqliteResult<i64> {
 pub fn get_note(conn: &Connection, id: &str) -> SqliteResult<Option<Note>> {
     let mut stmt = conn.prepare(
         "SELECT id, type, content, source_url,
-         COALESCE(images, '[]') as images,
          COALESCE(pinned, 0) as pinned,
          created_at, updated_at,
          extract_url
@@ -131,17 +109,15 @@ pub fn get_note(conn: &Connection, id: &str) -> SqliteResult<Option<Note>> {
     )?;
 
     let mut notes = stmt.query_map(params![id], |row| {
-        let images_str: String = row.get(4)?;
-        let pinned: i32 = row.get(5)?;
+        let pinned: i32 = row.get(3)?;
         Ok(Note {
             id: row.get(0)?,
             note_type: row.get(1)?,
             content: row.get(2)?,
             source_url: row.get(3)?,
-            extract_url: row.get(8)?,
-            images: deserialize_images(&images_str),
+            extract_url: row.get(7)?,
             pinned: pinned == 1,
-            created_at: row.get(6)?,
+            created_at: row.get(5)?,
             updated_at: row.get(7)?,
         })
     })?;
@@ -157,17 +133,15 @@ pub fn create_note(conn: &Connection, note_data: NoteData) -> SqliteResult<Note>
     let id = Ulid::new().to_string();
     let note_type = note_data.note_type.unwrap_or_else(|| "text".to_string());
     let now = chrono::Utc::now().to_rfc3339();
-    let images_json = serialize_images(&note_data.images);
 
     conn.execute(
-        "INSERT INTO notes (id, type, content, source_url, images, pinned, created_at, updated_at, extract_url)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
+        "INSERT INTO notes (id, type, content, source_url, pinned, created_at, updated_at, extract_url)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
         params![
             &id,
             &note_type,
             &note_data.content,
             &note_data.source_url,
-            &images_json,
             0,
             &now,
             &now,
@@ -181,7 +155,6 @@ pub fn create_note(conn: &Connection, note_data: NoteData) -> SqliteResult<Note>
         content: note_data.content,
         source_url: note_data.source_url,
         extract_url: note_data.extract_url,
-        images: note_data.images,
         pinned: false,
         created_at: now.clone(),
         updated_at: now,
@@ -193,23 +166,9 @@ pub fn update_note(conn: &Connection, id: &str, updates: NoteUpdate) -> SqliteRe
     let now = chrono::Utc::now().to_rfc3339();
 
     if let Some(content) = &updates.content {
-        if let Some(images) = &updates.images {
-            let images_json = serialize_images(images);
-            conn.execute(
-                "UPDATE notes SET content = ?1, images = ?2, updated_at = ?3 WHERE id = ?4",
-                params![content, &images_json, &now, id],
-            )?;
-        } else {
-            conn.execute(
-                "UPDATE notes SET content = ?1, updated_at = ?2 WHERE id = ?3",
-                params![content, &now, id],
-            )?;
-        }
-    } else if let Some(images) = &updates.images {
-        let images_json = serialize_images(images);
         conn.execute(
-            "UPDATE notes SET images = ?1, updated_at = ?2 WHERE id = ?3",
-            params![&images_json, &now, id],
+            "UPDATE notes SET content = ?1, updated_at = ?2 WHERE id = ?3",
+            params![content, &now, id],
         )?;
     }
 
@@ -250,7 +209,6 @@ pub fn search_notes(conn: &Connection, keyword: &str) -> SqliteResult<Vec<Note>>
 
     let mut stmt = conn.prepare(
         "SELECT id, type, content, source_url, extract_url,
-         COALESCE(images, '[]') as images,
          COALESCE(pinned, 0) as pinned,
          created_at, updated_at
          FROM notes WHERE content LIKE ?1
@@ -258,18 +216,16 @@ pub fn search_notes(conn: &Connection, keyword: &str) -> SqliteResult<Vec<Note>>
     )?;
 
     let notes = stmt.query_map(params![search_pattern], |row| {
-        let images_str: String = row.get(5)?;
-        let pinned: i32 = row.get(6)?;
+        let pinned: i32 = row.get(4)?;
         Ok(Note {
             id: row.get(0)?,
             note_type: row.get(1)?,
             content: row.get(2)?,
             source_url: row.get(3)?,
             extract_url: row.get(4)?,
-            images: deserialize_images(&images_str),
             pinned: pinned == 1,
-            created_at: row.get(7)?,
-            updated_at: row.get(8)?,
+            created_at: row.get(5)?,
+            updated_at: row.get(6)?,
         })
     })?;
 
@@ -294,7 +250,6 @@ pub fn get_notes_by_tags(conn: &Connection, tags: Vec<String>) -> SqliteResult<V
     let where_clause = where_clauses.join(" OR ");
     let sql = format!(
         "SELECT id, type, content, source_url,
-         COALESCE(images, '[]') as images,
          COALESCE(pinned, 0) as pinned,
          created_at, updated_at,
          extract_url
@@ -306,18 +261,16 @@ pub fn get_notes_by_tags(conn: &Connection, tags: Vec<String>) -> SqliteResult<V
     let params_refs: Vec<&dyn rusqlite::ToSql> = all_params.iter().map(|p| p as &dyn rusqlite::ToSql).collect();
 
     let notes = stmt.query_map(&params_refs[..], |row| {
-        let images_str: String = row.get(4)?;
-        let pinned: i32 = row.get(5)?;
+        let pinned: i32 = row.get(3)?;
         Ok(Note {
             id: row.get(0)?,
             note_type: row.get(1)?,
             content: row.get(2)?,
             source_url: row.get(3)?,
-            extract_url: row.get(8)?,
-            images: deserialize_images(&images_str),
+            extract_url: row.get(7)?,
             pinned: pinned == 1,
-            created_at: row.get(6)?,
-            updated_at: row.get(7)?,
+            created_at: row.get(5)?,
+            updated_at: row.get(6)?,
         })
     })?;
 

@@ -53,8 +53,7 @@ function parseWebPage(html) {
   removeHashTags(doc)
 
   return {
-    content: extractBodyHtml(doc),
-    images: extractImages(doc)
+    content: extractBodyHtml(doc)
   }
 }
 
@@ -75,15 +74,4 @@ function removeHashTags(doc) {
 
 function extractBodyHtml(doc) {
   return doc.body?.innerHTML?.trim()?.replace(/\s+/g, ' ') || ''
-}
-
-function extractImages(doc) {
-  const images = []
-  doc.querySelectorAll('img[src]').forEach(img => {
-    const src = img.getAttribute('src')
-    if (src && !src.startsWith('data:')) {
-      images.push(src.trim())
-    }
-  })
-  return images
 }

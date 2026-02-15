@@ -52,10 +52,6 @@ const props = defineProps({
     type: Boolean,
     default: false
   },
-  images: {
-    type: Array,
-    default: () => []
-  },
   shouldClear: {
     type: Boolean,
     default: false
@@ -66,25 +62,11 @@ const emit = defineEmits(['update:modelValue', 'submit', 'image-upload'])
 
 const settingStore = useSettingStore()
 const imageInputRef = ref(null)
-const images = ref([])
-const deletedImages = ref([]) // 追踪编辑模式下被删除的图片
 const isSettingContent = ref(false) // 标志：是否正在从外部设置内容
 const isUnmounting = ref(false) // 标志：组件是否正在卸载
 
 // 使用 useWorkDirectory composable（从 settingStore 获取）
 const { getWorkDirectory } = useWorkDirectory('setting')
-
-// 监听 props.images 变化，同步到本地状态
-watch(() => props.images, (newImages) => {
-  // 只在编辑模式下才同步外部 images 变化
-  // 避免在新建笔记模式下被意外重置
-  if (!props.isEditing || !newImages) return
-
-  // 只比较引用，如果引用变化则更新
-  if (newImages !== images.value) {
-    images.value = [...newImages]
-  }
-})
 
 // 组件挂载时初始化编辑器内容
 onMounted(() => {
@@ -240,11 +222,10 @@ const editor = useEditor({
   },
 })
 
-// 监听 shouldClear 标志，强制清空编辑器和图片
+// 监听 shouldClear 标志，强制清空编辑器
 watch(() => props.shouldClear, (shouldClear) => {
   if (shouldClear && editor.value) {
     editor.value.commands.clearContent()
-    images.value = []
   }
 })
 
@@ -330,10 +311,7 @@ async function handleImageUpload(event) {
       const imageUrl = await saveImage(file, workDirectory)
       // imageUrl 现在已经是完整 URL: http://linkron.localhost/resources/images/...
 
-      // 添加到图片列表
-      images.value.push(imageUrl)
-
-      // 同时插入到编辑器光标处
+      // 插入到编辑器光标处
       if (editor.value) {
         editor.value.chain().focus().insertContent({
           type: 'resizableImage',
@@ -351,78 +329,45 @@ async function handleImageUpload(event) {
   event.target.value = ''
 }
 
-// 删除图片
-async function removeImage(index) {
-  const removedImage = images.value[index]
-
-  // 从当前图片列表中移除
-  images.value.splice(index, 1)
-
-  // 根据模式处理文件删除
-  if (props.isEditing) {
-    // 编辑模式：记录被删除的图片，在保存时统一删除
-    deletedImages.value.push(removedImage)
-  } else {
-    // 创建模式：立即删除文件
-    try {
-      const workDirectory = await getWorkDirectory()
-      await deleteResource(removedImage, workDirectory)
-    } catch (error) {
-      // 删除图片文件失败，静默处理
-    }
-  }
-}
-// 清理函数：取消编辑时调用，清空被删除的图片列表
-function clearDeletedImages() {
-  deletedImages.value = []
-}
-
-// 清空编辑器内容和图片
+// 清空编辑器内容
 function clearEditor() {
   if (editor.value) {
     editor.value.commands.clearContent()
-    images.value = []
   }
 }
 
 async function handleSubmit() {
-  if (hasContent.value || images.value.length > 0) {
-    // 如果是编辑模式，先删除被移除的图片文件
-    if (props.isEditing && deletedImages.value.length > 0) {
-      try {
-        const workDirectory = await getWorkDirectory()
-        for (const imageUrl of deletedImages.value) {
-          await deleteResource(imageUrl, workDirectory)
-        }
-        deletedImages.value = [] // 清空已删除列表
-      } catch (error) {
-        // 删除图片文件失败，静默处理
-      }
-    }
-
-    // 通过 emit 传递完整的笔记数据
+  if (hasContent.value) {
+    // 通过 emit 传递笔记数据（不包含 images）
     emit('submit', {
-      content: editor.value.getHTML(),
-      images: images.value
+      content: editor.value.getHTML()
     })
 
-    // 无论编辑模式还是创建模式，提交后都清空编辑器和图片
+    // 提交后清空编辑器
     editor.value?.commands.clearContent()
-    images.value = []
-    deletedImages.value = []
   }
 }
 
-// 添加图片到图片列表
+// 添加图片到编辑器（从网页抓取）
 function addImages(newImages) {
   if (newImages && newImages.length > 0) {
-    images.value = [...images.value, ...newImages]
+    // 将图片插入到编辑器中
+    if (editor.value) {
+      newImages.forEach((imageUrl) => {
+        editor.value.chain().focus().insertContent({
+          type: 'resizableImage',
+          attrs: {
+            src: imageUrl,
+            alt: '图片',
+          }
+        }).run()
+      })
+    }
   }
 }
 
 // 暴露方法给父组件
 defineExpose({
-  clearDeletedImages,
   addImages
 })
 </script>
@@ -436,21 +381,6 @@ defineExpose({
         'min-h-[80px]': props.isScrolledToTop,
         'min-h-[40px]': !props.isScrolledToTop
       }" />
-
-    <!-- 图片列表 -->
-    <div v-if="images.length > 0" class="mt-2 max-h-22 overflow-y-auto no-scrollbar">
-      <div class="flex flex-wrap gap-2">
-        <div v-for="(imageUrl, index) in images" :key="index" class="relative">
-          <ImageViewer :src="imageUrl" :alt="`上传的图片 ${index + 1}`" :images="images" aspectRatio="square"
-            className="w-12 h-12" />
-          <button @click="removeImage(index)"
-            class="absolute top-1 right-1 w-4 h-4 bg-black/50 hover:bg-black/70 rounded-full flex items-center justify-center text-white transition-all duration-200 -mt-1 -mr-1"
-            title="删除图片">
-            <X size="10" />
-          </button>
-        </div>
-      </div>
-    </div>
 
     <!-- 底部工具栏 -->
     <div class="flex items-center justify-between mt-2">
@@ -499,7 +429,7 @@ defineExpose({
         <slot name="actions"></slot>
 
         <!-- 清空按钮：只在新建笔记模式且有内容时显示 -->
-        <button v-if="!props.isEditing && (hasContent || images.length > 0)" @click="clearEditor"
+        <button v-if="!props.isEditing && hasContent" @click="clearEditor"
           class="px-2 h-6 rounded-md flex items-center justify-center text-xs text-base-content/50 hover:text-base-content hover:bg-base-200 transition-all duration-200"
           title="清空内容">
           清空

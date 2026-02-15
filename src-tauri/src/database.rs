@@ -207,7 +207,6 @@ pub async fn migrate_from_json(work_directory: Option<String>) -> Result<usize, 
                 .to_string(),
             source_url: note_json.get("sourceUrl").and_then(|v| v.as_str()).map(|s| s.to_string()),
             extract_url: note_json.get("extractUrl").and_then(|v| v.as_str()).map(|s| s.to_string()),
-            images: vec![],
         };
 
         let note = note::create_note(&db.conn, note_data)

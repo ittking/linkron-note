@@ -292,21 +292,18 @@ async function loadNotes(reset = false) {
 // 编辑器提交
 async function handleEditorSubmit(noteData) {
     const content = noteData?.content || editorContent.value
-    const images = noteData?.images || []
 
-    if (content.trim() || images.length > 0) {
+    if (content.trim()) {
         if (isEditing.value && editingNote.value) {
             try {
                 await noteStore.updateNote(editingNote.value.id, {
-                    content: content,
-                    images: images
+                    content: content
                 })
                 const index = notes.value.findIndex(n => n.id === editingNote.value.id)
                 if (index !== -1) {
                     notes.value[index] = {
                         ...notes.value[index],
-                        content: content,
-                        images: images
+                        content: content
                     }
                 }
                 editingNote.value = null
@@ -319,8 +316,7 @@ async function handleEditorSubmit(noteData) {
         } else {
             const newNote = await noteStore.addNote({
                 type: 'text',
-                content: content,
-                images: images
+                content: content
             })
             notes.value.unshift(newNote)
             editorContent.value = ''
@@ -468,9 +464,6 @@ async function handleFileToEditor(file) {
             
             // 添加到编辑器
             editorContent.value += (editorContent.value ? '<br>' : '') + finalContent
-            if (images && images.length > 0 && noteEditorRef.value?.addImages) {
-                noteEditorRef.value.addImages(images)
-            }
         } catch (error) {
             showToast('网页抓取失败: ' + error.message, 'error')
         } finally {
@@ -493,7 +486,7 @@ async function handleDataToEditor(data) {
             isProcessing.value = true
             
             // 第一步：获取网页内容
-            const { content, images } = await scrapeWebPage(data)
+            const { content } = await scrapeWebPage(data)
             if (!content) {
                 showToast('网页内容为空', 'error')
                 return
@@ -515,9 +508,6 @@ async function handleDataToEditor(data) {
             
             // 添加到编辑器
             editorContent.value += (editorContent.value ? '<br>' : '') + finalContent
-            if (images && images.length > 0 && noteEditorRef.value?.addImages) {
-                noteEditorRef.value.addImages(images)
-            }
         } catch (error) {
             showToast('网页抓取失败: ' + error.message, 'error')
         } finally {
@@ -573,7 +563,7 @@ async function createLinkNote(url) {
         isProcessing.value = true
         
         // 第一步：获取网页内容
-        const { content, images } = await scrapeWebPage(url)
+        const { content } = await scrapeWebPage(url)
         
         // 第二步：调用 AI 优化内容
         let finalContent = content
@@ -595,8 +585,7 @@ async function createLinkNote(url) {
         const newNote = await noteStore.addNote({
             type: 'link',
             content: finalContent,
-            sourceUrl: url,
-            images: images || []
+            sourceUrl: url
         })
         notes.value.unshift(newNote)
     } catch (error) {
@@ -783,7 +772,7 @@ async function filterNotesByTags() {
             </div>
 
             <NoteEditor ref="noteEditorRef" v-model="editorContent" placeholder="现在的想法是..." :is-scrolled-to-top="isNoteListScrolledToTop"
-                :is-editing="isEditing" :images="editingNote?.images || []" :should-clear="shouldClearEditor"
+                :is-editing="isEditing" :should-clear="shouldClearEditor"
                 @submit="handleEditorSubmit">
                 <template #actions>
                     <button v-if="isEditing" @click="handleCancelEdit"

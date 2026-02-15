@@ -7,6 +7,7 @@ import { useNoteStore } from '@/store/noteStore'
 import { useSettingStore } from '@/store/settingStore'
 import { revealFile } from '@/utils/fileUpload'
 import { useWorkDirectory } from '@/composables/useWorkDirectory'
+import { extractImagesFromHtml } from '@/utils/imageExtractor'
 import ImageViewer from './ImageViewer.vue'
 import Dropdown from './ui/Dropdown.vue'
 import StarterKit from '@tiptap/starter-kit'
@@ -75,34 +76,33 @@ const noteType = computed(() => {
 const isLinkNote = computed(() => noteType.value === 'link')
 const isFileNote = computed(() => noteType.value === 'file')
 
+// 从内容中提取所有图片
+const allImages = computed(() => {
+  return extractImagesFromHtml(props.note.content || '')
+})
+
 // 显示的图片列表
 const displayImages = computed(() => {
-  if (!props.note.images || props.note.images.length === 0) {
+  if (allImages.value.length === 0) {
     return []
   }
   // 如果显示所有图片，返回全部
   if (showAllImages.value) {
-    return props.note.images
+    return allImages.value
   }
   // 否则返回配置的数量
   const maxCount = noteImageMaxCount.value || 4
-  return props.note.images.slice(0, maxCount)
+  return allImages.value.slice(0, maxCount)
 })
 
 // 是否显示切换占位图（始终显示，只要有超过配置数量的图片）
 const showTogglePlaceholder = computed(() => {
-  if (!props.note.images || props.note.images.length === 0) {
-    return false
-  }
-  return props.note.images.length > (noteImageMaxCount.value || 4)
+  return allImages.value.length > (noteImageMaxCount.value || 4)
 })
 
 // 额外图片数量
 const remainingImageCount = computed(() => {
-  if (!props.note.images) {
-    return 0
-  }
-  return Math.max(0, props.note.images.length - (noteImageMaxCount.value || 4))
+  return Math.max(0, allImages.value.length - (noteImageMaxCount.value || 4))
 })
 
 // 附件 URL
@@ -373,7 +373,7 @@ defineExpose({
     <div v-if="displayImages.length > 0"
       class="grid mn:grid-cols-5 xs:grid-cols-6 sm:grid-cols-7 sm:grid-cols-8 md:grid-cols-10 gap-2 mt-3">
       <ImageViewer v-for="(imageUrl, index) in displayImages" :key="index" :src="imageUrl" :alt="`笔记图片 ${index + 1}`"
-        :images="note.images" />
+        :images="allImages" />
       <!-- 展开/收起切换占位图 -->
       <div v-if="showTogglePlaceholder"
         class="relative aspect-square rounded bg-base-200 flex flex-col items-center justify-center gap-1 cursor-pointer hover:bg-base-300 transition-colors"

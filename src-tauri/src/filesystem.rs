@@ -215,12 +215,7 @@ pub fn get_local_path_from_protocol(protocol_url: String, work_directory: Option
 pub fn delete_resources_from_note(note: &crate::database::Note, work_directory: &Option<String>) {
     use regex::Regex;
 
-    // 1. 删除 images 数组中的图片
-    for image_url in &note.images {
-        let _ = delete_resource_by_url(image_url.clone(), work_directory.as_ref().map(|s| s.clone()));
-    }
-
-    // 2. 删除 content 中的本地图片引用
+    // 1. 删除 content 中的本地图片引用
     let img_regex = Regex::new(r#"<img[^>]+src="([^"]+)""#).unwrap();
     for caps in img_regex.captures_iter(&note.content) {
         if let Some(image_url) = caps.get(1) {
@@ -228,7 +223,7 @@ pub fn delete_resources_from_note(note: &crate::database::Note, work_directory: 
         }
     }
 
-    // 3. 如果是附件笔记，删除 extractUrl 指向的文件
+    // 2. 如果是附件笔记，删除 extractUrl 指向的文件
     if note.note_type == "file" {
         if let Some(extract_url) = &note.extract_url {
             let _ = delete_resource_by_url(extract_url.clone(), work_directory.as_ref().map(|s| s.clone()));
