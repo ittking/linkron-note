@@ -63,7 +63,6 @@ function parseReminder(reminderStr) {
   }
 }
 
-// 辅助函数：序列化 reminder 对象
 function stringifyReminder(reminderObj) {
   if (!reminderObj) return null
   try {
@@ -73,7 +72,6 @@ function stringifyReminder(reminderObj) {
   }
 }
 
-// 辅助函数：创建待办对象
 function createTodoItem(data, id) {
   return {
     id: id,
@@ -86,7 +84,6 @@ function createTodoItem(data, id) {
   }
 }
 
-// 辅助函数：更新数组中的待办项
 function updateTodoItemInArray(items, data) {
   const index = items.findIndex(t => t.id === data.id)
   if (index !== -1) {
@@ -94,7 +91,8 @@ function updateTodoItemInArray(items, data) {
       ...items[index],
       text: data.text,
       status: data.status,
-      reminder: parseReminder(data.reminder)
+      reminder: parseReminder(data.reminder),
+      date: data.date || items[index].date
     }
   }
 }
@@ -129,7 +127,6 @@ function sortTodosLocally(todos) {
   })
 }
 
-// 从后端加载指定日期的待办事项
 async function loadTodayTodos(date = today.value) {
   loading.value = true
   try {
@@ -138,7 +135,6 @@ async function loadTodayTodos(date = today.value) {
       date,
       workDirectory 
     })
-    // 应用前端排序确保顺序正确
     todayTodos.value = sortTodosLocally(data)
   } catch (error) {
     console.error('加载待办事项失败:', error)
@@ -147,12 +143,10 @@ async function loadTodayTodos(date = today.value) {
   }
 }
 
-// 处理日期变化
 function handleDateChange(date) {
   loadTodayTodos(date)
 }
 
-// 从后端加载月度待办事项
 async function loadMonthTodos() {
   loading.value = true
   try {
@@ -162,7 +156,6 @@ async function loadMonthTodos() {
       month: calendarMonth.value,
       workDirectory 
     })
-    // 应用前端排序确保顺序正确
     monthTodos.value = sortTodosLocally(data)
   } catch (error) {
     console.error('加载月度待办事项失败:', error)
@@ -171,7 +164,6 @@ async function loadMonthTodos() {
   }
 }
 
-// 创建待办事项
 async function createTodo(data) {
   try {
     const workDirectory = await getWorkDirectory()
@@ -184,13 +176,10 @@ async function createTodo(data) {
       workDirectory
     })
 
-    // 优化：直接添加到本地数据，避免重新加载导致的闪屏
     const newTodo = createTodoItem(data, result)
     
     todayTodos.value.push(newTodo)
     monthTodos.value.push(newTodo)
-    
-    // 应用排序
     todayTodos.value = sortTodosLocally(todayTodos.value)
   } catch (error) {
     console.error('创建待办失败:', error)
@@ -198,7 +187,6 @@ async function createTodo(data) {
   }
 }
 
-// 更新待办事项
 async function updateTodo(data) {
   try {
     const workDirectory = await getWorkDirectory()
@@ -208,14 +196,12 @@ async function updateTodo(data) {
       text: data.text,
       status: data.status,
       reminder: data.reminder || null,
+      date: data.date || null,
       workDirectory
     })
 
-    // 优化：直接更新本地数据，避免重新加载导致的闪屏
     updateTodoItemInArray(todayTodos.value, data)
     updateTodoItemInArray(monthTodos.value, data)
-    
-    // 应用排序
     todayTodos.value = sortTodosLocally(todayTodos.value)
   } catch (error) {
     console.error('更新待办失败:', error)
@@ -223,7 +209,6 @@ async function updateTodo(data) {
   }
 }
 
-// 删除待办事项
 async function deleteTodo(id) {
   try {
     const workDirectory = await getWorkDirectory()
@@ -232,7 +217,6 @@ async function deleteTodo(id) {
       workDirectory
     })
 
-    // 优化：直接从本地数据中移除，避免重新加载导致的闪屏
     todayTodos.value = todayTodos.value.filter(t => t.id !== id)
     monthTodos.value = monthTodos.value.filter(t => t.id !== id)
   } catch (error) {
@@ -255,26 +239,21 @@ async function toggleTodoStatus(todo) {
   })
 }
 
-// 切换视图
 function toggleView() {
   if (currentView.value === 'calendar') {
-    // 切换到今日列表，重新加载今日数据
     currentView.value = 'today'
     loadTodayTodos()
   } else {
-    // 切换到日历视图
     currentView.value = 'calendar'
     loadMonthTodos()
   }
 }
 
-// 处理月份变化
 function handleMonthChange(data) {
   calendarYear.value = data.year
   calendarMonth.value = data.month
 }
 
-// 监听月份变化，重新加载月度数据
 watch([calendarYear, calendarMonth], () => {
   loadMonthTodos()
 })

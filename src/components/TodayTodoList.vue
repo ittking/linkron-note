@@ -177,40 +177,44 @@ function deleteTodo(todo) {
   emit('delete', todo.id)
 }
 
-// 更新定时时间
 function updateReminderTime(todo, value) {
   let reminder = null
-  if (value) {
-    // 获取原有的提醒类型
+  
+  if (value && value.trim() !== '') {
     const originalReminderType = todo.reminder?.type || 'onetime'
     let timeValue
 
     if (originalReminderType === 'onetime') {
-      // 一次性提醒：保持完整的日期时间格式
-      timeValue = value
+      const selectedDateObj = dayjs(selectedDate.value)
+      const timeOnly = value.includes('T') ? value.split('T')[1] : value
+      timeValue = `${selectedDateObj.format('YYYY-MM-DD')}T${timeOnly}`
     } else {
-      // 重复提醒：将 HH:mm 转换为今日的完整日期时间
-      const timeOnly = value || ''
-      timeValue = timeOnly ? `${dayjs().format('YYYY-MM-DD')}T${timeOnly}` : ''
+      const timeOnly = value.includes('T') ? value.split('T')[1] : value
+      const selectedDateObj = dayjs(selectedDate.value)
+      timeValue = timeOnly ? `${selectedDateObj.format('YYYY-MM-DD')}T${timeOnly}` : ''
     }
 
-    reminder = JSON.stringify({
+    const reminderObj = {
       type: originalReminderType,
       repeatTime: timeValue,
-      // 保持原有的重复规则
-      repeatRule: todo.reminder?.repeatRule,
-      repeatInterval: todo.reminder?.repeatInterval,
-      repeatDayOfWeek: todo.reminder?.repeatDayOfWeek,
-      repeatDayOfMonth: todo.reminder?.repeatDayOfMonth,
-      repeatMonth: todo.reminder?.repeatMonth
-    })
+      ...(originalReminderType === 'repeat' ? {
+        repeatRule: todo.reminder?.repeatRule || 'day',
+        repeatInterval: todo.reminder?.repeatInterval || 1,
+        repeatDayOfWeek: todo.reminder?.repeatDayOfWeek,
+        repeatDayOfMonth: todo.reminder?.repeatDayOfMonth,
+        repeatMonth: todo.reminder?.repeatMonth
+      } : {})
+    }
+
+    reminder = JSON.stringify(reminderObj)
   }
 
   emit('update', {
     id: todo.id,
     text: todo.text,
     status: todo.status,
-    reminder
+    reminder,
+    date: selectedDate.value
   })
 }
 

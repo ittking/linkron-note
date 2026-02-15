@@ -113,6 +113,7 @@ pub fn update_todo(
     text: &str,
     status: &str,
     reminder: Option<String>,
+    date: Option<&str>,
 ) -> SqliteResult<()> {
     let now = chrono::Utc::now().to_rfc3339();
     let reminder_json = reminder.unwrap_or_else(|| serde_json::to_string(&TodoReminder {
@@ -126,10 +127,19 @@ pub fn update_todo(
         last_notified: None,
     }).unwrap_or_default());
 
-    conn.execute(
-        "UPDATE todos SET text = ?1, status = ?2, reminder = ?3, updated_at = ?4 WHERE id = ?5",
-        params![text, status, reminder_json, &now, id],
-    )?;
+    if let Some(date) = date {
+        // 如果提供了 date 参数，同时更新 date 字段
+        conn.execute(
+            "UPDATE todos SET text = ?1, status = ?2, reminder = ?3, date = ?4, updated_at = ?5 WHERE id = ?6",
+            params![text, status, reminder_json, date, &now, id],
+        )?;
+    } else {
+        // 如果没有提供 date 参数，不更新 date 字段
+        conn.execute(
+            "UPDATE todos SET text = ?1, status = ?2, reminder = ?3, updated_at = ?4 WHERE id = ?5",
+            params![text, status, reminder_json, &now, id],
+        )?;
+    }
 
     Ok(())
 }

@@ -331,10 +331,10 @@ pub async fn create_todo(date: String, text: String, status: String, reminder: O
 
 /// Tauri 命令：更新待办事项
 #[tauri::command]
-pub async fn update_todo(id: i64, text: String, status: String, reminder: Option<String>, work_directory: Option<String>) -> Result<(), String> {
+pub async fn update_todo(id: i64, text: String, status: String, reminder: Option<String>, date: Option<String>, work_directory: Option<String>) -> Result<(), String> {
     let db_path = get_database_path(work_directory)?;
     let db = Database::new(&db_path).map_err(|e| format!("Failed to open database: {}", e))?;
-    todo::update_todo(&db.conn, id, &text, &status, reminder).map_err(|e| format!("Failed to update todo: {}", e))
+    todo::update_todo(&db.conn, id, &text, &status, reminder, date.as_deref()).map_err(|e| format!("Failed to update todo: {}", e))
 }
 
 /// Tauri 命令：删除待办事项
