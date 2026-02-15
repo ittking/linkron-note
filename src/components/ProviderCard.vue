@@ -31,7 +31,7 @@ const providerIcon = computed(() => {
   return Bot
 })
 
-async function handleLoadModels() {
+function handleLoadModels() {
   emit('load-models', props.provider)
 }
 

@@ -17,10 +17,6 @@ const showAddDialog = ref(false)
 const showSelectDialog = ref(false)
 const currentProvider = ref(null)
 
-const activeProvider = computed(() => {
-  return providers.value.find(p => p.id === selectedProviderId.value)
-})
-
 onMounted(async () => {
   await loadProviders()
 })
