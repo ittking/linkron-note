@@ -1,6 +1,7 @@
 <script setup>
 import { ref, watch } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
+import { Sparkles } from 'lucide-vue-next'
 import Button from './ui/Button.vue'
 import Input from './ui/Input.vue'
 import InputWithAI from './ui/InputWithAI.vue'
@@ -35,6 +36,7 @@ const form = ref({
 
 const errors = ref({})
 const isGeneratingRegex = ref(false)
+const isGeneratingTemplate = ref(false)
 
 watch(() => props.show, (newVal) => {
   if (newVal) {
@@ -83,7 +85,14 @@ async function handleGenerateRegex() {
     }
 
     // 调用 AI 生成正则表达式
-    const prompt = `请为以下网址生成一个正则表达式，用于匹配该网址及其所有子路径。只返回正则表达式本身，不要任何解释或额外文字。\n网址：${form.value.urlPattern}`
+    const prompt = `请为以下网址生成一个正则表达式，用于匹配该网站的所有页面，而不仅仅是这个具体的页面。
+例如：
+- 如果输入 "https://example.com/article/123"，应该生成能匹配所有文章页面的正则，如 "^https?://example\\.com/article/.*"
+- 如果输入 "https://example.com/post/abc"，应该生成能匹配所有文章页面的正则，如 "^https?://example\\.com/post/.*"
+- 如果输入 "https://github.com/user/repo"，应该生成能匹配该仓库所有页面的正则，如 "^https?://github\\.com/user/repo/.*"
+
+只返回正则表达式本身，不要任何解释或额外文字。
+网址：${form.value.urlPattern}`
     
     const result = await invoke('generate_regex', {
       prompt: prompt,
@@ -159,6 +168,59 @@ function handleSave() {
 function handleCancel() {
   emit('close')
 }
+
+async function handleGenerateTemplate() {
+  isGeneratingTemplate.value = true
+  
+  try {
+    // 获取当前激活的模型配置
+    const providers = await settingStore.get('model.providers', [])
+    const activeProviderId = await settingStore.get('model.activeProviderId', null)
+    
+    if (!activeProviderId || providers.length === 0) {
+      alert('请先配置模型供应商')
+      return
+    }
+
+    const activeProvider = providers.find(p => p.id === activeProviderId)
+    if (!activeProvider || !activeProvider.currentModel) {
+      alert('请先选择模型')
+      return
+    }
+
+    // 调用 AI 生成提示词模板
+    const prompt = `请生成一个 AI 提示词模板，用于理解网页内容并生成一篇高质量的文章。
+
+要求：
+1. 必须包含 {content} 占位符，用于插入网页原始内容
+2. 要求 AI 深入理解网页内容，提取关键信息
+3. 生成的文章要保留原始网页的文本、图片链接、超链接等重要元素
+4. 文章结构清晰，逻辑连贯
+5. 语言流畅自然，符合阅读习惯
+6. 生成的文章可以使用 Markdown 格式（如图片语法 ![alt](url)、链接语法 [text](url)、加粗 **text**、斜体 *text* 等）
+7. 但不要使用 Markdown 标题语法（如 # 一级标题、## 二级标题等），标题应该用纯文本或加粗等其他方式表示
+
+请直接返回提示词模板内容，不要任何解释或额外文字。`
+
+    const result = await invoke('generate_regex', {
+      prompt: prompt,
+      provider: activeProvider.provider,
+      apiKey: activeProvider.apiKey,
+      apiUrl: activeProvider.apiUrl,
+      model: activeProvider.currentModel
+    })
+
+    if (result && result.trim()) {
+      form.value.template = result.trim()
+      errors.value.template = null
+    }
+  } catch (error) {
+    console.error('生成提示词模板失败:', error)
+    alert('生成失败：' + error)
+  } finally {
+    isGeneratingTemplate.value = false
+  }
+}
 </script>
 
 <template>
@@ -201,12 +263,22 @@ function handleCancel() {
           </label>
         </div>
 
-        <!-- 提示词模板 -->
+<!-- 提示词模板 -->
         <div class="form-control">
-          <label class="label">
+          <label class="label flex justify-between">
             <span class="label-text">提示词模板</span>
+            <Button
+              variant="ghost"
+              size="sm"
+              :disabled="isGeneratingTemplate"
+              @click="handleGenerateTemplate"
+              class="hover:bg-primary/10"
+            >
+              <Sparkles :size="14" :class="{ 'animate-spin': isGeneratingTemplate }" />
+              <span class="ml-1">{{ isGeneratingTemplate ? '生成中...' : 'AI 生成' }}</span>
+            </Button>
           </label>
-          <div class="relative mt-1">
+          <div class="relative">
             <textarea
               v-model="form.template"
               class="w-full rounded-lg border bg-base-100 px-3 py-2 text-sm text-base-content outline-none transition-all duration-200 focus:ring-2 focus:ring-offset-2 focus:ring-offset-base-100 placeholder:text-base-content/40"
