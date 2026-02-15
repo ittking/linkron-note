@@ -4,7 +4,7 @@ import { MoreHorizontal, Edit, Trash2, ChevronDown, ChevronUp, Pin, PinOff } fro
 import { useEditor, EditorContent } from '@tiptap/vue-3'
 import { openUrl } from '@tauri-apps/plugin-opener'
 import { useNoteStore } from '@/store/noteStore'
-import { useConfig } from '@/store/configStore'
+import { useSettingStore } from '@/store/settingStore'
 import { revealFile } from '@/utils/fileUpload'
 import { useWorkDirectory } from '@/composables/useWorkDirectory'
 import ImageViewer from './ImageViewer.vue'
@@ -37,7 +37,7 @@ const props = defineProps({
 const emit = defineEmits(['click', 'edit', 'delete', 'expand', 'collapse', 'pin'])
 
 const noteStore = useNoteStore()
-const configStore = useConfig()
+const settingStore = useSettingStore()
 
 // 使用 useWorkDirectory composable
 const { getWorkDirectory } = useWorkDirectory()
@@ -46,6 +46,7 @@ const isExpanded = ref(false)
 const contentRef = ref(null)
 const isOverflowing = ref(false)
 const showAllImages = ref(false) // 控制是否显示所有图片
+const noteImageMaxCount = ref(4) // 笔记图片最大展示数
 const MAX_HEIGHT = 120 // 最大高度，超过这个高度显示展开按钮
 
 // 笔记类型判断
@@ -74,7 +75,7 @@ const noteType = computed(() => {
 const isLinkNote = computed(() => noteType.value === 'link')
 const isFileNote = computed(() => noteType.value === 'file')
 
-// 图片列表展示（根据配置限制数量）
+// 显示的图片列表
 const displayImages = computed(() => {
   if (!props.note.images || props.note.images.length === 0) {
     return []
@@ -84,7 +85,7 @@ const displayImages = computed(() => {
     return props.note.images
   }
   // 否则返回配置的数量
-  const maxCount = configStore.noteImageMaxCount.value || 4
+  const maxCount = noteImageMaxCount.value || 4
   return props.note.images.slice(0, maxCount)
 })
 
@@ -93,7 +94,7 @@ const showTogglePlaceholder = computed(() => {
   if (!props.note.images || props.note.images.length === 0) {
     return false
   }
-  return props.note.images.length > (configStore.noteImageMaxCount.value || 4)
+  return props.note.images.length > (noteImageMaxCount.value || 4)
 })
 
 // 额外图片数量
@@ -101,7 +102,7 @@ const remainingImageCount = computed(() => {
   if (!props.note.images) {
     return 0
   }
-  return Math.max(0, props.note.images.length - (configStore.noteImageMaxCount.value || 4))
+  return Math.max(0, props.note.images.length - (noteImageMaxCount.value || 4))
 })
 
 // 附件 URL
@@ -252,7 +253,15 @@ function handleCardClick() {
   emit('click', props.note)
 }
 
-onMounted(() => {
+onMounted(async () => {
+  // 加载笔记图片最大展示数配置
+  try {
+    const savedValue = await settingStore.get('noteImageMaxCount', 4)
+    noteImageMaxCount.value = Number(savedValue)
+  } catch (error) {
+    console.error('Failed to load note image max count:', error)
+  }
+
   // 组件挂载后检查溢出状态
   nextTick(() => {
     setTimeout(checkOverflow, 100)

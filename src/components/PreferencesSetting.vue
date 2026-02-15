@@ -3,14 +3,12 @@ import { ref, onMounted, watch } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
 import { open } from '@tauri-apps/plugin-dialog'
 import { useSettingStore } from '../store/settingStore'
-import { useConfig } from '../store/configStore'
 import { Power, Folder, Image } from 'lucide-vue-next'
 import Toggle from './ui/Toggle.vue'
 import Input from './ui/Input.vue'
 import Button from './ui/Button.vue'
 
 const settingStore = useSettingStore()
-const configStore = useConfig()
 
 // 开机启动
 const autoStartEnabled = ref(false)
@@ -121,7 +119,6 @@ async function loadNoteImageMaxCount() {
   try {
     const savedValue = await settingStore.get('noteImageMaxCount', 4)
     noteImageMaxCount.value = Number(savedValue)
-    configStore.noteImageMaxCount.value = noteImageMaxCount.value
   } catch (error) {
     console.error('Failed to load note image max count:', error)
   }
@@ -133,7 +130,6 @@ watch(noteImageMaxCount, async (newValue) => {
   if (count >= 1 && count <= 20) {
     try {
       await settingStore.set('noteImageMaxCount', count)
-      configStore.noteImageMaxCount.value = count
     } catch (error) {
       console.error('Failed to save note image max count:', error)
     }

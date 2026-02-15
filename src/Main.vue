@@ -5,14 +5,12 @@ import { useRouter, useRoute } from 'vue-router'
 import { BookOpen, Terminal, Settings, CheckSquare, Minus, Maximize2, Minimize2 } from 'lucide-vue-next'
 import { useSettingStore } from './store/settingStore'
 import { useNoteStore } from './store/noteStore'
-import { useConfig } from './store/configStore'
 import { useWindowControl } from './composables/useWindowControl'
 
 const router = useRouter()
 const route = useRoute()
 const settingStore = useSettingStore()
 const noteStore = useNoteStore()
-const configStore = useConfig()
 const appWindow = getCurrentWindow()
 const { isFullscreen, isMaximized, toggleFullscreen, maximizeWindow } = useWindowControl()
 
@@ -74,10 +72,11 @@ onMounted(async () => {
 
     // 初始化配置
     try {
-      await configStore.initConfig()
-      // 加载笔记图片最大展示数
+      // 确保笔记图片最大展示数有默认值
       const savedMaxCount = await settingStore.get('noteImageMaxCount', 4)
-      configStore.noteImageMaxCount.value = Number(savedMaxCount)
+      if (savedMaxCount === null || savedMaxCount === undefined) {
+        await settingStore.set('noteImageMaxCount', 4)
+      }
     } catch (error) {
       console.error('Failed to init config:', error)
     }
