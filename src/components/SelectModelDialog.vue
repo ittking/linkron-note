@@ -1,6 +1,6 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
-import { Search, X, RefreshCw, Plus } from 'lucide-vue-next'
+import { Search, X, RefreshCw, Plus, Check } from 'lucide-vue-next'
 import Input from './ui/Input.vue'
 import Button from './ui/Button.vue'
 
@@ -115,7 +115,7 @@ watch(() => props.show, (newVal) => {
               >
                 <div class="flex items-center justify-between">
                   <span class="text-sm">{{ model }}</span>
-                  <Plus :size="12" class="text-base-content/40" />
+                  <Check v-if="provider?.currentModel === model" :size="14" class="text-primary" />
                 </div>
               </div>
             </div>

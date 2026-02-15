@@ -1,7 +1,6 @@
 <script setup>
-import { ref, computed } from 'vue'
-import { Bot, MoreVertical, Plus, RefreshCw } from 'lucide-vue-next'
-import Dropdown from './ui/Dropdown.vue'
+import { computed } from 'vue'
+import { Bot } from 'lucide-vue-next'
 
 const props = defineProps({
   provider: {
@@ -60,41 +59,14 @@ function handleSelect() {
           </div>
         </div>
         <div class="flex items-center gap-1">
-          <button 
+          <span 
             @click.stop="emit('choose-model', provider)"
-            class="p-1.5 rounded bg-primary/10 text-primary hover:bg-primary/20 transition-colors flex-shrink-0"
-            title="添加模型"
+            class="px-1.5 rounded text-primary hover:bg-primary/20 transition-colors flex-shrink-0"
+            title="选择模型"
+            size="sm"
           >
-            <Plus :size="14" />
-          </button>
-          <Dropdown placement="bottom-end">
-            <template #default="{ toggle }">
-              <button 
-                @click.stop="toggle"
-                class="p-1 rounded hover:bg-base-200 transition-colors"
-              >
-                <MoreVertical :size="14" class="text-base-content/60" />
-              </button>
-            </template>
-            <template #content>
-              <div class="min-w-[140px] py-1">
-                <button 
-                  @click.stop="handleLoadModels"
-                  class="w-full px-3 py-1.5 text-left text-sm hover:bg-base-200 transition-colors flex items-center gap-2"
-                >
-                  <RefreshCw :size="12" />
-                  加载模型列表
-                </button>
-                <div class="border-t border-base-200 my-1"></div>
-                <button 
-                  @click.stop="emit('delete', provider)"
-                  class="w-full px-3 py-1.5 text-left text-sm hover:bg-error/10 text-error transition-colors"
-                >
-                  删除
-                </button>
-              </div>
-            </template>
-          </Dropdown>
+            选择
+        </span>
         </div>
       </div>
       <div v-if="provider.currentModel" class="pt-2 border-t border-base-200">
