@@ -18,8 +18,11 @@ import { isUrlFile } from '@/utils/validator'
 import { useWorkDirectory } from '@/composables/useWorkDirectory'
 import { useToast } from '@/composables/useToast'
 import { useConfirmDialog } from '@/composables/useConfirmDialog'
+import { useSettingStore } from '@/store/settingStore'
+import { optimizeWebContent } from '@/utils/aiOptimizer'
 
 const noteStore = useNoteStore()
+const settingStore = useSettingStore()
 
 // 使用 composables
 const { getWorkDirectory } = useWorkDirectory()
@@ -441,12 +444,33 @@ async function handleFileToEditor(file) {
         // .url 文件提取的 URL，爬取内容到编辑器
         try {
             isProcessing.value = true
+            
+            // 第一步：获取网页内容
             const { content, images } = await scrapeWebPage(result.url)
-            editorContent.value += (editorContent.value ? '<br>' : '') + content
+            if (!content) {
+                showToast('网页内容为空', 'error')
+                return
+            }
+
+            // 第二步：调用 AI 优化内容
+            let finalContent = content
+            try {
+                const { content: optimizedContent, optimized } = await optimizeWebContent(result.url, content)
+                finalContent = optimizedContent
+                
+                if (optimized) {
+                    showToast('AI 文章生成成功', 'success')
+                }
+            } catch (error) {
+                console.error('AI 优化失败:', error)
+                showToast('AI 优化失败，使用原始内容: ' + error.message, 'error')
+            }
+            
+            // 添加到编辑器
+            editorContent.value += (editorContent.value ? '<br>' : '') + finalContent
             if (images && images.length > 0 && noteEditorRef.value?.addImages) {
                 noteEditorRef.value.addImages(images)
             }
-            showToast('网页内容已添加到编辑器', 'success')
         } catch (error) {
             showToast('网页抓取失败: ' + error.message, 'error')
         } finally {
@@ -467,25 +491,43 @@ async function handleDataToEditor(data) {
     if (isUrl) {
         try {
             isProcessing.value = true
+            
+            // 第一步：获取网页内容
             const { content, images } = await scrapeWebPage(data)
-            if (content) {
-                editorContent.value += (editorContent.value ? '<br>' : '') + content
-                if (images && images.length > 0 && noteEditorRef.value?.addImages) {
-                    noteEditorRef.value.addImages(images)
-                }
-                showToast('网页内容已添加到编辑器', 'success')
-            } else {
+            if (!content) {
                 showToast('网页内容为空', 'error')
+                return
+            }
+
+            // 第二步：调用 AI 优化内容
+            let finalContent = content
+            try {
+                const { content: optimizedContent, optimized } = await optimizeWebContent(data, content)
+                finalContent = optimizedContent
+                
+                if (optimized) {
+                    showToast('AI 文章生成成功', 'success')
+                }
+            } catch (error) {
+                console.error('AI 优化失败:', error)
+                showToast('AI 优化失败，使用原始内容: ' + error.message, 'error')
+            }
+            
+            // 添加到编辑器
+            editorContent.value += (editorContent.value ? '<br>' : '') + finalContent
+            if (images && images.length > 0 && noteEditorRef.value?.addImages) {
+                noteEditorRef.value.addImages(images)
             }
         } catch (error) {
             showToast('网页抓取失败: ' + error.message, 'error')
         } finally {
             isProcessing.value = false
         }
-    } else {
-        editorContent.value += (editorContent.value ? '<br>' : '') + data
-        showToast('文本已添加到编辑器', 'success')
+        return
     }
+
+    // 普通文本直接添加到编辑器
+    editorContent.value += (editorContent.value ? '<br>' : '') + `<p>${data}</p>`
 }
 
 // 处理拖拽数据（创建笔记）
@@ -529,15 +571,34 @@ async function createLinkNote(url) {
 
     try {
         isProcessing.value = true
+        
+        // 第一步：获取网页内容
         const { content, images } = await scrapeWebPage(url)
+        
+        // 第二步：调用 AI 优化内容
+        let finalContent = content
+        try {
+            const { content: optimizedContent, optimized } = await optimizeWebContent(url, content)
+            finalContent = optimizedContent
+            
+            if (optimized) {
+                showToast('AI 文章生成成功', 'success')
+            } else {
+                showToast('链接笔记创建成功', 'success')
+            }
+        } catch (error) {
+            console.error('AI 优化失败:', error)
+            showToast('AI 优化失败，使用原始内容: ' + error.message, 'error')
+            finalContent = content
+        }
+        
         const newNote = await noteStore.addNote({
             type: 'link',
-            content: content,
+            content: finalContent,
             sourceUrl: url,
             images: images || []
         })
         notes.value.unshift(newNote)
-        showToast('链接笔记创建成功', 'success')
     } catch (error) {
         showToast('链接抓取失败: ' + error.message, 'error')
     } finally {
