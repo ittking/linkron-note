@@ -1,7 +1,6 @@
 import { ref } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
-import { getCurrentWindow } from '@tauri-apps/api/window'
-import { getCurrentMonitor } from '@tauri-apps/api/monitor'
+import { getCurrentWindow, currentMonitor as getCurrentMonitor } from '@tauri-apps/api/window'
 
 /**
  * 窗口控制 Composable

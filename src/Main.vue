@@ -2,10 +2,11 @@
 import { onMounted, onUnmounted, ref } from 'vue'
 import { getCurrentWindow } from '@tauri-apps/api/window'
 import { useRouter, useRoute } from 'vue-router'
-import { BookOpen, Terminal, Settings, CheckSquare, Minus } from 'lucide-vue-next'
+import { BookOpen, Terminal, Settings, CheckSquare, Minus, Maximize2, Minimize2 } from 'lucide-vue-next'
 import { useSettingStore } from './store/settingStore'
 import { useNoteStore } from './store/noteStore'
 import { useConfig } from './store/configStore'
+import { useWindowControl } from './composables/useWindowControl'
 
 const router = useRouter()
 const route = useRoute()
@@ -13,6 +14,7 @@ const settingStore = useSettingStore()
 const noteStore = useNoteStore()
 const configStore = useConfig()
 const appWindow = getCurrentWindow()
+const { isFullscreen, toggleFullscreen, maximizeWindow } = useWindowControl()
 
 const tabs = [
   { name: '笔记', path: '/note', icon: BookOpen },
@@ -35,6 +37,15 @@ async function minimizeWindow() {
     await appWindow.minimize()
   } catch (error) {
     console.error('Failed to minimize window:', error)
+  }
+}
+
+// 最大化/恢复窗口
+async function handleMaximizeWindow() {
+  try {
+    await maximizeWindow()
+  } catch (error) {
+    console.error('Failed to maximize/restore window:', error)
   }
 }
 
@@ -105,6 +116,12 @@ onMounted(async () => {
             title="收缩"
             @click="minimizeWindow">
             <Minus :size="14" />
+          </button>
+          <button
+            class="btn btn-ghost btn-sm w-6 h-6 min-h-0 p-0 rounded hover:bg-base-200 text-base-content/60 hover:text-base-content flex items-center justify-center"
+            title="最大化/恢复"
+            @click="handleMaximizeWindow">
+            <Maximize2 :size="14" />
           </button>
         </div>
       </div>
