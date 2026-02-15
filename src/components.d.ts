@@ -11,6 +11,7 @@ export {}
 /* prettier-ignore */
 declare module 'vue' {
   export interface GlobalComponents {
+    AddProviderDialog: typeof import('./components/AddProviderDialog.vue')['default']
     Button: typeof import('./components/ui/Button.vue')['default']
     CalendarTodo: typeof import('./components/CalendarTodo.vue')['default']
     DateTimePicker: typeof import('./components/ui/DateTimePicker.vue')['default']
@@ -23,10 +24,12 @@ declare module 'vue' {
     NoteHeatmap: typeof import('./components/NoteHeatmap.vue')['default']
     NoteSidebar: typeof import('./components/NoteSidebar.vue')['default']
     PreferencesSetting: typeof import('./components/PreferencesSetting.vue')['default']
+    ProviderCard: typeof import('./components/ProviderCard.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
     Select: typeof import('./components/ui/Select.vue')['default']
     SelectionMenu: typeof import('./components/SelectionMenu.vue')['default']
+    SelectModelDialog: typeof import('./components/SelectModelDialog.vue')['default']
     Statistics: typeof import('./components/Statistics.vue')['default']
     TagTreeNode: typeof import('./components/TagTreeNode.vue')['default']
     TerminalTab: typeof import('./components/TerminalTab.vue')['default']

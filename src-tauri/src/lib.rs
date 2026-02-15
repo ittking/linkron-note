@@ -3,6 +3,7 @@ mod autostart;
 mod database;
 mod file_reader;
 mod filesystem;
+mod model_provider;
 mod note;
 mod protocol;
 mod tag;
@@ -65,7 +66,8 @@ pub fn run() {
             file_reader::read_file_text,
             file_reader::get_file_metadata,
             web_scraper::fetch_webpage_html,
-            window_manager::get_os
+            window_manager::get_os,
+            model_provider::load_provider_models
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -1,82 +1,204 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
+import { invoke } from '@tauri-apps/api/core'
 import { useSettingStore } from '../store/settingStore'
-import { Bot } from 'lucide-vue-next'
-import Input from './ui/Input.vue'
+import { Bot, Plus } from 'lucide-vue-next'
 import Button from './ui/Button.vue'
+import ProviderCard from './ProviderCard.vue'
+import AddProviderDialog from './AddProviderDialog.vue'
+import SelectModelDialog from './SelectModelDialog.vue'
 
 const settingStore = useSettingStore()
 
-// 模型设置
-const modelSettings = ref({
-  apiKey: '',
-  apiUrl: '',
-  model: ''
+const providers = ref([])
+const selectedProviderId = ref(null)
+
+const showAddDialog = ref(false)
+const showSelectDialog = ref(false)
+const currentProvider = ref(null)
+
+const activeProvider = computed(() => {
+  return providers.value.find(p => p.id === selectedProviderId.value)
 })
 
-const isLoading = ref(false)
-
-// 初始化
 onMounted(async () => {
-  await loadModelSettings()
+  await loadProviders()
 })
 
-// 加载模型设置
-async function loadModelSettings() {
+async function loadProviders() {
   try {
-    modelSettings.value.apiKey = await settingStore.get('model.apiKey', '')
-    modelSettings.value.apiUrl = await settingStore.get('model.apiUrl', '')
-    modelSettings.value.model = await settingStore.get('model.model', '')
+    const data = await settingStore.get('model.providers', [])
+    providers.value = data || []
+    
+    const activeId = await settingStore.get('model.activeProviderId', null)
+    if (activeId) {
+      selectedProviderId.value = activeId
+    }
   } catch (error) {
-    console.error('Failed to load model settings:', error)
+    console.error('Failed to load providers:', error)
   }
 }
 
-// 保存模型设置
-async function saveModelSettings() {
-  isLoading.value = true
+async function saveProviders() {
   try {
-    await settingStore.set('model.apiKey', modelSettings.value.apiKey)
-    await settingStore.set('model.apiUrl', modelSettings.value.apiUrl)
-    await settingStore.set('model.model', modelSettings.value.model)
+    await settingStore.set('model.providers', providers.value)
+    if (selectedProviderId.value) {
+      await settingStore.set('model.activeProviderId', selectedProviderId.value)
+    }
   } catch (error) {
-    console.error('Failed to save model settings:', error)
-  } finally {
-    isLoading.value = false
+    console.error('Failed to save providers:', error)
   }
 }
+
+async function handleAddProvider(data) {
+  const newProvider = {
+    id: `provider-${Date.now()}`,
+    provider: data.provider,
+    customName: data.customName || '',
+    apiKey: data.apiKey,
+    apiUrl: data.apiUrl || '',
+    models: [],
+    currentModel: null,
+    createdAt: new Date().toISOString()
+  }
+
+  providers.value.push(newProvider)
+  selectedProviderId.value = newProvider.id
+  
+  await saveProviders()
+  showAddDialog.value = false
+}
+
+async function handleSelectProvider(provider) {
+  selectedProviderId.value = provider.id
+  await saveProviders()
+}
+
+async function handleDeleteProvider(provider) {
+  if (!confirm(`确定要删除供应商 "${provider.customName || provider.provider}" 吗？`)) {
+    return
+  }
+
+  const index = providers.value.findIndex(p => p.id === provider.id)
+  if (index > -1) {
+    providers.value.splice(index, 1)
+    
+    if (selectedProviderId.value === provider.id) {
+      selectedProviderId.value = providers.value.length > 0 ? providers.value[0].id : null
+    }
+    
+    await saveProviders()
+  }
+}
+
+function handleChooseModel(provider) {
+  currentProvider.value = provider
+  showSelectDialog.value = true
+}
+
+async function handleLoadModels(provider) {
+  try {
+    const result = await invoke('load_provider_models', {
+      provider: provider.provider,
+      apiKey: provider.apiKey,
+      apiUrl: provider.apiUrl
+    })
+
+    const index = providers.value.findIndex(p => p.id === provider.id)
+    if (index > -1) {
+      providers.value[index].models = result || []
+      await saveProviders()
+    }
+  } catch (error) {
+    console.error('Failed to load models:', error)
+    alert('加载模型列表失败: ' + error)
+  }
+}
+
+async function handleSelectModel(model) {
+  const index = providers.value.findIndex(p => p.id === currentProvider.value.id)
+  if (index > -1) {
+    providers.value[index].currentModel = model
+    selectedProviderId.value = currentProvider.value.id
+    await saveProviders()
+  }
+}
+
+async function handleAddCustomModel(modelName) {
+  const index = providers.value.findIndex(p => p.id === currentProvider.value.id)
+  if (index > -1) {
+    const provider = providers.value[index]
+    if (!provider.models.includes(modelName)) {
+      provider.models.push(modelName)
+    }
+    provider.currentModel = modelName
+    selectedProviderId.value = currentProvider.value.id
+    await saveProviders()
+  }
+}
+
+async function handleLoadModelsInDialog() {
+  if (currentProvider.value) {
+    await handleLoadModels(currentProvider.value)
+  }
+}
+
+const currentModels = computed(() => {
+  if (!currentProvider.value) return []
+  return currentProvider.value.models || []
+})
 </script>
 
 <template>
-  <div class="card bg-base-200 shadow-sm">
-    <div class="card-body p-4">
-      <h2 class="card-title text-sm font-medium">
-        <Bot :size="16" />
-        模型设置
-      </h2>
-      <div class="space-y-3">
-        <div class="form-control">
-          <label class="label">
-            <span class="label-text text-xs">API Key</span>
-          </label>
-          <Input type="password" v-model="modelSettings.apiKey" placeholder="请输入 API Key" size="sm" />
+  <div class="space-y-4">
+    <div class="card bg-base-200 shadow-sm">
+      <div class="card-body p-4">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="card-title text-sm font-medium flex items-center gap-2">
+            <Bot :size="16" />
+            模型供应商
+          </h2>
+          <Button variant="primary" size="sm" @click="showAddDialog = true">
+            <Plus :size="14" />
+            添加
+          </Button>
         </div>
-        <div class="form-control">
-          <label class="label">
-            <span class="label-text text-xs">API URL</span>
-          </label>
-          <Input type="text" v-model="modelSettings.apiUrl" placeholder="请输入 API URL" size="sm" />
+
+        <div v-if="providers.length === 0" class="text-center py-8 text-base-content/40">
+          <Bot :size="40" class="mx-auto mb-3 opacity-50" />
+          <p class="text-sm">暂无供应商配置</p>
+          <p class="text-xs mt-1">点击右上角按钮添加供应商</p>
         </div>
-        <div class="form-control">
-          <label class="label">
-            <span class="label-text text-xs">模型名称</span>
-          </label>
-          <Input type="text" v-model="modelSettings.model" placeholder="请输入模型名称" size="sm" />
+
+        <div v-else class="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <ProviderCard
+            v-for="provider in providers"
+            :key="provider.id"
+            :provider="provider"
+            :is-active="provider.id === selectedProviderId"
+            @select="handleSelectProvider"
+            @delete="handleDeleteProvider"
+            @load-models="handleLoadModels"
+            @choose-model="handleChooseModel"
+          />
         </div>
-        <Button variant="primary" size="sm" block :loading="isLoading" @click="saveModelSettings">
-          保存模型设置
-        </Button>
       </div>
     </div>
   </div>
+
+  <AddProviderDialog
+    v-model:show="showAddDialog"
+    @save="handleAddProvider"
+    @close="showAddDialog = false"
+  />
+
+  <SelectModelDialog
+    v-model:show="showSelectDialog"
+    :provider="currentProvider"
+    :models="currentModels"
+    @select="handleSelectModel"
+    @load-models="handleLoadModelsInDialog"
+    @add-custom="handleAddCustomModel"
+    @close="showSelectDialog = false"
+  />
 </template>
