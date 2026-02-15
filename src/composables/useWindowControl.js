@@ -277,7 +277,7 @@ export function useWindowControl() {
 
   /**
    * macOS 专用：手动最大化实现
-   * 将窗口铺满当前显示器，坐标设为 0,0
+   * 将窗口铺满当前显示器，位置为显示器左上角
    */
   async function enterMaximizeMacOS(window) {
     // 获取当前窗口的 resizable 状态和缩放因子
@@ -306,7 +306,7 @@ export function useWindowControl() {
       }
     }
 
-    // 2. 获取当前鼠标所在的显示器
+    // 2. 获取当前窗口所在的显示器
     const currentMonitor = await getCurrentMonitor()
     if (!currentMonitor) {
       console.error('无法获取当前显示器信息')
@@ -316,13 +316,15 @@ export function useWindowControl() {
     // 3. 转换坐标：物理像素 -> 逻辑像素
     const { size: monitorSize, position: monitorPosition } = currentMonitor
     const monitorLogicalSize = monitorSize.toLogical(scaleFactor)
+    const monitorLogicalPosition = monitorPosition.toLogical(scaleFactor)
 
     // 4. 先设置窗口为可调整大小
     await window.setResizable(true)
 
-    // 5. 设置窗口大小和位置，铺满当前显示器，坐标为 0,0（相对于当前显示器）
+    // 5. 设置窗口大小和位置，铺满当前显示器
+    // 窗口位置应设置为显示器的左上角位置，而不是 (0, 0)
     await window.setSize(new LogicalSize(monitorLogicalSize.width, monitorLogicalSize.height))
-    await window.setPosition(new LogicalPosition(0, 0))
+    await window.setPosition(new LogicalPosition(monitorLogicalPosition.x, monitorLogicalPosition.y))
 
     // 6. 恢复原来的 resizable 状态
     await window.setResizable(resizable)
