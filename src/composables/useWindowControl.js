@@ -108,10 +108,15 @@ export function useWindowControl() {
     const monitorLogicalSize = monitorSize.toLogical(scaleFactor)
     const monitorLogicalPosition = monitorPosition.toLogical(scaleFactor)
 
-    // 4. 设置窗口大小和位置，铺满当前显示器
+    // 4. 先设置窗口为可调整大小
+    await window.setResizable(true)
+
+    // 5. 设置窗口大小和位置，铺满当前显示器
     await window.setSize(new LogicalSize(monitorLogicalSize.width, monitorLogicalSize.height))
     await window.setPosition(new LogicalPosition(monitorLogicalPosition.x, monitorLogicalPosition.y))
-    await window.setResizable(true)
+
+    // 6. 恢复原来的 resizable 状态
+    await window.setResizable(resizable)
   }
 
   /**
@@ -170,6 +175,9 @@ export function useWindowControl() {
       return
     }
 
+    // 先设置窗口为可调整大小
+    await window.setResizable(true)
+
     // 恢复窗口大小
     await window.setSize(new LogicalSize(width, height))
 
@@ -188,9 +196,14 @@ export function useWindowControl() {
 
     // 恢复之前的窗口状态
     const { width, height, x, y, resizable } = previousWindowState.value
-    
+
+    // 先设置窗口为可调整大小
+    await window.setResizable(true)
+
     await window.setSize(new LogicalSize(width, height))
     await window.setPosition(new LogicalPosition(x, y))
+
+    // 恢复窗口可调整大小状态
     await window.setResizable(resizable)
   }
 
@@ -291,10 +304,15 @@ export function useWindowControl() {
     const { size: monitorSize, position: monitorPosition } = currentMonitor
     const monitorLogicalSize = monitorSize.toLogical(scaleFactor2)
 
-    // 5. 设置窗口大小和位置，铺满当前显示器，坐标为 0,0（相对于当前显示器）
+    // 5. 先设置窗口为可调整大小
+    await window.setResizable(true)
+
+    // 6. 设置窗口大小和位置，铺满当前显示器，坐标为 0,0（相对于当前显示器）
     await window.setSize(new LogicalSize(monitorLogicalSize.width, monitorLogicalSize.height))
     await window.setPosition(new LogicalPosition(0, 0))
-    await window.setResizable(true)
+
+    // 7. 恢复原来的 resizable 状态
+    await window.setResizable(resizable)
   }
 
   /**
@@ -314,6 +332,9 @@ export function useWindowControl() {
       console.error('保存的窗口状态无效')
       return
     }
+
+    // 先设置窗口为可调整大小
+    await window.setResizable(true)
 
     // 恢复窗口大小
     await window.setSize(new LogicalSize(width, height))
