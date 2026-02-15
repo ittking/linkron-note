@@ -77,6 +77,9 @@ importers:
       lucide-vue-next:
         specifier: ^0.469.0
         version: 0.469.0(vue@3.5.27)
+      lunar-javascript:
+        specifier: ^1.7.7
+        version: 1.7.7
       prosemirror-model:
         specifier: ^1.25.4
         version: 1.25.4
@@ -1171,6 +1174,9 @@ packages:
     resolution: {integrity: sha512-EjOap+vY3xEzCMrnaccDHO4BH3k3Lr+sOyvzRQCaayYxkxKla0w6Jr4h3cHAzA4vMSp63Dcy7vDiGeCPcCY+Gg==}
     peerDependencies:
       vue: '>=3.0.1'
+
+  lunar-javascript@1.7.7:
+    resolution: {integrity: sha512-u/KYiwPIBo/0bT+WWfU7qO1d+aqeB90Tuy4ErXenr2Gam0QcWeezUvtiOIyXR7HbVnW2I1DKfU0NBvzMZhbVQw==}
 
   magic-string@0.30.21:
     resolution: {integrity: sha512-vd2F4YUyEXKGcLHoq+TEyCjxueSeHnFxyyjNp80yg0XV4vUhnDer/lvvlqM/arB5bXQN5K2/3oinyCRyx8T2CQ==}
@@ -2310,6 +2316,8 @@ snapshots:
   lucide-vue-next@0.469.0(vue@3.5.27):
     dependencies:
       vue: 3.5.27
+
+  lunar-javascript@1.7.7: {}
 
   magic-string@0.30.21:
     dependencies:

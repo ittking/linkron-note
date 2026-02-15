@@ -1,13 +1,39 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, X } from 'lucide-vue-next'
+import { Solar } from 'lunar-javascript'
 import dayjs from 'dayjs'
-import Button from './ui/Button.vue'
-import Toggle from './ui/Toggle.vue'
-import Select from './ui/Select.vue'
-import DateTimePicker from './ui/DateTimePicker.vue'
 
 dayjs.locale('zh-cn')
+
+// 获取农历日期和节气
+function getLunarDateAndTerm(dateStr) {
+  const date = dayjs(dateStr)
+  const solar = Solar.fromYmd(date.year(), date.month() + 1, date.date())
+  
+  // 获取农历
+  const lunar = solar.getLunar()
+  
+  // 获取农历日期显示
+  let lunarText = ''
+  const lunarDay = lunar.getDayInChinese()
+  const lunarMonth = lunar.getMonthInChinese()
+  
+  // 如果是农历初一，显示月份
+  if (lunar.getDay() === 1) {
+    lunarText = lunarMonth
+  } else {
+    lunarText = lunarDay
+  }
+  
+  // 获取节气 - 使用 Lunar 对象的 getCurrentJieQi 方法
+  const jieQi = lunar.getCurrentJieQi()
+  
+  return {
+    lunar: lunarText,
+    term: jieQi || null
+  }
+}
 
 const props = defineProps({
   year: {
@@ -290,6 +316,14 @@ const calendarWeeks = computed(() => {
                 'text-base-content/70': day.isCurrentMonth && !day.isToday
               }">
               {{ day.day }}
+            </span>
+            <span class="text-xs"
+              :class="{
+                'text-base-content/20': !day.isCurrentMonth,
+                'text-primary/70': getLunarDateAndTerm(day.dateStr).term,
+                'text-base-content/40': day.isCurrentMonth && !getLunarDateAndTerm(day.dateStr).term
+              }">
+              {{ getLunarDateAndTerm(day.dateStr).term || getLunarDateAndTerm(day.dateStr).lunar }}
             </span>
           </div>
 
