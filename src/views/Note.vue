@@ -756,13 +756,13 @@ async function filterNotesByTags() {
     isLoading.value = true
     try {
         const workDirectory = await getCachedWorkDirectory()
-        const [filteredNotes, count] = await Promise.all([
+        const [response, count] = await Promise.all([
             invoke('get_notes_by_tags', { tags: selectedTags.value, workDirectory }),
             invoke('count_notes_by_tags', { tags: selectedTags.value, workDirectory })
         ])
         // 新数据到达后才更新 notes，避免闪烁
         await nextTick()
-        notes.value = filteredNotes
+        notes.value = response.notes || []
         filteredNoteCount.value = count
     } catch (error) {
         showToast('筛选笔记失败：' + error.message, 'error')
