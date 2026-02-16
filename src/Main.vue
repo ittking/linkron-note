@@ -6,6 +6,7 @@ import { BookOpen, Settings, CheckSquare, Minus, Maximize2, Minimize2 } from 'lu
 import { useSettingStore } from './store/settingStore'
 import { useNoteStore } from './store/noteStore'
 import { useWindowControl } from './composables/useWindowControl'
+import { useToast } from './composables/useToast'
 
 const router = useRouter()
 const route = useRoute()
@@ -13,6 +14,7 @@ const settingStore = useSettingStore()
 const noteStore = useNoteStore()
 const appWindow = getCurrentWindow()
 const { isFullscreen, isMaximized, toggleFullscreen, maximizeWindow } = useWindowControl()
+const { toastVisible, toastMessage, toastType } = useToast()
 
 const tabs = [
   { name: '笔记', path: '/note', icon: BookOpen },
@@ -90,9 +92,9 @@ onMounted(async () => {
       <!-- 顶部控制栏 -->
       <div data-tauri-drag-region
         class="select-none h-9 border-b border-base-300 flex items-center justify-between px-3 flex-shrink-0">
-        <!-- 左侧：终端图标和名称 -->
+        <!-- 左侧：应用图标和名称 -->
         <div class="flex items-center gap-2">
-          <Terminal :size="16" class="text-primary" data-tauri-drag-region />
+          <BookOpen :size="16" class="text-primary" data-tauri-drag-region />
           <span class="text-sm font-medium text-base-content" data-tauri-drag-region>LINKRON</span>
         </div>
 
@@ -136,6 +138,11 @@ onMounted(async () => {
           </transition>
         </router-view>
       </div>
+    </div>
+
+    <!-- Toast 提示 -->
+    <div :class="['fixed top-4 right-4 z-[9999] px-4 py-3 rounded-lg shadow-lg transition-all duration-300 pointer-events-none', toastVisible ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0', toastType === 'success' ? 'bg-success text-success-content' : toastType === 'error' ? 'bg-error text-error-content' : 'bg-info text-info-content']">
+      {{ toastMessage }}
     </div>
   </div>
 </template>
