@@ -13,12 +13,6 @@ const routes = [
         meta: { title: "笔记", keepAlive: true },
       },
       {
-        path: "/term",
-        name: "Terminal",
-        component: () => import("@/views/Terminal.vue"),
-        meta: { title: "终端", keepAlive: true },
-      },
-      {
         path: "/todo",
         name: "Todo",
         component: () => import("@/views/Todo.vue"),

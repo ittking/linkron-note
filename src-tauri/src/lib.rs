@@ -8,7 +8,6 @@ mod model_provider;
 mod note;
 mod protocol;
 mod tag;
-mod terminal;
 mod todo;
 mod web_scraper;
 mod window_manager;
@@ -31,11 +30,6 @@ pub fn run() {
             filesystem::save_file,
             filesystem::get_local_path_from_protocol,
             filesystem::delete_resource_by_url,
-            terminal::create_pty_session,
-            terminal::write_to_pty,
-            terminal::resize_pty,
-            terminal::close_pty_session,
-            terminal::get_current_directory,
             database::init_database,
             database::get_all_notes,
             database::get_note,

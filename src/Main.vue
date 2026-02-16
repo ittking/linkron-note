@@ -2,7 +2,7 @@
 import { onMounted, onUnmounted, ref } from 'vue'
 import { getCurrentWindow } from '@tauri-apps/api/window'
 import { useRouter, useRoute } from 'vue-router'
-import { BookOpen, Terminal, Settings, CheckSquare, Minus, Maximize2, Minimize2 } from 'lucide-vue-next'
+import { BookOpen, Settings, CheckSquare, Minus, Maximize2, Minimize2 } from 'lucide-vue-next'
 import { useSettingStore } from './store/settingStore'
 import { useNoteStore } from './store/noteStore'
 import { useWindowControl } from './composables/useWindowControl'
@@ -17,7 +17,6 @@ const { isFullscreen, isMaximized, toggleFullscreen, maximizeWindow } = useWindo
 const tabs = [
   { name: '笔记', path: '/note', icon: BookOpen },
   { name: '待办', path: '/todo', icon: CheckSquare },
-  { name: '终端', path: '/term', icon: Terminal },
   { name: '设置', path: '/setting', icon: Settings }
 ]
 
