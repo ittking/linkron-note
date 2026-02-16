@@ -26,7 +26,7 @@ const settingStore = useSettingStore()
 
 // 使用 composables
 const { getWorkDirectory } = useWorkDirectory()
-const { toastVisible, toastMessage, toastType, showToast } = useToast()
+const { showToast } = useToast()
 const { confirmVisible, confirmTitle, confirmContent, showConfirm, handleConfirmOk } = useConfirmDialog()
 
 // 编辑器引用
@@ -869,12 +869,6 @@ async function filterNotesByTags() {
                         <ChevronUp :size="14" />
                     </button>
                 </div>
-            </div>
-
-            <!-- Toast 提示 -->
-            <div
-                :class="['toast toast-end z-[200] px-4 py-3 rounded-lg shadow-lg transition-all duration-300', toastVisible ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0', toastType === 'success' ? 'bg-success text-success-content' : toastType === 'error' ? 'bg-error text-error-content' : 'bg-info text-info-content']">
-                {{ toastMessage }}
             </div>
 
             <!-- 处理中 Loading 提示 -->

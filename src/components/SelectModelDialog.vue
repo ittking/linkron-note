@@ -4,6 +4,7 @@ import { Search, X, RefreshCw, Plus, Check, CheckCircle, XCircle, Loader2 } from
 import Input from './ui/Input.vue'
 import Button from './ui/Button.vue'
 import { useToast } from '../composables/useToast'
+import { useAIChat } from '../composables/useAIChat'
 
 const props = defineProps({
   show: {
@@ -23,6 +24,7 @@ const props = defineProps({
 const emit = defineEmits(['close', 'select', 'load-models', 'add-custom'])
 
 const { showToast } = useToast()
+const { testConnection } = useAIChat()
 const searchQuery = ref('')
 const customModel = ref('')
 const tempSelectedModel = ref('')
@@ -80,7 +82,12 @@ async function handleTestModel() {
     return
   }
 
-  if (!props.provider?.apiKey) {
+  if (!props.provider) {
+    showToast('请先配置模型供应商', 'error')
+    return
+  }
+
+  if (!props.provider.apiKey) {
     showToast('请先配置 API Key', 'error')
     return
   }
@@ -88,49 +95,25 @@ async function handleTestModel() {
   isTesting.value = true
   
   try {
-    const startTime = Date.now()
+    // 构造包含临时模型的 provider 对象
+    const testProvider = {
+      ...props.provider,
+      currentModel: modelToTest
+    }
     
-    // 构造测试请求
-    const apiUrl = props.provider.apiUrl || getDefaultApiUrl(props.provider.provider)
-    const response = await fetch(apiUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${props.provider.apiKey}`
-      },
-      body: JSON.stringify({
-        model: modelToTest,
-        messages: [{ role: 'user', content: 'Hi' }],
-        max_tokens: 1
-      })
-    })
-
-    const endTime = Date.now()
-    const latency = endTime - startTime
-
-    if (response.ok) {
-      showToast(`模型连接成功，延时: ${latency}ms`, 'success')
+    const result = await testConnection(testProvider)
+    
+    if (result.success) {
+      showToast(result.message, 'success')
     } else {
-      const errorText = await response.text()
-      showToast(`模型连接失败: ${response.status} ${errorText.substring(0, 50)}`, 'error')
+      showToast(`模型连接失败: ${result.message}`, 'error')
     }
   } catch (error) {
+    console.error('Model test error:', error)
     showToast(`模型连接失败: ${error.message}`, 'error')
   } finally {
     isTesting.value = false
   }
-}
-
-function getDefaultApiUrl(providerName) {
-  const urlMap = {
-    'openai': 'https://api.openai.com/v1/chat/completions',
-    'anthropic': 'https://api.anthropic.com/v1/messages',
-    'deepseek': 'https://api.deepseek.com/v1/chat/completions',
-    'moonshot': 'https://api.moonshot.cn/v1/chat/completions',
-    'zhipu': 'https://open.bigmodel.cn/api/paas/v4/chat/completions',
-    'ollama': 'http://localhost:11434/v1/chat/completions'
-  }
-  return urlMap[providerName] || 'https://api.openai.com/v1/chat/completions'
 }
 
 watch(() => props.show, (newVal) => {

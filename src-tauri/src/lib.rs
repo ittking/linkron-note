@@ -63,7 +63,7 @@ pub fn run() {
             web_scraper::fetch_webpage_html,
             window_manager::get_os,
             model_provider::load_provider_models,
-            ai_generator::generate_regex
+            ai_generator::chat_completion
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

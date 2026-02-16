@@ -4,10 +4,11 @@ use serde::{Deserialize, Serialize};
 struct ChatRequest {
     model: String,
     messages: Vec<ChatMessage>,
+    max_tokens: Option<u32>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-struct ChatMessage {
+pub struct ChatMessage {
     role: String,
     content: String,
 }
@@ -22,14 +23,15 @@ struct Choice {
     message: ChatMessage,
 }
 
-/// 使用 AI 生成正则表达式
+/// 通用的 AI 对话补全接口
 #[tauri::command]
-pub async fn generate_regex(
-    prompt: String,
+pub async fn chat_completion(
     provider: String,
     api_key: String,
     api_url: String,
     model: String,
+    messages: Vec<ChatMessage>,
+    max_tokens: Option<u32>,
 ) -> Result<String, String> {
     let client = reqwest::Client::new();
     
@@ -41,14 +43,10 @@ pub async fn generate_regex(
     
     let url = format!("{}/chat/completions", base_url.trim_end_matches('/'));
     
-    let messages = vec![ChatMessage {
-        role: "user".to_string(),
-        content: prompt,
-    }];
-    
     let request_body = ChatRequest {
         model: model,
         messages,
+        max_tokens,
     };
     
     let mut headers = reqwest::header::HeaderMap::new();
