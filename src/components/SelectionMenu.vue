@@ -472,13 +472,14 @@ onBeforeUnmount(() => {
   <!-- 链接弹窗 -->
   <dialog :open="linkDialog.visible" class="modal">
     <div class="modal-box bg-base-200 border border-base-300">
-      <h3 class="font-bold text-lg text-base-content">设置链接</h3>
+      <h3 class="font-bold text-sm text-base-content">设置链接</h3>
       <div class="py-4">
         <Input
           ref="linkInputRef"
           v-model="linkDialog.url"
           type="text"
           placeholder="请输入链接地址"
+          size="sm"
           @keyup.enter="confirmLink"
           @keydown="handleLinkKeyDown"
         />
