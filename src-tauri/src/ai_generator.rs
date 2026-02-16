@@ -32,7 +32,11 @@ pub async fn chat_completion(
     model: String,
     messages: Vec<ChatMessage>,
     max_tokens: Option<u32>,
+    timeout: Option<u64>,
 ) -> Result<String, String> {
+    // 验证并限制超时时间，最长60秒
+    let timeout_secs = timeout.unwrap_or(60).min(60);
+    let timeout_duration = std::time::Duration::from_secs(timeout_secs);
     let client = reqwest::Client::new();
     
     let base_url = if api_url.is_empty() {
@@ -55,14 +59,18 @@ pub async fn chat_completion(
         format!("Bearer {}", api_key).parse().unwrap(),
     );
     headers.insert("Content-Type", "application/json".parse().unwrap());
-    
-    let response = client
-        .post(&url)
-        .headers(headers)
-        .json(&request_body)
-        .send()
-        .await
-        .map_err(|e| format!("请求失败: {}", e))?;
+
+    let response = tokio::time::timeout(timeout_duration, async {
+        client
+            .post(&url)
+            .headers(headers)
+            .json(&request_body)
+            .send()
+            .await
+    })
+    .await
+    .map_err(|_| format!("请求超时（超过 {} 秒）", timeout_secs))?
+    .map_err(|e| format!("请求失败: {}", e))?;
     
     if !response.status().is_success() {
         let status = response.status();
