@@ -1,11 +1,10 @@
 <script setup>
 import { ref, watch } from 'vue'
-import { invoke } from '@tauri-apps/api/core'
 import { Sparkles } from 'lucide-vue-next'
 import Button from './ui/Button.vue'
 import Input from './ui/Input.vue'
 import InputWithAI from './ui/InputWithAI.vue'
-import { useSettingStore } from '../store/settingStore'
+import { useAIChat } from '../composables/useAIChat'
 
 const props = defineProps({
   show: {
@@ -24,7 +23,7 @@ const props = defineProps({
 
 const emit = defineEmits(['save', 'close'])
 
-const settingStore = useSettingStore()
+const { chat } = useAIChat()
 
 const form = ref({
   id: null,
@@ -69,21 +68,6 @@ async function handleGenerateRegex() {
   isGeneratingRegex.value = true
   
   try {
-    // 获取当前激活的模型配置
-    const providers = await settingStore.get('model.providers', [])
-    const activeProviderId = await settingStore.get('model.activeProviderId', null)
-    
-    if (!activeProviderId || providers.length === 0) {
-      alert('请先配置模型供应商')
-      return
-    }
-
-    const activeProvider = providers.find(p => p.id === activeProviderId)
-    if (!activeProvider || !activeProvider.currentModel) {
-      alert('请先选择模型')
-      return
-    }
-
     // 调用 AI 生成正则表达式
     const prompt = `请为以下网址生成一个正则表达式，用于匹配该网站的所有页面，而不仅仅是这个具体的页面。
 例如：
@@ -94,13 +78,7 @@ async function handleGenerateRegex() {
 只返回正则表达式本身，不要任何解释或额外文字。
 网址：${form.value.urlPattern}`
     
-    const result = await invoke('generate_regex', {
-      prompt: prompt,
-      provider: activeProvider.provider,
-      apiKey: activeProvider.apiKey,
-      apiUrl: activeProvider.apiUrl,
-      model: activeProvider.currentModel
-    })
+    const result = await chat(prompt)
 
     if (result && result.trim()) {
       // 验证生成的正则表达式
@@ -115,7 +93,7 @@ async function handleGenerateRegex() {
     }
   } catch (error) {
     console.error('生成正则表达式失败:', error)
-    alert('生成失败：' + error)
+    alert('生成失败：' + error.message)
   } finally {
     isGeneratingRegex.value = false
   }
@@ -173,23 +151,11 @@ async function handleGenerateTemplate() {
   isGeneratingTemplate.value = true
   
   try {
-    // 获取当前激活的模型配置
-    const providers = await settingStore.get('model.providers', [])
-    const activeProviderId = await settingStore.get('model.activeProviderId', null)
+    // 检查用户是否已经输入了用户要求
+    const userReference = form.value.template.trim()
     
-    if (!activeProviderId || providers.length === 0) {
-      alert('请先配置模型供应商')
-      return
-    }
-
-    const activeProvider = providers.find(p => p.id === activeProviderId)
-    if (!activeProvider || !activeProvider.currentModel) {
-      alert('请先选择模型')
-      return
-    }
-
     // 调用 AI 生成提示词模板
-    const prompt = `请生成一个 AI 提示词模板，用于理解网页内容并生成一篇高质量的文章。
+    let prompt = `请生成一个 AI 提示词模板，用于理解网页内容并生成一篇高质量的文章。
 
 要求：
 1. 必须包含 {content} 占位符，用于插入网页原始内容
@@ -202,13 +168,29 @@ async function handleGenerateTemplate() {
 
 请直接返回提示词模板内容，不要任何解释或额外文字。`
 
-    const result = await invoke('generate_regex', {
-      prompt: prompt,
-      provider: activeProvider.provider,
-      apiKey: activeProvider.apiKey,
-      apiUrl: activeProvider.apiUrl,
-      model: activeProvider.currentModel
-    })
+    // 如果用户输入了用户要求，添加到 prompt 中
+    if (userReference && userReference.length > 0) {
+      prompt = `用户提供了以下要求，请基于这些要求生成一个优化的提示词模板：
+
+用户要求：
+${userReference}
+
+---
+请基于上述用户要求，生成一个 AI 提示词模板，用于理解网页内容并生成一篇高质量的文章。
+
+要求：
+1. 必须包含 {content} 占位符，用于插入网页原始内容
+2. 要求 AI 深入理解网页内容，提取关键信息
+3. 生成的文章要保留原始网页的文本、图片链接、超链接等重要元素
+4. 文章结构清晰，逻辑连贯
+5. 语言流畅自然，符合阅读习惯
+6. 生成的文章可以使用 Markdown 格式（如图片语法 ![alt](url)、链接语法 [text](url)、加粗 **text**、斜体 *text* 等）
+7. 但不要使用 Markdown 标题语法（如 # 一级标题、## 二级标题等），标题应该用纯文本或加粗等其他方式表示
+
+请直接返回提示词模板内容，不要任何解释或额外文字。`
+    }
+
+    const result = await chat(prompt)
 
     if (result && result.trim()) {
       form.value.template = result.trim()
@@ -216,7 +198,7 @@ async function handleGenerateTemplate() {
     }
   } catch (error) {
     console.error('生成提示词模板失败:', error)
-    alert('生成失败：' + error)
+    alert('生成失败：' + error.message)
   } finally {
     isGeneratingTemplate.value = false
   }
@@ -287,7 +269,7 @@ async function handleGenerateTemplate() {
                 'min-h-[120px] resize-y'
               ]"
               rows="6"
-              placeholder="输入提示词内容，使用 {content} 作为网页内容占位符"
+              placeholder="在此输入参考内容或需求，然后点击「AI 生成」按钮，AI 将基于您的内容生成提示词模板"
             ></textarea>
           </div>
           <label v-if="errors.template" class="label">
