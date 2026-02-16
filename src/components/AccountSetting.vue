@@ -35,14 +35,28 @@ async function loadUserInfo() {
       email: 'user@example.com',
       avatar: ''
     })
-    userInfo.value = saved
-    editForm.value = {
-      nickname: saved.nickname,
-      email: saved.email
+    userInfo.value = saved || {
+      nickname: '用户',
+      email: 'user@example.com',
+      avatar: ''
     }
-    avatarPreview.value = saved.avatar
+    editForm.value = {
+      nickname: saved?.nickname || '用户',
+      email: saved?.email || 'user@example.com'
+    }
+    avatarPreview.value = saved?.avatar || ''
   } catch (error) {
     console.error('Failed to load user info:', error)
+    // 设置默认值
+    userInfo.value = {
+      nickname: '用户',
+      email: 'user@example.com',
+      avatar: ''
+    }
+    editForm.value = {
+      nickname: '用户',
+      email: 'user@example.com'
+    }
   }
 }
 
@@ -50,8 +64,8 @@ async function loadUserInfo() {
 function startEdit() {
   isEditing.value = true
   editForm.value = {
-    nickname: userInfo.value.nickname,
-    email: userInfo.value.email
+    nickname: userInfo.value?.nickname || '用户',
+    email: userInfo.value?.email || 'user@example.com'
   }
 }
 
@@ -59,8 +73,8 @@ function startEdit() {
 function cancelEdit() {
   isEditing.value = false
   editForm.value = {
-    nickname: userInfo.value.nickname,
-    email: userInfo.value.email
+    nickname: userInfo.value?.nickname || '用户',
+    email: userInfo.value?.email || 'user@example.com'
   }
 }
 
@@ -132,7 +146,7 @@ function selectAvatar() {
                 placeholder="请输入昵称"
                 size="sm"
               />
-              <div v-else class="text-sm font-medium truncate">{{ userInfo.nickname }}</div>
+              <div v-else class="text-sm font-medium truncate">{{ userInfo?.nickname || '用户' }}</div>
             </div>
 
             <div class="form-control">
@@ -148,7 +162,7 @@ function selectAvatar() {
               />
               <div class="flex items-center gap-1">
                 <Mail :size="12" class="text-base-content/40" />
-                <span class="text-sm text-base-content/60 truncate">{{ userInfo.email }}</span>
+                <span class="text-sm text-base-content/60 truncate">{{ userInfo?.email || 'user@example.com' }}</span>
               </div>
             </div>
           </div>
