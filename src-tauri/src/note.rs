@@ -56,15 +56,12 @@ pub fn init_tables(conn: &Connection) -> SqliteResult<()> {
             content TEXT NOT NULL,
             source_url TEXT,
             extract_url TEXT,
+            pinned INTEGER DEFAULT 0,
             created_at TEXT NOT NULL,
             updated_at TEXT NOT NULL
         )",
         [],
     )?;
-
-    // 检查并添加列（向后兼容）
-    conn.execute("ALTER TABLE notes ADD COLUMN extract_url TEXT", []).ok();
-    conn.execute("ALTER TABLE notes ADD COLUMN pinned INTEGER DEFAULT 0", []).ok();
 
     // 创建索引
     conn.execute("CREATE INDEX IF NOT EXISTS idx_notes_updated_at ON notes(updated_at DESC)", [])?;

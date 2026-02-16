@@ -90,6 +90,7 @@ function updateEditorHeight(scrollTop) {
 
 const notes = ref([])
 const editorContent = ref('')
+const editorSourceUrl = ref('') // 编辑器内容的来源 URL
 const isDragging = ref(false)
 const isProcessing = ref(false)
 const processingCount = ref(0) // 处理计数器
@@ -328,17 +329,20 @@ async function handleEditorSubmit(noteData) {
                 editingNote.value = null
                 isEditing.value = false
                 editorContent.value = ''
+                editorSourceUrl.value = ''
                 showToast('笔记更新成功', 'success')
             } catch (error) {
                 showToast('笔记更新失败：' + error.message, 'error')
             }
         } else {
             const newNote = await noteStore.addNote({
-                type: 'text',
-                content: content
+                type: editorSourceUrl.value ? 'link' : 'text',
+                content: content,
+                sourceUrl: editorSourceUrl.value || undefined
             })
             notes.value.unshift(newNote)
             editorContent.value = ''
+            editorSourceUrl.value = ''
             showToast('笔记创建成功', 'success')
         }
     }
@@ -456,32 +460,25 @@ async function handleFileToEditor(file) {
     if (!result) return
 
     if (result.type === 'url') {
-        // .url 文件提取的 URL，爬取内容到编辑器
+        // .url 文件提取的 URL，爬取内容到编辑器（不启用 AI 优化）
         try {
             startProcessing()
 
-            // 第一步：获取网页内容
+            // 获取网页内容
             const { content, images } = await scrapeWebPage(result.url)
             if (!content) {
                 showToast('网页内容为空', 'error')
                 return
             }
 
-            // 第二步：调用 AI 优化内容
-            let finalContent = content
-            try {
-                const { content: optimizedContent, optimized } = await optimizeWebContent(result.url, content)
-                finalContent = optimizedContent
-
-                if (optimized) {
-                    showToast('AI 文章生成成功', 'success')
-                }
-            } catch (error) {
-                showToast('AI 优化失败，使用原始内容: ' + error.message, 'error')
+            // 保存来源 URL
+            if (!editorSourceUrl.value) {
+                editorSourceUrl.value = result.url
             }
 
-            // 添加到编辑器
-            editorContent.value += (editorContent.value ? '<br>' : '') + finalContent
+            // 直接添加到编辑器，不进行 AI 优化
+            editorContent.value += (editorContent.value ? '<br>' : '') + content
+            showToast('网页内容已添加到编辑器', 'success')
         } catch (error) {
             showToast('网页抓取失败: ' + error.message, 'error')
         } finally {
@@ -503,28 +500,21 @@ async function handleDataToEditor(data) {
         try {
             startProcessing()
 
-            // 第一步：获取网页内容
+            // 获取网页内容（不启用 AI 优化）
             const { content } = await scrapeWebPage(data)
             if (!content) {
                 showToast('网页内容为空', 'error')
                 return
             }
 
-            // 第二步：调用 AI 优化内容
-            let finalContent = content
-            try {
-                const { content: optimizedContent, optimized } = await optimizeWebContent(data, content)
-                finalContent = optimizedContent
-
-                if (optimized) {
-                    showToast('AI 文章生成成功', 'success')
-                }
-            } catch (error) {
-                showToast('AI 优化失败，使用原始内容: ' + error.message, 'error')
+            // 保存来源 URL
+            if (!editorSourceUrl.value) {
+                editorSourceUrl.value = data
             }
 
-            // 添加到编辑器
-            editorContent.value += (editorContent.value ? '<br>' : '') + finalContent
+            // 直接添加到编辑器，不进行 AI 优化
+            editorContent.value += (editorContent.value ? '<br>' : '') + content
+            showToast('网页内容已添加到编辑器', 'success')
         } catch (error) {
             showToast('网页抓取失败: ' + error.message, 'error')
         } finally {
@@ -594,7 +584,6 @@ async function createLinkNote(url) {
                 showToast('链接笔记创建成功', 'success')
             }
         } catch (error) {
-            console.error('AI 优化失败:', error)
             showToast('AI 优化失败，使用原始内容: ' + error.message, 'error')
             finalContent = content
         }
@@ -701,6 +690,7 @@ function handleCancelEdit() {
     editingNote.value = null
     isEditing.value = false
     editorContent.value = ''
+    editorSourceUrl.value = ''
     showToast('已取消编辑', 'info')
 }
 
