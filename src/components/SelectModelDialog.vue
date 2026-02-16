@@ -121,12 +121,6 @@ watch(() => props.show, (newVal) => {
     searchQuery.value = ''
     customModel.value = ''
     tempSelectedModel.value = ''
-    if (props.provider?.currentModel) {
-      tempSelectedModel.value = props.provider.currentModel
-      if (!props.models.includes(props.provider.currentModel)) {
-        customModel.value = props.provider.currentModel
-      }
-    }
   } else {
     searchQuery.value = ''
     customModel.value = ''
@@ -177,7 +171,7 @@ watch(() => props.show, (newVal) => {
                 @click="handleSelect(model)"
                 :class="[
                   'p-2.5 rounded cursor-pointer transition-colors border',
-                  tempSelectedModel === model || provider?.currentModel === model
+                  tempSelectedModel === model
                     ? 'bg-primary/10 border-primary text-primary'
                     : 'bg-base-100 border-transparent hover:bg-base-200 hover:border-base-300'
                 ]"
@@ -185,7 +179,7 @@ watch(() => props.show, (newVal) => {
                 <div class="flex items-center justify-between">
                   <span class="text-sm">{{ model }}</span>
                   <Check 
-                    v-if="tempSelectedModel === model || provider?.currentModel === model" 
+                    v-if="tempSelectedModel === model" 
                     :size="14" 
                   />
                 </div>
