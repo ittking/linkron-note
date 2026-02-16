@@ -25,7 +25,7 @@ function setActiveTab(tabId) {
 <template>
   <div class="h-full flex flex-col max-w-200 mx-auto pb-2">
     <!-- Tab 导航 -->
-    <div role="tablist" class="px-1 pt-4 gap-1">
+    <div role="tablist" class="px-1 pt-4 pb-2  gap-1">
       <a v-for="tab in tabs" :key="tab.id" role="tab" @click="setActiveTab(tab.id)" :class="[
         'tab gap-1.5 text-xs',
         activeTab === tab.id ? 'text-primary' : ''

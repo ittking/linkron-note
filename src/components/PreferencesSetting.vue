@@ -235,7 +235,7 @@ watch(aiOptimizationEnabled, async (newValue) => {
       <div class="card-body p-4">
         <h2 class="card-title text-sm font-medium">
           <Sparkles :size="16" />
-          AI 介入优化
+          AI优化
         </h2>
         <div class="form-control">
           <label class="label cursor-pointer flex justify-between gap-4">
