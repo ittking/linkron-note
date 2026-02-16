@@ -4,6 +4,7 @@ mod autostart;
 mod database;
 mod file_reader;
 mod filesystem;
+mod git_sync;
 mod model_provider;
 mod note;
 mod protocol;
@@ -63,7 +64,13 @@ pub fn run() {
             web_scraper::fetch_webpage_html,
             window_manager::get_os,
             model_provider::load_provider_models,
-            ai_generator::chat_completion
+            ai_generator::chat_completion,
+            git_sync::test_git_connection,
+            git_sync::sync_to_remote,
+            git_sync::sync_from_remote,
+            git_sync::get_sync_config,
+            git_sync::save_sync_config,
+            git_sync::get_git_status
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
