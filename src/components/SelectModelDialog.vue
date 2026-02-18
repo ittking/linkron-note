@@ -120,7 +120,11 @@ watch(() => props.show, (newVal) => {
   if (newVal) {
     searchQuery.value = ''
     customModel.value = ''
-    tempSelectedModel.value = ''
+    // 回显之前选中的模型
+    tempSelectedModel.value = props.provider?.currentModel || ''
+    if (props.provider?.currentModel && !props.models.includes(props.provider.currentModel)) {
+      customModel.value = props.provider.currentModel
+    }
   } else {
     searchQuery.value = ''
     customModel.value = ''
@@ -160,7 +164,7 @@ watch(() => props.show, (newVal) => {
             </Button>
           </div>
 
-          <div class="flex-1 overflow-y-auto min-h-0 max-h-[300px]">
+          <div class="flex-1 overflow-y-auto min-h-0 max-h-[300px] custom-scrollbar">
             <div v-if="filteredModels.length === 0" class="text-center py-6 text-base-content/40 text-sm">
               暂无模型，请先加载或添加自定义模型
             </div>
@@ -239,3 +243,23 @@ watch(() => props.show, (newVal) => {
     </div>
   </div>
 </template>
+
+<style scoped>
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+  border-radius: 3px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(156, 163, 175, 0.3);
+  border-radius: 3px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(156, 163, 175, 0.5);
+}
+</style>
