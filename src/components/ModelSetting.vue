@@ -18,6 +18,7 @@ const selectedProviderId = ref(null)
 const showAddDialog = ref(false)
 const showSelectDialog = ref(false)
 const currentProvider = ref(null)
+const editingProvider = ref(null)
 
 // 提示词相关
 const prompts = ref([])
@@ -68,9 +69,31 @@ async function handleAddProvider(data) {
 
   providers.value.push(newProvider)
   selectedProviderId.value = newProvider.id
-  
+
   await saveProviders()
   showAddDialog.value = false
+}
+
+async function handleEditProvider(provider) {
+  editingProvider.value = provider
+  showAddDialog.value = true
+}
+
+async function handleUpdateProvider(data) {
+  const index = providers.value.findIndex(p => p.id === editingProvider.value.id)
+  if (index > -1) {
+    providers.value[index] = {
+      ...providers.value[index],
+      provider: data.provider,
+      customName: data.customName || '',
+      apiKey: data.apiKey,
+      apiUrl: data.apiUrl || '',
+      updatedAt: new Date().toISOString()
+    }
+    await saveProviders()
+  }
+  showAddDialog.value = false
+  editingProvider.value = null
 }
 
 async function handleSelectProvider(provider) {
@@ -256,6 +279,7 @@ async function handleDeletePrompt(prompt) {
             @delete="handleDeleteProvider"
             @load-models="handleLoadModels"
             @choose-model="handleChooseModel"
+            @edit="handleEditProvider"
           />
         </div>
       </div>
@@ -297,8 +321,9 @@ async function handleDeletePrompt(prompt) {
 
   <AddProviderDialog
     v-model:show="showAddDialog"
-    @save="handleAddProvider"
-    @close="showAddDialog = false"
+    :provider="editingProvider"
+    @save="editingProvider ? handleUpdateProvider : handleAddProvider"
+    @close="showAddDialog = false; editingProvider = null"
   />
 
   <SelectModelDialog

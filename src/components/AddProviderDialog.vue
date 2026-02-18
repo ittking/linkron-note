@@ -1,5 +1,5 @@
 <script setup>
-import { ref, watch } from 'vue'
+import { ref, watch, computed } from 'vue'
 import { Plus, X } from 'lucide-vue-next'
 import Input from './ui/Input.vue'
 import Button from './ui/Button.vue'
@@ -9,6 +9,10 @@ const props = defineProps({
   show: {
     type: Boolean,
     default: false
+  },
+  provider: {
+    type: Object,
+    default: null
   }
 })
 
@@ -34,6 +38,24 @@ const defaultApiUrls = {
   'siliconflow': 'https://api.siliconflow.cn/v1',
   'kimi': 'https://api.moonshot.cn/v1',
   'zhipu': 'https://open.bigmodel.cn/api/paas/v4'
+}
+
+const isEditMode = computed(() => !!props.provider)
+
+const dialogTitle = computed(() => isEditMode.value ? '编辑供应商' : '添加供应商')
+const saveButtonText = computed(() => isEditMode.value ? '保存' : '添加')
+
+function loadProviderData() {
+  if (props.provider) {
+    formData.value = {
+      provider: props.provider.provider,
+      customName: props.provider.customName || '',
+      apiKey: props.provider.apiKey || '',
+      apiUrl: props.provider.apiUrl || ''
+    }
+  } else {
+    resetForm()
+  }
 }
 
 function handleClose() {
@@ -66,7 +88,7 @@ function resetForm() {
 
 watch(() => props.show, (newVal) => {
   if (newVal) {
-    resetForm()
+    loadProviderData()
   }
 })
 
@@ -82,7 +104,7 @@ watch(() => formData.value.provider, (newProvider) => {
     <div class="card bg-base-100 shadow-xl w-full max-w-md mx-4">
       <div class="card-body p-5">
         <div class="flex items-center justify-between mb-4">
-          <h3 class="card-title text-base font-medium">添加供应商</h3>
+          <h3 class="card-title text-base font-medium">{{ dialogTitle }}</h3>
           <button @click="handleClose" class="p-1 rounded hover:bg-base-200 transition-colors">
             <X :size="18" />
           </button>
@@ -141,7 +163,7 @@ watch(() => formData.value.provider, (newProvider) => {
             </Button>
             <Button variant="primary" size="sm" class="flex-1" @click="handleSave">
               <Plus :size="14" />
-              添加
+              {{ saveButtonText }}
             </Button>
           </div>
         </div>
