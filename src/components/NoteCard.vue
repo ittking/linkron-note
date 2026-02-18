@@ -16,6 +16,7 @@ import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight'
 import { common, createLowlight } from 'lowlight'
 import Image from '@tiptap/extension-image'
 import { TagMark } from '@/extensions/tag-mark'
+import { ResizableImage } from '@/extensions/resizable-image'
 import dayjs from 'dayjs'
 import 'dayjs/locale/zh-cn'
 
@@ -150,7 +151,9 @@ const editor = useEditor({
       lowlight,
       defaultLanguage: null,
     }),
-    Image,
+    ResizableImage.configure({
+      editable: false,
+    }),
     TagMark,
   ],
   editable: false,

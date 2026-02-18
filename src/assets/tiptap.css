@@ -51,6 +51,14 @@
   height: auto;
 }
 
+/* 带边框的图片样式 */
+.ProseMirror img[data-has-border="true"] {
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+  padding: 8px;
+  background-color: var(--color-base-300, #ffffff);
+}
+
 .ProseMirror strong {
   font-weight: 600;
 }
@@ -119,7 +127,7 @@
   transition: border-color 0.2s ease;
 }
 
-.ProseMirror .resizable-image-wrapper:hover {
+.ProseMirror .resizable-image-wrapper.editable:hover {
   border-color: var(--color-primary);
 }
 
@@ -146,4 +154,54 @@
 
 .ProseMirror .resizable-image-wrapper:hover .resize-handle {
   display: block;
+}
+
+/* ========== 图片工具栏样式 ========== */
+.ProseMirror .image-toolbar {
+  position: absolute;
+  bottom: 8px;
+  left: 8px;
+  display: flex;
+  gap: 4px;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  padding: 4px;
+  border-radius: 6px;
+  opacity: 0;
+  transition: opacity 0.2s;
+  z-index: 5;
+}
+
+.ProseMirror .resizable-image-wrapper:hover .image-toolbar,
+.ProseMirror .image-toolbar:hover {
+  opacity: 1;
+}
+
+.ProseMirror .image-toolbar button {
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.9);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  transition: all 0.2s;
+  padding: 0;
+}
+
+.ProseMirror .image-toolbar button:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.ProseMirror .image-toolbar button:active {
+  transform: scale(0.95);
+}
+
+.ProseMirror .image-toolbar button svg {
+  width: 14px;
+  height: 14px;
 }
