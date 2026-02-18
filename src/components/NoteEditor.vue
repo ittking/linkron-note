@@ -138,7 +138,7 @@ const editor = useEditor({
   autofocus: props.autofocus,
   editorProps: {
     attributes: {
-      class: 'prose prose-sm max-w-none focus:outline-none py-2 text-sm',
+      class: 'prose prose-sm max-w-none focus:outline-none py-2 text-sm leading-loose',
     },
     getWorkDirectory: () => getWorkDirectory(),
     handleDragOver: (view, event) => {

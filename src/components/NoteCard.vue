@@ -341,7 +341,7 @@ defineExpose({
 
     <!-- 笔记内容：TipTap 编辑器渲染 -->
     <div v-if="note.content" class="relative">
-      <div ref="contentRef" class="text-base-content leading-relaxed break-words transition-all duration-200" :class="{
+      <div ref="contentRef" class="text-base-content leading-loose break-words transition-all duration-200" :class="{
         'max-h-[120px] overflow-hidden': !isExpanded && isOverflowing
       }">
         <EditorContent class="ProseMirror prose prose-sm max-w-none select-text" :editor="editor" />
