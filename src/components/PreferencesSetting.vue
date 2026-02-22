@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted, onUnmounted, watch } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
 import { open } from '@tauri-apps/plugin-dialog'
 import { useSettingStore } from '../store/settingStore'
@@ -27,6 +27,7 @@ const aiOptimizationEnabled = ref(false)
 // 全局快捷键
 const globalHotkey = ref('')
 const globalHotkeyStatus = ref(null)
+const statusTimeout = ref(null)
 
 // 初始化
 onMounted(async () => {
@@ -167,13 +168,40 @@ watch(aiOptimizationEnabled, async (newValue) => {
 // 加载全局快捷键
 async function loadGlobalHotkey() {
   try {
-    const savedValue = await settingStore.get('globalHotkey', '')
+    let savedValue = await settingStore.get('globalHotkey', '')
+    const os = await invoke('get_os')
+    const defaultHotkey = os === 'macos' ? 'Option+Space' : 'Alt+Space'
+
+    // 兼容旧格式：如果是单键（如 "Option", "Alt"），自动转换为组合键格式
+    if (savedValue && !savedValue.includes('+')) {
+      // 检查是否是旧的单修饰键格式
+      const singleModifiers = ['Option', 'Alt', 'Control', 'Command', 'Shift']
+      if (singleModifiers.includes(savedValue)) {
+        savedValue = savedValue + '+Space'
+        // 自动升级保存的值
+        await settingStore.set('globalHotkey', savedValue)
+      }
+    }
+
     if (!savedValue) {
-      // 如果没有保存的值，获取默认值
-      const os = await invoke('get_os')
-      globalHotkey.value = os === 'macos' ? 'Option' : 'Alt'
+      // 如果没有保存的值，使用默认值并自动保存注册
+      globalHotkey.value = defaultHotkey
+      await settingStore.set('globalHotkey', defaultHotkey)
+
+      // 自动注册默认快捷键
+      try {
+        await invoke('register_hotkey', { keyName: defaultHotkey })
+      } catch (error) {
+        console.error('Failed to register default hotkey:', error)
+      }
     } else {
       globalHotkey.value = savedValue
+      // 确保已注册保存的快捷键
+      try {
+        await invoke('register_hotkey', { keyName: savedValue })
+      } catch (error) {
+        console.error('Failed to register saved hotkey:', error)
+      }
     }
   } catch (error) {
     console.error('Failed to load global hotkey:', error)
@@ -202,18 +230,43 @@ async function saveGlobalHotkey() {
     // 保存到设置
     await settingStore.set('globalHotkey', globalHotkey.value.trim())
 
+    // 显示成功提示，2秒后自动隐藏
     globalHotkeyStatus.value = {
       type: 'success',
       message: '快捷键已更新'
     }
+
+    // 清除之前的定时器
+    if (statusTimeout.value) {
+      clearTimeout(statusTimeout.value)
+    }
+
+    // 2秒后隐藏提示
+    statusTimeout.value = setTimeout(() => {
+      globalHotkeyStatus.value = null
+    }, 2000)
   } catch (error) {
     console.error('Failed to save global hotkey:', error)
     globalHotkeyStatus.value = {
       type: 'error',
       message: '保存失败: ' + error.message
     }
+    // 错误提示也需要自动隐藏
+    if (statusTimeout.value) {
+      clearTimeout(statusTimeout.value)
+    }
+    statusTimeout.value = setTimeout(() => {
+      globalHotkeyStatus.value = null
+    }, 3000)
   }
 }
+
+// 组件卸载时清除定时器
+onUnmounted(() => {
+  if (statusTimeout.value) {
+    clearTimeout(statusTimeout.value)
+  }
+})
 
 </script>
 
@@ -332,7 +385,7 @@ async function saveGlobalHotkey() {
           </div>
           <label class="label">
             <span class="label-text-alt text-[11px] text-base-content/40">
-              按下配置的按键 + 空格键可切换窗口显示/隐藏状态
+              支持组合键配置，如 Option + Space、Command + Enter 等
             </span>
           </label>
         </div>

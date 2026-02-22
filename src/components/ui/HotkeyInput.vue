@@ -1,6 +1,5 @@
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
-import { invoke } from '@tauri-apps/api/core'
+import { ref, computed } from 'vue'
 import { Keyboard } from 'lucide-vue-next'
 
 const props = defineProps({
@@ -22,26 +21,53 @@ const props = defineProps({
 const emit = defineEmits(['update:modelValue'])
 
 const isRecording = ref(false)
-const supportedKeys = ref([])
+const pressedModifiers = ref(new Set())
 const inputRef = ref(null)
 
-// 获取支持的按键列表
-async function loadSupportedKeys() {
-  try {
-    supportedKeys.value = await invoke('get_supported_keys')
-  } catch (error) {
-    console.error('获取支持的按键列表失败:', error)
-  }
+// 检测是否是 macOS（使用 navigator.userAgent 更加可靠）
+const isMac = /Mac|iPod|iPhone|iPad/.test(navigator.userAgent)
+
+// Code 到显示名称的映射（物理按键）
+const codeToKey = {
+  // 字母键
+  'KeyA': 'A', 'KeyB': 'B', 'KeyC': 'C', 'KeyD': 'D', 'KeyE': 'E',
+  'KeyF': 'F', 'KeyG': 'G', 'KeyH': 'H', 'KeyI': 'I', 'KeyJ': 'J',
+  'KeyK': 'K', 'KeyL': 'L', 'KeyM': 'M', 'KeyN': 'N', 'KeyO': 'O',
+  'KeyP': 'P', 'KeyQ': 'Q', 'KeyR': 'R', 'KeyS': 'S', 'KeyT': 'T',
+  'KeyU': 'U', 'KeyV': 'V', 'KeyW': 'W', 'KeyX': 'X', 'KeyY': 'Y',
+  'KeyZ': 'Z',
+  // 数字键
+  'Digit0': '0', 'Digit1': '1', 'Digit2': '2', 'Digit3': '3', 'Digit4': '4',
+  'Digit5': '5', 'Digit6': '6', 'Digit7': '7', 'Digit8': '8', 'Digit9': '9',
+  // 特殊键
+  'Space': 'Space',
+  'Enter': 'Enter', 'NumpadEnter': 'Enter',
+  'Tab': 'Tab',
+  'Escape': 'Escape', 'Backspace': 'Backspace', 'Delete': 'Delete'
+}
+
+// 修饰键 code 到显示名称的映射
+const modifierCodeToName = {
+  'AltLeft': isMac ? 'Option' : 'Alt',
+  'AltRight': isMac ? 'Option' : 'Alt',
+  'ControlLeft': 'Control',
+  'ControlRight': 'Control',
+  'MetaLeft': 'Command',
+  'MetaRight': 'Command',
+  'ShiftLeft': 'Shift',
+  'ShiftRight': 'Shift'
 }
 
 // 开始录制
 function startRecording() {
   isRecording.value = true
+  pressedModifiers.value.clear()
 }
 
 // 停止录制
 function stopRecording() {
   isRecording.value = false
+  pressedModifiers.value.clear()
 }
 
 // 处理按键按下
@@ -51,22 +77,38 @@ function handleKeyDown(e) {
   e.preventDefault()
   e.stopPropagation()
 
-  const key = e.key
+  const code = e.code
 
-  // 检查是否是支持的按键
-  const normalizedKey = supportedKeys.value.find(k => {
-    const keyLower = k.toLowerCase()
-    if (keyLower === 'option' && key === 'Alt') return true
-    if (keyLower === 'alt' && key === 'Alt') return true
-    if (keyLower === 'control' && key === 'Control') return true
-    if (keyLower === 'command' && key === 'Meta') return true
-    if (keyLower === 'shift' && key === 'Shift') return true
-    return false
-  })
+  // 检查是否是修饰键
+  if (modifierCodeToName[code]) {
+    pressedModifiers.value.add(modifierCodeToName[code])
+    return
+  }
 
-  if (normalizedKey) {
-    emit('update:modelValue', normalizedKey)
-    // 不停止录制，允许用户继续按其他键切换
+  // 检查是否是有效的触发键
+  const triggerKey = codeToKey[code]
+  if (triggerKey) {
+    const modifiers = Array.from(pressedModifiers.value).sort()
+
+    if (modifiers.length > 0) {
+      // 组合键格式：Modifier+Trigger
+      const hotkey = modifiers.join('+') + '+' + triggerKey
+      emit('update:modelValue', hotkey)
+    } else {
+      // 没有修饰键，只使用触发键
+      emit('update:modelValue', triggerKey)
+    }
+    stopRecording()
+  }
+}
+
+// 处理按键释放
+function handleKeyUp(e) {
+  if (!isRecording.value) return
+
+  const code = e.code
+  if (modifierCodeToName[code]) {
+    pressedModifiers.value.delete(modifierCodeToName[code])
   }
 }
 
@@ -76,6 +118,15 @@ function handleBlur() {
     stopRecording()
   }
 }
+
+// 格式化显示的快捷键
+const displayHotkey = computed(() => {
+  if (isRecording.value && pressedModifiers.value.size > 0) {
+    const keys = Array.from(pressedModifiers.value)
+    return keys.join('+') + '+...'
+  }
+  return props.modelValue || props.placeholder
+})
 
 // 计算样式
 const sizeClasses = computed(() => {
@@ -95,25 +146,13 @@ const iconSize = computed(() => {
   }
   return sizes[props.size] || 16
 })
-
-onMounted(() => {
-  loadSupportedKeys()
-})
-
-// 监听录制状态
-watch(isRecording, (newVal) => {
-  if (newVal) {
-    // 聚焦输入框
-    inputRef.value?.focus()
-  }
-})
 </script>
 
 <template>
   <div class="relative">
     <input
       ref="inputRef"
-      :value="modelValue"
+      :value="displayHotkey"
       :placeholder="placeholder"
       :class="[
         'input input-bordered w-full flex items-center gap-2 cursor-pointer my-2',
@@ -124,17 +163,19 @@ watch(isRecording, (newVal) => {
       @focus="startRecording"
       @blur="handleBlur"
       @keydown="handleKeyDown"
+      @keyup="handleKeyUp"
     />
     <Keyboard
       :size="iconSize"
       class="absolute right-3 top-1/2 -translate-y-1/2 text-base-content/40 pointer-events-none"
     />
-    <!-- 录制状态指示 -->
+    <!-- 录制状态提示 -->
     <div
       v-if="isRecording"
       class="absolute inset-y-0 left-0 right-0 flex items-center justify-center px-3 text-primary font-medium"
     >
-      {{ modelValue || '请按键' }}
+      <span v-if="pressedModifiers.size === 0">请按下快捷键组合...</span>
+      <span v-else>{{ Array.from(pressedModifiers).join('+') }}+按下触发键</span>
     </div>
   </div>
 </template>
