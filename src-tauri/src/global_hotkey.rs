@@ -123,13 +123,6 @@ pub fn init_hotkey_listener(app_handle: AppHandle) {
     });
 }
 
-/// 处理按键按下事件（已弃用，保留用于兼容）
-#[tauri::command]
-pub fn handle_key_press_event(_key_name: String) -> Result<bool, String> {
-    // 不再需要，因为使用全局快捷键
-    Ok(false)
-}
-
 /// 获取支持的按键列表
 #[tauri::command]
 pub fn get_supported_keys() -> Vec<String> {

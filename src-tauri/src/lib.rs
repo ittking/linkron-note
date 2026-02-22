@@ -78,8 +78,7 @@ pub fn run() {
             git_sync::get_git_status,
             global_hotkey::register_hotkey,
             global_hotkey::unregister_hotkey,
-            global_hotkey::get_supported_keys,
-            global_hotkey::handle_key_press_event
+            global_hotkey::get_supported_keys
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
