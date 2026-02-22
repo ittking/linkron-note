@@ -66,6 +66,13 @@ export function useSync() {
       return
     }
 
+    // 获取自动同步延时配置（0 表示关闭自动同步），默认 5000ms（5秒）
+    const autoSyncDelay = await settingStore.get('autoSyncDelay', 5000)
+    if (autoSyncDelay === 0) {
+      // 自动同步已关闭
+      return
+    }
+
     // 标记有待处理的同步
     syncPending = true
 
@@ -74,7 +81,7 @@ export function useSync() {
       clearTimeout(syncTimer)
     }
 
-    // 延迟 3 秒后执行同步（防抖）
+    // 延迟后执行同步（防抖）
     syncTimer = setTimeout(async () => {
       if (!syncPending || isSyncing.value) {
         return
@@ -82,7 +89,7 @@ export function useSync() {
 
       syncPending = false
       await performSync()
-    }, 3000)
+    }, autoSyncDelay)
   }
 
   /**

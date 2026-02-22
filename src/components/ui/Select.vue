@@ -41,7 +41,7 @@ const dropdownRef = ref(null)
 const dropdownPosition = ref({ top: 0, left: 0, width: 0, showAbove: false, triggerTop: 0, triggerBottom: 0, dropdownHeight: 0 })
 
 const selectedOption = computed(() => {
-  if (!props.modelValue) return null
+  if (props.modelValue === null || props.modelValue === undefined) return null
   return props.options.find(option => {
     const value = option[props.optionValue]
     return value === props.modelValue

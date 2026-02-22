@@ -3,6 +3,7 @@ import { ref, computed, watch } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
 import { X, Tag } from 'lucide-vue-next'
 import { useWorkDirectory } from '@/composables/useWorkDirectory'
+import { useSync } from '@/composables/useSync'
 import TagTreeNode from './TagTreeNode.vue'
 import NoteHeatmap from './NoteHeatmap.vue'
 import Statistics from './Statistics.vue'
@@ -18,6 +19,7 @@ const emit = defineEmits(['close', 'select-tag'])
 
 // 使用 useWorkDirectory composable
 const { getWorkDirectory } = useWorkDirectory('setting')
+const { triggerSync } = useSync()
 
 // 标签列表
 const tags = ref([])
@@ -112,6 +114,8 @@ async function deleteTag(tagId, event) {
     if (statisticsRef.value && statisticsRef.value.refresh) {
       statisticsRef.value.refresh()
     }
+    // 触发自动同步
+    triggerSync()
   } catch (error) {
     console.error('删除标签失败:', error)
   }
@@ -124,6 +128,8 @@ async function togglePin(tagId, event) {
     const workDirectory = await getWorkDirectory()
     await invoke('pin_tag', { id: tagId, workDirectory })
     await loadTags()
+    // 触发自动同步
+    triggerSync()
   } catch (error) {
     console.error('置顶标签失败:', error)
   }

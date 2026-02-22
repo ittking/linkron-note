@@ -7,6 +7,7 @@ import { useToast } from '../composables/useToast'
 import { useSync } from '../composables/useSync'
 import Button from './ui/Button.vue'
 import Input from './ui/Input.vue'
+import Select from './ui/Select.vue'
 
 const settingStore = useSettingStore()
 const { showToast } = useToast()
@@ -81,6 +82,17 @@ const isConfigured = ref(false)
 const showConfig = ref(false)
 const connectionStatus = ref('')
 const connectionSuccess = ref(false)
+const autoSyncDelay = ref(5000)
+
+// 自动同步延时选项
+const autoSyncOptions = [
+  { label: '关闭自动同步', value: 0 },
+  { label: '3 秒', value: 3000 },
+  { label: '5 秒', value: 5000 },
+  { label: '10 秒', value: 10000 },
+  { label: '30 秒', value: 30000 },
+  { label: '60 秒', value: 60000 }
+]
 
 // 加载已保存的同步配置
 async function loadSyncConfig() {
@@ -90,6 +102,10 @@ async function loadSyncConfig() {
       syncConfig.value = config
       isConfigured.value = true
     }
+    // 加载自动同步延时配置，默认 5000（5秒）
+    // 确保转换为数字类型
+    const delay = Number(await settingStore.get('autoSyncDelay', 5000))
+    autoSyncDelay.value = delay
   } catch (error) {
     console.error('Failed to load sync config:', error)
   }
@@ -99,6 +115,7 @@ async function loadSyncConfig() {
 async function saveConfig() {
   try {
     await settingStore.set('syncConfig', syncConfig.value)
+    await settingStore.set('autoSyncDelay', autoSyncDelay.value)
     isConfigured.value = true
     showConfig.value = false
     showToast('配置保存成功', 'success')
@@ -296,6 +313,19 @@ onMounted(() => {
               placeholder="main"
               size="sm"
             />
+          </div>
+
+          <!-- 自动同步延时 -->
+          <div>
+            <label class="text-xs text-base-content/60 mb-1.5 block">自动同步延时</label>
+            <Select
+              v-model="autoSyncDelay"
+              :options="autoSyncOptions"
+              size="sm"
+            />
+            <p class="text-xs text-base-content/40 mt-1">
+              数据修改后延迟多久自动同步到云端
+            </p>
           </div>
 
           <!-- 连接测试状态 -->
