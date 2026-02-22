@@ -374,7 +374,7 @@ defineExpose({
 
 <template>
   <div
-    class="note-editor relative bg-base-100 border border-primary rounded-xl p-4 shadow-sm transition-all duration-200 focus-within:shadow-md focus-within:border-primary/80">
+    class="note-editor relative bg-base-100 border border-primary rounded-xl px-4 py-2 shadow-sm transition-all duration-200 focus-within:shadow-md focus-within:border-primary/80">
     <!-- 编辑器内容区域 -->
     <EditorContent class="transition-all duration-200 overflow-y-auto max-h-[400px] no-scrollbar" :editor="editor"
       :class="{
