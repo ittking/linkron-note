@@ -119,15 +119,21 @@ async function initGlobalHotkey() {
 // 切换窗口显示/隐藏
 async function toggleWindowVisibility() {
   try {
+    const isVisible = await appWindow.isVisible()
     const isMinimized = await appWindow.isMinimized()
 
-    if (isMinimized) {
-      // 如果窗口已最小化，恢复窗口
-      await appWindow.unminimize()
+    if (!isVisible || isMinimized) {
+      // 如果窗口不可见或已最小化，显示并恢复窗口
+      if (!isVisible) {
+        await appWindow.show()
+      }
+      if (isMinimized) {
+        await appWindow.unminimize()
+      }
       await appWindow.setFocus()
     } else {
-      // 如果窗口未最小化，最小化窗口
-      await appWindow.minimize()
+      // 如果窗口可见，隐藏窗口
+      await appWindow.hide()
     }
   } catch (error) {
     console.error('Failed to toggle window visibility:', error)
