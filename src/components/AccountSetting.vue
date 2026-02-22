@@ -1,10 +1,11 @@
 <script setup>
-import { ref, onMounted, computed } from 'vue'
-import { User, LogOut, Crown, Calendar } from 'lucide-vue-next'
+import { ref, onMounted, onUnmounted, computed } from 'vue'
+import { User, LogOut, Crown, Calendar, Clock, Cloud } from 'lucide-vue-next'
 import { invoke } from '@tauri-apps/api/core'
 import { useSettingStore } from '../store/settingStore'
 import Button from './ui/Button.vue'
 import Input from './ui/Input.vue'
+import dayjs from 'dayjs'
 
 const settingStore = useSettingStore()
 
@@ -21,7 +22,8 @@ const syncConfig = ref({
   platform: 'gitee',
   token: '',
   repoUrl: '',
-  branch: 'main'
+  branch: 'main',
+  autoSyncDelay: 3000 // 自动同步延迟（毫秒），默认3秒
 })
 
 // 平台选项
@@ -34,19 +36,39 @@ const platforms = [
 // 状态
 const isConfigured = ref(false)
 const isTesting = ref(false)
-const testResult = ref(null)
 const isSyncing = ref(false)
-const syncDirection = ref('push')
+const testResult = ref(null)
 const showSyncConfig = ref(false)
+const lastSyncTime = ref(null)
+const syncStatus = ref(null)
+
+// 自动同步定时器
+let autoSyncTimer = null
+let autoSyncTimeout = null
 
 // 工作目录
 const workDirectory = ref('')
+
+// 预设的自动同步延迟选项
+const autoSyncDelayOptions = [
+  { label: '不自动同步', value: 0 },
+  { label: '2秒', value: 2000 },
+  { label: '3秒', value: 3000 },
+  { label: '5秒', value: 5000 },
+  { label: '10秒', value: 10000 }
+]
 
 // 初始化
 onMounted(async () => {
   await loadUserInfo()
   await loadWorkDirectory()
   await loadSyncConfig()
+  await loadLastSyncTime()
+})
+
+// 组件卸载时清除定时器
+onUnmounted(() => {
+  clearAutoSync()
 })
 
 // 格式化登录时间
@@ -60,6 +82,12 @@ const formattedLoginTime = computed(() => {
     hour: '2-digit',
     minute: '2-digit'
   })
+})
+
+// 格式化上次同步时间
+const formattedLastSyncTime = computed(() => {
+  if (!lastSyncTime.value) return '从未同步'
+  return dayjs(lastSyncTime.value).format('YYYY-MM-DD HH:mm:ss')
 })
 
 // 加载用户信息
@@ -102,11 +130,32 @@ async function loadSyncConfig() {
   try {
     const config = await invoke('get_sync_config', { workDirectory: workDirectory.value })
     if (config) {
-      syncConfig.value = config
+      syncConfig.value = {
+        ...syncConfig.value,
+        ...config,
+        autoSyncDelay: config.autoSyncDelay || 3000
+      }
       isConfigured.value = true
+
+      // 如果配置了自动同步，启动自动同步
+      if (syncConfig.value.autoSyncDelay > 0) {
+        startAutoSync()
+      }
     }
   } catch (error) {
     console.error('Failed to load sync config:', error)
+  }
+}
+
+// 加载上次同步时间
+async function loadLastSyncTime() {
+  try {
+    const savedTime = await settingStore.get('lastSyncTime', null)
+    if (savedTime) {
+      lastSyncTime.value = savedTime
+    }
+  } catch (error) {
+    console.error('Failed to load last sync time:', error)
   }
 }
 
@@ -121,7 +170,11 @@ async function handleLogout() {
 // 保存同步配置
 async function saveSyncConfig() {
   if (!syncConfig.value.token || !syncConfig.value.repoUrl) {
-    alert('请填写完整的配置信息')
+    syncStatus.value = {
+      type: 'error',
+      message: '请填写完整的配置信息'
+    }
+    setTimeout(() => { syncStatus.value = null }, 3000)
     return
   }
 
@@ -131,17 +184,35 @@ async function saveSyncConfig() {
       workDirectory: workDirectory.value
     })
     isConfigured.value = true
-    alert('配置已保存')
+
+    // 更新自动同步设置
+    clearAutoSync()
+    if (syncConfig.value.autoSyncDelay > 0) {
+      startAutoSync()
+    }
+
+    syncStatus.value = {
+      type: 'success',
+      message: '配置已保存'
+    }
+    setTimeout(() => { syncStatus.value = null }, 2000)
   } catch (error) {
     console.error('Failed to save config:', error)
-    alert('保存失败: ' + error)
+    syncStatus.value = {
+      type: 'error',
+      message: '保存失败: ' + error
+    }
+    setTimeout(() => { syncStatus.value = null }, 3000)
   }
 }
 
 // 检测连接
 async function testConnection() {
   if (!syncConfig.value.token || !syncConfig.value.repoUrl) {
-    alert('请先填写 Token 和仓库地址')
+    testResult.value = {
+      success: false,
+      message: '请先填写 Token 和仓库地址'
+    }
     return
   }
 
@@ -165,55 +236,151 @@ async function testConnection() {
   }
 }
 
-// 同步到远程
-async function syncToRemote() {
+// 立即同步（推送）
+async function syncNow() {
   if (!isConfigured.value) {
-    alert('请先配置并保存同步信息')
+    syncStatus.value = {
+      type: 'error',
+      message: '请先配置并保存同步信息'
+    }
+    setTimeout(() => { syncStatus.value = null }, 3000)
     return
   }
 
   isSyncing.value = true
-  syncDirection.value = 'push'
 
   try {
     const result = await invoke('sync_to_remote', {
       config: syncConfig.value,
       workDirectory: workDirectory.value
     })
-    alert(result.message || '同步成功')
+
+    // 更新上次同步时间
+    lastSyncTime.value = new Date().toISOString()
+    await settingStore.set('lastSyncTime', lastSyncTime.value)
+
+    // 重启自动同步计时器
+    if (syncConfig.value.autoSyncDelay > 0) {
+      restartAutoSync()
+    }
+
+    syncStatus.value = {
+      type: 'success',
+      message: result.message || '同步成功'
+    }
+    setTimeout(() => { syncStatus.value = null }, 2000)
   } catch (error) {
     console.error('Failed to sync:', error)
-    alert('同步失败: ' + error)
+    syncStatus.value = {
+      type: 'error',
+      message: '同步失败: ' + error
+    }
+    setTimeout(() => { syncStatus.value = null }, 3000)
   } finally {
     isSyncing.value = false
   }
 }
 
-// 从远程同步
-async function syncFromRemote() {
+// 覆盖本地（拉取）
+async function overwriteLocal() {
   if (!isConfigured.value) {
-    alert('请先配置并保存同步信息')
+    syncStatus.value = {
+      type: 'error',
+      message: '请先配置并保存同步信息'
+    }
+    setTimeout(() => { syncStatus.value = null }, 3000)
     return
   }
 
-  if (!confirm('确定要从远程拉取数据？这可能会覆盖本地更改。')) {
+  if (!confirm('确定要从远程拉取数据？这将会覆盖本地所有更改，此操作不可撤销！')) {
     return
   }
 
   isSyncing.value = true
-  syncDirection.value = 'pull'
 
   try {
     const result = await invoke('sync_from_remote', {
       config: syncConfig.value,
       workDirectory: workDirectory.value
     })
-    alert(result.message || '拉取成功')
+
+    // 更新上次同步时间
+    lastSyncTime.value = new Date().toISOString()
+    await settingStore.set('lastSyncTime', lastSyncTime.value)
+
+    // 重启自动同步计时器
+    if (syncConfig.value.autoSyncDelay > 0) {
+      restartAutoSync()
+    }
+
+    syncStatus.value = {
+      type: 'success',
+      message: result.message || '已覆盖本地数据'
+    }
+    setTimeout(() => { syncStatus.value = null }, 2000)
   } catch (error) {
     console.error('Failed to sync:', error)
-    alert('同步失败: ' + error)
+    syncStatus.value = {
+      type: 'error',
+      message: '同步失败: ' + error
+    }
+    setTimeout(() => { syncStatus.value = null }, 3000)
   } finally {
     isSyncing.value = false
+  }
+}
+
+// 启动自动同步
+function startAutoSync() {
+  if (autoSyncTimer) return // 避免重复启动
+
+  const delay = syncConfig.value.autoSyncDelay
+  if (delay <= 0) return
+
+  // 设置延迟后自动同步
+  autoSyncTimeout = setTimeout(() => {
+    performAutoSync()
+  }, delay)
+}
+
+// 清除自动同步
+function clearAutoSync() {
+  if (autoSyncTimeout) {
+    clearTimeout(autoSyncTimeout)
+    autoSyncTimeout = null
+  }
+  if (autoSyncTimer) {
+    clearTimeout(autoSyncTimer)
+    autoSyncTimer = null
+  }
+}
+
+// 重启自动同步
+function restartAutoSync() {
+  clearAutoSync()
+  startAutoSync()
+}
+
+// 执行自动同步（静默同步，不显示提示）
+async function performAutoSync() {
+  if (!isConfigured.value) return
+
+  try {
+    await invoke('sync_to_remote', {
+      config: syncConfig.value,
+      workDirectory: workDirectory.value
+    })
+
+    // 更新上次同步时间
+    lastSyncTime.value = new Date().toISOString()
+    await settingStore.set('lastSyncTime', lastSyncTime.value)
+
+    // 继续下一次自动同步
+    startAutoSync()
+  } catch (error) {
+    console.error('Auto sync failed:', error)
+    // 自动同步失败后，继续尝试下一次
+    startAutoSync()
   }
 }
 
@@ -295,42 +462,57 @@ function onPlatformChange() {
       </div>
     </div>
 
-    <!-- 同步配置卡片 -->
+    <!-- 云同步卡片 -->
     <div class="card bg-base-200 shadow-sm rounded-2xl overflow-hidden">
       <div class="card-body p-4 space-y-4">
-        <h2 class="card-title text-sm font-medium flex items-center gap-2">
-          <Calendar :size="16" />
-          Git 同步
-        </h2>
+        <!-- 标题和上次同步时间 -->
+        <div class="flex items-center justify-between">
+          <h2 class="card-title text-sm font-medium flex items-center gap-2">
+            <Cloud :size="16" />
+            云同步
+          </h2>
+          <div v-if="lastSyncTime" class="flex items-center gap-1.5 text-xs text-base-content/50">
+            <Clock :size="12" />
+            <span>{{ formattedLastSyncTime }}</span>
+          </div>
+        </div>
 
         <!-- 同步操作按钮 -->
         <div class="flex gap-2">
           <Button
             variant="primary"
             size="sm"
-            @click="syncToRemote"
+            @click="syncNow"
             :disabled="isSyncing || !isConfigured"
             class="flex-1"
           >
-            推送
+            {{ isSyncing ? '同步中...' : '立即同步' }}
           </Button>
           <Button
-            variant="primary"
+            variant="ghost"
             size="sm"
-            @click="syncFromRemote"
+            @click="overwriteLocal"
             :disabled="isSyncing || !isConfigured"
             class="flex-1"
           >
-            拉取
+            覆盖本地
           </Button>
           <Button
             variant="ghost"
             size="sm"
             @click="showSyncConfig = !showSyncConfig"
-            class="flex-1"
           >
-            {{ showSyncConfig ? '收起' : '配置' }}
+            <Cloud :size="14" />
           </Button>
+        </div>
+
+        <!-- 状态提示 -->
+        <div
+          v-if="syncStatus"
+          class="flex items-center gap-2 p-2.5 rounded-lg text-xs"
+          :class="syncStatus.type === 'success' ? 'bg-success/10 text-success' : 'bg-error/10 text-error'"
+        >
+          {{ syncStatus.message }}
         </div>
 
         <!-- 配置表单 -->
@@ -392,6 +574,31 @@ function onPlatformChange() {
               placeholder="main"
               size="sm"
             />
+          </div>
+
+          <!-- 自动同步延迟 -->
+          <div class="form-control">
+            <label class="label">
+              <span class="label-text text-xs">更新后自动同步</span>
+            </label>
+            <div class="flex gap-2">
+              <button
+                v-for="option in autoSyncDelayOptions"
+                :key="option.value"
+                @click="syncConfig.autoSyncDelay = option.value"
+                class="flex-1 px-3 py-2 rounded-lg text-xs font-medium transition-colors"
+                :class="syncConfig.autoSyncDelay === option.value
+                  ? 'bg-primary text-primary-content'
+                  : 'bg-base-100 text-base-content/60 hover:bg-base-100/80'"
+              >
+                {{ option.label }}
+              </button>
+            </div>
+            <label class="label">
+              <span class="label-text-alt text-[11px] text-base-content/40">
+                数据更新后自动同步到云端
+              </span>
+            </label>
           </div>
 
           <!-- 操作按钮 -->

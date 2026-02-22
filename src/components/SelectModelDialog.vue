@@ -29,6 +29,7 @@ const searchQuery = ref('')
 const customModel = ref('')
 const tempSelectedModel = ref('')
 const isTesting = ref(false)
+const isLoadingModels = ref(false)
 
 const filteredModels = computed(() => {
   if (!searchQuery.value) return props.models
@@ -60,8 +61,27 @@ function handleConfirm() {
   }
 }
 
-function handleLoadModels() {
-  emit('load-models', props.provider)
+async function handleLoadModels() {
+  if (!props.provider) {
+    showToast('请先配置模型供应商', 'error')
+    return
+  }
+
+  isLoadingModels.value = true
+
+  try {
+    // 等待父组件加载模型列表
+    // 使用 Promise 等待一小段时间让父组件处理
+    emit('load-models', props.provider)
+
+    // 等待父组件处理加载（通过监听 props.models 的变化）
+    await new Promise(resolve => setTimeout(resolve, 500))
+  } catch (error) {
+    console.error('Failed to load models:', error)
+    showToast('加载模型列表失败', 'error')
+  } finally {
+    isLoadingModels.value = false
+  }
 }
 
 function handleAddCustom() {
@@ -155,12 +175,16 @@ watch(() => props.show, (newVal) => {
                 class="pl-7"
               />
             </div>
-            <Button 
-              variant="ghost" 
+            <Button
+              variant="ghost"
               size="sm"
               @click="handleLoadModels"
+              :disabled="isLoadingModels"
             >
-              <RefreshCw :size="14" />
+              <RefreshCw
+                :size="14"
+                :class="{ 'animate-spin': isLoadingModels }"
+              />
             </Button>
           </div>
 
