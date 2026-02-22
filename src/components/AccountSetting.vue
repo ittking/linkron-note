@@ -1,12 +1,14 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { User, LogOut, Crown, Calendar, Cloud, CloudOff, Settings, Check } from 'lucide-vue-next'
+import { User, LogOut, Crown, Calendar, Cloud, CloudOff, Settings, Check, ChevronDown } from 'lucide-vue-next'
 import { invoke } from '@tauri-apps/api/core'
 import { useSettingStore } from '../store/settingStore'
+import { useToast } from '../composables/useToast'
 import Button from './ui/Button.vue'
 import Input from './ui/Input.vue'
 
 const settingStore = useSettingStore()
+const { showToast } = useToast()
 
 // 用户信息
 const userInfo = ref({
@@ -82,8 +84,10 @@ const connectionSuccess = ref(false)
 
 // 格式化同步时间
 const formattedLastSyncTime = computed(() => {
-  if (!lastSyncTime.value) return ''
+  if (!lastSyncTime.value || lastSyncTime.value === 0) return ''
   const date = new Date(lastSyncTime.value * 1000)
+  // 检查日期是否有效
+  if (isNaN(date.getTime())) return ''
   return date.toLocaleString('zh-CN', {
     year: 'numeric',
     month: '2-digit',
@@ -96,7 +100,7 @@ const formattedLastSyncTime = computed(() => {
 // 加载已保存的同步配置
 async function loadSyncConfig() {
   try {
-    const config = await invoke('get_sync_config')
+    const config = await settingStore.get('syncConfig', null)
     if (config) {
       syncConfig.value = config
       isConfigured.value = true
@@ -123,12 +127,12 @@ async function loadSyncTime() {
 // 保存同步配置
 async function saveConfig() {
   try {
-    await invoke('save_sync_config', { config: syncConfig.value })
+    await settingStore.set('syncConfig', syncConfig.value)
     isConfigured.value = true
     showConfig.value = false
-    alert('配置保存成功')
+    showToast('配置保存成功', 'success')
   } catch (error) {
-    alert('保存配置失败: ' + error)
+    showToast('保存配置失败: ' + error, 'error')
   }
 }
 
@@ -155,7 +159,7 @@ async function testConnection() {
 // 推送到云端（先强制拉取，再推送）
 async function syncToRemote() {
   if (!isConfigured.value) {
-    alert('请先配置云同步')
+    showToast('请先配置云同步', 'error')
     return
   }
 
@@ -170,13 +174,12 @@ async function syncToRemote() {
       // 更新同步时间
       lastSyncTime.value = Math.floor(Date.now() / 1000)
       await settingStore.set('lastSyncTime', lastSyncTime.value)
-      // 刷新页面以重新加载数据
-      setTimeout(() => window.location.reload(), 500)
+      showToast('同步成功', 'success')
     } else {
-      alert('同步失败: ' + result.message)
+      showToast('同步失败: ' + result.message, 'error')
     }
   } catch (error) {
-    alert('同步失败: ' + error)
+    showToast('同步失败: ' + error, 'error')
   } finally {
     isSyncing.value = false
   }
@@ -282,7 +285,7 @@ onMounted(() => {
         </div>
 
         <!-- 操作按钮 -->
-        <div class="flex gap-2">
+        <div class="flex justify-between gap-2">
           <Button
             @click="syncToRemote"
             :disabled="isSyncing || !isConfigured"
@@ -298,8 +301,8 @@ onMounted(() => {
             variant="ghost"
             size="sm"
           >
-            <Settings :size="14" />
-            {{ showConfig ? '收起配置' : '配置' }}
+            <ChevronDown :size="14" :class="{ 'rotate-180': showConfig }" />
+            {{ showConfig ? '收起' : '配置' }}
           </Button>
         </div>
 
@@ -340,9 +343,6 @@ onMounted(() => {
               placeholder="main"
               size="sm"
             />
-            <p class="text-xs text-base-content/40 mt-1">
-              新仓库默认为 main，老仓库可能是 master
-            </p>
           </div>
 
           <!-- 连接测试状态 -->

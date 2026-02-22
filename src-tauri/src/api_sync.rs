@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::process::Command;
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -177,43 +177,6 @@ fn build_git_auth_url(repo_url: &str, token: &str) -> Result<String, String> {
     }
 }
 
-/// 获取已保存的同步配置
-#[tauri::command]
-pub async fn get_sync_config(
-    work_directory: Option<String>,
-) -> Result<Option<ApiSyncConfig>, String> {
-    let base_dir = get_base_directory(&work_directory)?;
-    let config_path = base_dir.join("sync_config.json");
-
-    if !config_path.exists() {
-        return Ok(None);
-    }
-
-    let content =
-        fs::read_to_string(&config_path).map_err(|e| format!("读取配置文件失败: {}", e))?;
-
-    let config: ApiSyncConfig =
-        serde_json::from_str(&content).map_err(|e| format!("解析配置文件失败: {}", e))?;
-
-    Ok(Some(config))
-}
-
-/// 保存同步配置
-#[tauri::command]
-pub async fn save_sync_config(
-    config: ApiSyncConfig,
-    work_directory: Option<String>,
-) -> Result<(), String> {
-    let base_dir = get_base_directory(&work_directory)?;
-    let config_path = base_dir.join("sync_config.json");
-
-    let content =
-        serde_json::to_string_pretty(&config).map_err(|e| format!("序列化配置失败: {}", e))?;
-
-    fs::write(&config_path, content).map_err(|e| format!("写入配置文件失败: {}", e))?;
-
-    Ok(())
-}
 
 /// 推送到云端
 #[tauri::command]
@@ -432,9 +395,6 @@ pub async fn sync_to_remote(
 
     eprintln!("[DEBUG] 推送成功");
 
-    // 保存同步时间
-    save_sync_time(&base_dir)?;
-
     Ok(SyncResult {
         success: true,
         message: "同步成功".to_string(),
@@ -559,9 +519,6 @@ pub async fn sync_from_remote(
         eprintln!("[DEBUG] 拉取成功");
     }
 
-    // 保存同步时间
-    save_sync_time(&base_dir)?;
-
     Ok(SyncResult {
         success: true,
         message: "同步成功".to_string(),
@@ -572,21 +529,4 @@ pub async fn sync_from_remote(
             total: 1,
         }),
     })
-}
-
-/// 保存同步时间
-fn save_sync_time(base_dir: &Path) -> Result<(), String> {
-    let sync_time_path = base_dir.join("sync_time.json");
-
-    let now = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map_err(|e| format!("获取系统时间失败: {}", e))?
-        .as_secs();
-
-    let content = serde_json::json!({ "last_sync": now }).to_string();
-
-    fs::write(&sync_time_path, content)
-        .map_err(|e| format!("写入同步时间失败: {}", e))?;
-
-    Ok(())
 }

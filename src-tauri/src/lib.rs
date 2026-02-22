@@ -78,9 +78,7 @@ pub fn run() {
             api_sync::check_git_installed,
             api_sync::validate_sync_config,
             api_sync::sync_to_remote,
-            api_sync::sync_from_remote,
-            api_sync::get_sync_config,
-            api_sync::save_sync_config
+            api_sync::sync_from_remote
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
