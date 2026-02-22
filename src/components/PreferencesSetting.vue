@@ -3,10 +3,11 @@ import { ref, onMounted, watch } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
 import { open } from '@tauri-apps/plugin-dialog'
 import { useSettingStore } from '../store/settingStore'
-import { Power, Folder, Image, Sparkles } from 'lucide-vue-next'
+import { Power, Folder, Image, Sparkles, Keyboard } from 'lucide-vue-next'
 import Toggle from './ui/Toggle.vue'
 import Input from './ui/Input.vue'
 import Button from './ui/Button.vue'
+import HotkeyInput from './ui/HotkeyInput.vue'
 
 const settingStore = useSettingStore()
 
@@ -23,12 +24,17 @@ const workDirectoryStatus = ref(null)
 // AI 介入优化
 const aiOptimizationEnabled = ref(false)
 
+// 全局快捷键
+const globalHotkey = ref('')
+const globalHotkeyStatus = ref(null)
+
 // 初始化
 onMounted(async () => {
   await loadAutoStartStatus()
   await loadWorkDirectory()
   await loadNoteImageMaxCount()
   await loadAiOptimizationStatus()
+  await loadGlobalHotkey()
 })
 
 // 加载开机启动状态
@@ -158,6 +164,57 @@ watch(aiOptimizationEnabled, async (newValue) => {
   }
 })
 
+// 加载全局快捷键
+async function loadGlobalHotkey() {
+  try {
+    const savedValue = await settingStore.get('globalHotkey', '')
+    if (!savedValue) {
+      // 如果没有保存的值，获取默认值
+      const os = await invoke('get_os')
+      globalHotkey.value = os === 'macos' ? 'Option' : 'Alt'
+    } else {
+      globalHotkey.value = savedValue
+    }
+  } catch (error) {
+    console.error('Failed to load global hotkey:', error)
+  }
+}
+
+// 保存全局快捷键
+async function saveGlobalHotkey() {
+  globalHotkeyStatus.value = null
+
+  try {
+    if (!globalHotkey.value.trim()) {
+      globalHotkeyStatus.value = {
+        type: 'error',
+        message: '快捷键不能为空'
+      }
+      return
+    }
+
+    // 先注销旧快捷键
+    await invoke('unregister_hotkey')
+
+    // 注册新快捷键
+    await invoke('register_hotkey', { keyName: globalHotkey.value.trim() })
+
+    // 保存到设置
+    await settingStore.set('globalHotkey', globalHotkey.value.trim())
+
+    globalHotkeyStatus.value = {
+      type: 'success',
+      message: '快捷键已更新'
+    }
+  } catch (error) {
+    console.error('Failed to save global hotkey:', error)
+    globalHotkeyStatus.value = {
+      type: 'error',
+      message: '保存失败: ' + error.message
+    }
+  }
+}
+
 </script>
 
 <template>
@@ -245,6 +302,37 @@ watch(aiOptimizationEnabled, async (newValue) => {
           <label class="label">
             <span class="label-text-alt text-[11px] text-base-content/40">
               启用后，拖入链接会自动匹配提示词规则，调用 AI 生成优化后的文章
+            </span>
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <!-- 全局快捷键 -->
+    <div class="card bg-base-200 shadow-sm">
+      <div class="card-body p-4">
+        <h2 class="card-title text-sm font-medium">
+          <Keyboard :size="16" />
+          全局快捷键
+        </h2>
+        <div class="space-y-3">
+          <div class="form-control">
+            <label class="label">
+              <span class="label-text text-xs">显示/隐藏窗口快捷键</span>
+            </label>
+            <HotkeyInput v-model="globalHotkey" placeholder="点击输入快捷键" size="sm" />
+          </div>
+          <div class="flex gap-2">
+            <Button variant="primary" size="sm" block @click="saveGlobalHotkey">
+              保存快捷键
+            </Button>
+          </div>
+          <div v-if="globalHotkeyStatus" :class="['text-xs', globalHotkeyStatus.type === 'success' ? 'text-success' : 'text-error']">
+            {{ globalHotkeyStatus.message }}
+          </div>
+          <label class="label">
+            <span class="label-text-alt text-[11px] text-base-content/40">
+              按下配置的按键 + 空格键可切换窗口显示/隐藏状态
             </span>
           </label>
         </div>

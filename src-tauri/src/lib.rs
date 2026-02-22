@@ -5,6 +5,7 @@ mod database;
 mod file_reader;
 mod filesystem;
 mod git_sync;
+mod global_hotkey;
 mod model_provider;
 mod note;
 mod protocol;
@@ -21,7 +22,11 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_notification::init())
         .register_uri_scheme_protocol("linkron", protocol::iterm_protocol_handler)
-        .setup(|app| window_manager::setup_window_manager(app))
+        .setup(|app| {
+            window_manager::setup_window_manager(app)?;
+            global_hotkey::init_hotkey_listener(app.handle().clone());
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
             autostart::set_autostart,
             autostart::is_autostart_enabled,
@@ -70,7 +75,11 @@ pub fn run() {
             git_sync::sync_from_remote,
             git_sync::get_sync_config,
             git_sync::save_sync_config,
-            git_sync::get_git_status
+            git_sync::get_git_status,
+            global_hotkey::register_hotkey,
+            global_hotkey::unregister_hotkey,
+            global_hotkey::get_supported_keys,
+            global_hotkey::handle_key_press_event
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -1,12 +1,14 @@
 <script setup>
 import { onMounted, onUnmounted, ref } from 'vue'
 import { getCurrentWindow } from '@tauri-apps/api/window'
+import { listen } from '@tauri-apps/api/event'
 import { useRouter, useRoute } from 'vue-router'
 import { BookOpen, Settings, CheckSquare, Minus, Maximize2, Minimize2 } from 'lucide-vue-next'
 import { useSettingStore } from './store/settingStore'
 import { useNoteStore } from './store/noteStore'
 import { useWindowControl } from './composables/useWindowControl'
 import { useToast } from './composables/useToast'
+import { invoke } from '@tauri-apps/api/core'
 
 const router = useRouter()
 const route = useRoute()
@@ -15,6 +17,9 @@ const noteStore = useNoteStore()
 const appWindow = getCurrentWindow()
 const { isFullscreen, isMaximized, toggleFullscreen, maximizeWindow } = useWindowControl()
 const { toastVisible, toastMessage, toastType } = useToast()
+
+// 全局快捷键相关
+let hotkeyUnlisten = null
 
 const tabs = [
   { name: '笔记', path: '/note', icon: BookOpen },
@@ -81,6 +86,58 @@ onMounted(async () => {
     } catch (error) {
       console.error('Failed to init config:', error)
     }
+
+    // 初始化全局快捷键
+    await initGlobalHotkey()
+  }
+})
+
+// 初始化全局快捷键
+async function initGlobalHotkey() {
+  try {
+    // 获取保存的快捷键或默认值
+    const savedHotkey = await settingStore.get('globalHotkey', '')
+    let hotkey = savedHotkey
+
+    if (!hotkey) {
+      const os = await invoke('get_os')
+      hotkey = os === 'macos' ? 'Option' : 'Alt'
+    }
+
+    // 注册快捷键
+    await invoke('register_hotkey', { keyName: hotkey })
+
+    // 监听快捷键事件
+    hotkeyUnlisten = await listen('global-hotkey-triggered', () => {
+      toggleWindowVisibility()
+    })
+  } catch (error) {
+    console.error('Failed to init global hotkey:', error)
+  }
+}
+
+// 切换窗口显示/隐藏
+async function toggleWindowVisibility() {
+  try {
+    const isMinimized = await appWindow.isMinimized()
+
+    if (isMinimized) {
+      // 如果窗口已最小化，恢复窗口
+      await appWindow.unminimize()
+      await appWindow.setFocus()
+    } else {
+      // 如果窗口未最小化，最小化窗口
+      await appWindow.minimize()
+    }
+  } catch (error) {
+    console.error('Failed to toggle window visibility:', error)
+  }
+}
+
+onUnmounted(() => {
+  // 清理快捷键监听器
+  if (hotkeyUnlisten) {
+    hotkeyUnlisten()
   }
 })
 

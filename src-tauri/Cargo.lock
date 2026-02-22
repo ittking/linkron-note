@@ -1451,6 +1451,23 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0cc23270f6e1808e30a928bdc84dea0b9b4136a8bc82338574f23baf47bbd280"
 
 [[package]]
+name = "global-hotkey"
+version = "0.5.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b436093d1598b05e3b7fddc097b2bad32763f53a1beb25ab6f9718c6a60acd09"
+dependencies = [
+ "bitflags 2.10.0",
+ "cocoa",
+ "crossbeam-channel",
+ "keyboard-types",
+ "objc",
+ "once_cell",
+ "thiserror 1.0.69",
+ "windows-sys 0.52.0",
+ "x11-dl",
+]
+
+[[package]]
 name = "gobject-sys"
 version = "0.18.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2161,15 +2178,18 @@ version = "0.1.0"
 dependencies = [
  "chrono",
  "cocoa",
+ "core-foundation 0.10.1",
  "dirs 5.0.1",
  "encoding_rs",
  "git2",
+ "global-hotkey",
  "http",
  "lazy_static",
  "mime_guess",
  "objc",
  "objc2 0.5.2",
  "objc2-app-kit 0.2.2",
+ "once_cell",
  "rand 0.8.5",
  "regex",
  "reqwest",
