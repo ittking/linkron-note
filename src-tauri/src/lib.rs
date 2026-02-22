@@ -68,6 +68,8 @@ pub fn run() {
             file_reader::get_file_metadata,
             web_scraper::fetch_webpage_html,
             window_manager::get_os,
+            window_manager::get_window_size,
+            window_manager::set_window_size,
             model_provider::load_provider_models,
             ai_generator::chat_completion,
             git_sync::test_git_connection,

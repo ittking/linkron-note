@@ -3,7 +3,7 @@ import { ref, onMounted, onUnmounted, watch } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
 import { open } from '@tauri-apps/plugin-dialog'
 import { useSettingStore } from '../store/settingStore'
-import { Power, Folder, Image, Sparkles, Keyboard } from 'lucide-vue-next'
+import { Power, Folder, Image, Sparkles, Keyboard, Monitor } from 'lucide-vue-next'
 import Toggle from './ui/Toggle.vue'
 import Input from './ui/Input.vue'
 import Button from './ui/Button.vue'
@@ -29,6 +29,17 @@ const globalHotkey = ref('')
 const globalHotkeyStatus = ref(null)
 const statusTimeout = ref(null)
 
+// 窗口大小
+const windowWidth = ref(360)
+const windowHeight = ref(780)
+const windowSizeStatus = ref(null)
+
+// 默认窗口大小（与 tauri.conf.json 一致）
+const DEFAULT_WINDOW_WIDTH = 360
+const DEFAULT_WINDOW_HEIGHT = 780
+const MIN_WINDOW_WIDTH = 360
+const MIN_WINDOW_HEIGHT = 680
+
 // 初始化
 onMounted(async () => {
   await loadAutoStartStatus()
@@ -36,6 +47,7 @@ onMounted(async () => {
   await loadNoteImageMaxCount()
   await loadAiOptimizationStatus()
   await loadGlobalHotkey()
+  await loadWindowSize()
 })
 
 // 加载开机启动状态
@@ -261,6 +273,87 @@ async function saveGlobalHotkey() {
   }
 }
 
+// 加载窗口大小
+async function loadWindowSize() {
+  try {
+    // 从 store 读取保存的窗口大小
+    const savedWidth = await settingStore.get('windowWidth', null)
+    const savedHeight = await settingStore.get('windowHeight', null)
+
+    if (savedWidth !== null && savedHeight !== null) {
+      windowWidth.value = Number(savedWidth)
+      windowHeight.value = Number(savedHeight)
+    } else {
+      // 如果没有保存的值，使用默认值（与 tauri.conf.json 一致）
+      windowWidth.value = DEFAULT_WINDOW_WIDTH
+      windowHeight.value = DEFAULT_WINDOW_HEIGHT
+    }
+  } catch (error) {
+    console.error('Failed to load window size:', error)
+  }
+}
+
+// 保存窗口大小
+async function saveWindowSize() {
+  windowSizeStatus.value = null
+
+  try {
+    const width = Number(windowWidth.value)
+    const height = Number(windowHeight.value)
+
+    if (width < MIN_WINDOW_WIDTH || height < MIN_WINDOW_HEIGHT) {
+      windowSizeStatus.value = {
+        type: 'error',
+        message: `窗口尺寸不能小于 ${MIN_WINDOW_WIDTH}x${MIN_WINDOW_HEIGHT}`
+      }
+      // 错误提示3秒后隐藏
+      setTimeout(() => {
+        windowSizeStatus.value = null
+      }, 3000)
+      return
+    }
+
+    if (width > 1920 || height > 1080) {
+      windowSizeStatus.value = {
+        type: 'error',
+        message: '窗口尺寸不能大于 1920x1080'
+      }
+      setTimeout(() => {
+        windowSizeStatus.value = null
+      }, 3000)
+      return
+    }
+
+    // 先保存到 store
+    await settingStore.set('windowWidth', width)
+    await settingStore.set('windowHeight', height)
+
+    // 设置窗口大小（立即生效）
+    await invoke('set_window_size', {
+      size: { width, height }
+    })
+
+    // 显示成功提示，2秒后自动隐藏
+    windowSizeStatus.value = {
+      type: 'success',
+      message: '窗口大小已更新'
+    }
+
+    setTimeout(() => {
+      windowSizeStatus.value = null
+    }, 2000)
+  } catch (error) {
+    console.error('Failed to save window size:', error)
+    windowSizeStatus.value = {
+      type: 'error',
+      message: '保存失败: ' + error.message
+    }
+    setTimeout(() => {
+      windowSizeStatus.value = null
+    }, 3000)
+  }
+}
+
 // 组件卸载时清除定时器
 onUnmounted(() => {
   if (statusTimeout.value) {
@@ -386,6 +479,57 @@ onUnmounted(() => {
           <label class="label">
             <span class="label-text-alt text-[11px] text-base-content/40">
               支持组合键配置，如 Option + Space、Command + Enter 等
+            </span>
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <!-- 窗口大小 -->
+    <div class="card bg-base-200 shadow-sm">
+      <div class="card-body p-4">
+        <h2 class="card-title text-sm font-medium">
+          <Monitor :size="16" />
+          窗口大小
+        </h2>
+        <div class="space-y-3">
+          <div class="flex gap-3">
+            <div class="form-control flex-1">
+              <label class="label">
+                <span class="label-text text-xs">宽度 (px)</span>
+              </label>
+              <Input
+                type="number"
+                v-model.number="windowWidth"
+                :min="MIN_WINDOW_WIDTH"
+                max="1920"
+                size="sm"
+              />
+            </div>
+            <div class="form-control flex-1">
+              <label class="label">
+                <span class="label-text text-xs">高度 (px)</span>
+              </label>
+              <Input
+                type="number"
+                v-model.number="windowHeight"
+                :min="MIN_WINDOW_HEIGHT"
+                max="1080"
+                size="sm"
+              />
+            </div>
+          </div>
+          <div class="flex gap-2">
+            <Button variant="primary" size="sm" block @click="saveWindowSize">
+              保存窗口大小
+            </Button>
+          </div>
+          <div v-if="windowSizeStatus" :class="['text-xs', windowSizeStatus.type === 'success' ? 'text-success' : 'text-error']">
+            {{ windowSizeStatus.message }}
+          </div>
+          <label class="label">
+            <span class="label-text-alt text-[11px] text-base-content/40">
+              窗口尺寸范围：{{ MIN_WINDOW_WIDTH }}-1920 x {{ MIN_WINDOW_HEIGHT }}-1080，设置后立即生效
             </span>
           </label>
         </div>

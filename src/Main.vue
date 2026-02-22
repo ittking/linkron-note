@@ -89,6 +89,9 @@ onMounted(async () => {
 
     // 初始化全局快捷键
     await initGlobalHotkey()
+
+    // 初始化窗口大小
+    await initWindowSize()
   }
 })
 
@@ -137,6 +140,28 @@ async function toggleWindowVisibility() {
     }
   } catch (error) {
     console.error('Failed to toggle window visibility:', error)
+  }
+}
+
+// 初始化窗口大小
+async function initWindowSize() {
+  try {
+    // 从 store 读取保存的窗口大小
+    const savedWidth = await settingStore.get('windowWidth', null)
+    const savedHeight = await settingStore.get('windowHeight', null)
+
+    // 如果有保存的窗口大小，应用它
+    if (savedWidth !== null && savedHeight !== null) {
+      await invoke('set_window_size', {
+        size: {
+          width: Number(savedWidth),
+          height: Number(savedHeight)
+        }
+      })
+    }
+    // 如果没有保存的值，使用 tauri.conf.json 中的默认值（360x780），无需设置
+  } catch (error) {
+    console.error('Failed to init window size:', error)
   }
 }
 
