@@ -73,6 +73,20 @@ const imageNumber = computed(() => {
   return ''
 })
 
+// 判断是否为本地图片（不是 https 或 base64）
+const isLocalImage = computed(() => {
+  const imageSrc = currentImage.value
+  if (!imageSrc) return false
+  // 如果是 https 协议，不是本地图片
+  if (imageSrc.startsWith('https://')) return false
+  // 如果是 base64 数据，不是本地图片
+  if (imageSrc.startsWith('data:')) return false
+  // 如果是 http 协议，不是本地图片
+  if (imageSrc.startsWith('http://')) return false
+  // 其他情况认为是本地图片
+  return true
+})
+
 const MIN_SCALE = 0.5
 const MAX_SCALE = 5
 
@@ -296,7 +310,7 @@ onBeforeUnmount(() => {
             class="w-6 h-6 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors">
             <RotateCw :size="14" />
           </button>
-          <button @click="revealImageFile"
+          <button v-if="isLocalImage" @click="revealImageFile"
             class="w-6 h-6 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors"
             title="在文件夹中显示">
             <FolderOpen :size="14" />
