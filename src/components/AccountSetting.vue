@@ -4,11 +4,13 @@ import { User, LogOut, Crown, Calendar, Cloud, CloudOff, Settings, Check, Chevro
 import { invoke } from '@tauri-apps/api/core'
 import { useSettingStore } from '../store/settingStore'
 import { useToast } from '../composables/useToast'
+import { useSync } from '../composables/useSync'
 import Button from './ui/Button.vue'
 import Input from './ui/Input.vue'
 
 const settingStore = useSettingStore()
 const { showToast } = useToast()
+const { isSyncing, formattedLastSyncTime, syncNow } = useSync()
 
 // 用户信息
 const userInfo = ref({
@@ -76,26 +78,9 @@ const syncConfig = ref({
 })
 
 const isConfigured = ref(false)
-const isSyncing = ref(false)
 const showConfig = ref(false)
-const lastSyncTime = ref(null)
 const connectionStatus = ref('')
 const connectionSuccess = ref(false)
-
-// 格式化同步时间
-const formattedLastSyncTime = computed(() => {
-  if (!lastSyncTime.value || lastSyncTime.value === 0) return ''
-  const date = new Date(lastSyncTime.value * 1000)
-  // 检查日期是否有效
-  if (isNaN(date.getTime())) return ''
-  return date.toLocaleString('zh-CN', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit'
-  })
-})
 
 // 加载已保存的同步配置
 async function loadSyncConfig() {
@@ -104,23 +89,9 @@ async function loadSyncConfig() {
     if (config) {
       syncConfig.value = config
       isConfigured.value = true
-      loadSyncTime()
     }
   } catch (error) {
     console.error('Failed to load sync config:', error)
-  }
-}
-
-// 加载同步时间（从设置中读取）
-async function loadSyncTime() {
-  try {
-    // 从设置中读取上次同步时间
-    const syncTime = await settingStore.get('lastSyncTime', null)
-    if (syncTime) {
-      lastSyncTime.value = syncTime
-    }
-  } catch (error) {
-    console.error('Failed to load sync time:', error)
   }
 }
 
@@ -163,26 +134,8 @@ async function syncToRemote() {
     return
   }
 
-  isSyncing.value = true
-  try {
-    const result = await invoke('sync_to_remote', {
-      config: syncConfig.value,
-      workDirectory: await settingStore.get('workDirectory')
-    })
-
-    if (result.success) {
-      // 更新同步时间
-      lastSyncTime.value = Math.floor(Date.now() / 1000)
-      await settingStore.set('lastSyncTime', lastSyncTime.value)
-      showToast('同步成功', 'success')
-    } else {
-      showToast('同步失败: ' + result.message, 'error')
-    }
-  } catch (error) {
-    showToast('同步失败: ' + error, 'error')
-  } finally {
-    isSyncing.value = false
-  }
+  // 直接调用同步钩子，无需额外处理
+  syncNow()
 }
 
 // 初始化加载
@@ -279,7 +232,7 @@ onMounted(() => {
               <span class="text-xs text-base-content/40">未配置</span>
             </div>
           </div>
-          <div v-if="lastSyncTime" class="text-xs text-base-content/50">
+          <div v-if="formattedLastSyncTime" class="text-xs text-base-content/50">
             上次同步: {{ formattedLastSyncTime }}
           </div>
         </div>
