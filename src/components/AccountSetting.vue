@@ -1,6 +1,6 @@
 <script setup>
 import { ref, onMounted, onUnmounted, computed } from 'vue'
-import { User, LogOut, Crown, Calendar, Clock, Cloud } from 'lucide-vue-next'
+import { User, LogOut, Crown, Calendar, Clock, Cloud, ChevronDown, ChevronUp } from 'lucide-vue-next'
 import { invoke } from '@tauri-apps/api/core'
 import { useSettingStore } from '../store/settingStore'
 import Button from './ui/Button.vue'
@@ -51,7 +51,7 @@ const workDirectory = ref('')
 
 // 预设的自动同步延迟选项
 const autoSyncDelayOptions = [
-  { label: '不自动同步', value: 0 },
+  { label: '关闭', value: 0 },
   { label: '2秒', value: 2000 },
   { label: '3秒', value: 3000 },
   { label: '5秒', value: 5000 },
@@ -501,8 +501,11 @@ function onPlatformChange() {
             variant="ghost"
             size="sm"
             @click="showSyncConfig = !showSyncConfig"
+            class="gap-1"
           >
-            <Cloud :size="14" />
+            {{ showSyncConfig ? '收起' : '配置' }}
+            <ChevronDown v-if="!showSyncConfig" :size="14" />
+            <ChevronUp v-else :size="14" />
           </Button>
         </div>
 
@@ -579,7 +582,7 @@ function onPlatformChange() {
           <!-- 自动同步延迟 -->
           <div class="form-control">
             <label class="label">
-              <span class="label-text text-xs">更新后自动同步</span>
+              <span class="label-text text-xs">自动同步</span>
             </label>
             <div class="flex gap-2">
               <button
@@ -596,7 +599,7 @@ function onPlatformChange() {
             </div>
             <label class="label">
               <span class="label-text-alt text-[11px] text-base-content/40">
-                数据更新后自动同步到云端
+                更新后自动同步到云端
               </span>
             </label>
           </div>
