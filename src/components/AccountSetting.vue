@@ -70,7 +70,7 @@ loadUserInfo()
 const syncConfig = ref({
   repo_url: '',  // 仓库地址
   token: '',     // 访问令牌
-  branch: 'main' // 分支
+  branch: 'main' // 分支（Gitee/GitHub 新仓库默认都是 main）
 })
 
 const isConfigured = ref(false)
@@ -152,7 +152,7 @@ async function testConnection() {
   }
 }
 
-// 推送到云端
+// 推送到云端（先强制拉取，再推送）
 async function syncToRemote() {
   if (!isConfigured.value) {
     alert('请先配置云同步')
@@ -167,40 +167,6 @@ async function syncToRemote() {
     })
 
     if (result.success) {
-      alert(result.message)
-      // 更新同步时间
-      lastSyncTime.value = Math.floor(Date.now() / 1000)
-      await settingStore.set('lastSyncTime', lastSyncTime.value)
-    } else {
-      alert('同步失败: ' + result.message)
-    }
-  } catch (error) {
-    alert('同步失败: ' + error)
-  } finally {
-    isSyncing.value = false
-  }
-}
-
-// 从云端拉取
-async function syncFromRemote() {
-  if (!isConfigured.value) {
-    alert('请先配置云同步')
-    return
-  }
-
-  if (!confirm('确定要从云端覆盖本地数据吗？本地修改将会丢失！')) {
-    return
-  }
-
-  isSyncing.value = true
-  try {
-    const result = await invoke('sync_from_remote', {
-      config: syncConfig.value,
-      workDirectory: await settingStore.get('workDirectory')
-    })
-
-    if (result.success) {
-      alert(result.message)
       // 更新同步时间
       lastSyncTime.value = Math.floor(Date.now() / 1000)
       await settingStore.set('lastSyncTime', lastSyncTime.value)
@@ -328,16 +294,6 @@ onMounted(() => {
             立即同步
           </Button>
           <Button
-            @click="syncFromRemote"
-            :disabled="isSyncing || !isConfigured"
-            :loading="isSyncing"
-            variant="secondary"
-            size="sm"
-          >
-            <CloudOff :size="14" />
-            覆盖本地
-          </Button>
-          <Button
             @click="showConfig = !showConfig"
             variant="ghost"
             size="sm"
@@ -384,6 +340,9 @@ onMounted(() => {
               placeholder="main"
               size="sm"
             />
+            <p class="text-xs text-base-content/40 mt-1">
+              新仓库默认为 main，老仓库可能是 master
+            </p>
           </div>
 
           <!-- 连接测试状态 -->

@@ -75,6 +75,7 @@ pub fn run() {
             global_hotkey::register_hotkey,
             global_hotkey::unregister_hotkey,
             global_hotkey::get_supported_keys,
+            api_sync::check_git_installed,
             api_sync::validate_sync_config,
             api_sync::sync_to_remote,
             api_sync::sync_from_remote,
