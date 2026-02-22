@@ -1,5 +1,6 @@
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
 mod ai_generator;
+mod api_sync;
 mod autostart;
 mod database;
 mod file_reader;
@@ -73,7 +74,12 @@ pub fn run() {
             ai_generator::chat_completion,
             global_hotkey::register_hotkey,
             global_hotkey::unregister_hotkey,
-            global_hotkey::get_supported_keys
+            global_hotkey::get_supported_keys,
+            api_sync::validate_sync_config,
+            api_sync::sync_to_remote,
+            api_sync::sync_from_remote,
+            api_sync::get_sync_config,
+            api_sync::save_sync_config
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

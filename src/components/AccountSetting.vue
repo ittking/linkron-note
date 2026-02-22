@@ -1,8 +1,10 @@
 <script setup>
-import { ref, computed } from 'vue'
-import { User, LogOut, Crown, Calendar } from 'lucide-vue-next'
+import { ref, computed, onMounted } from 'vue'
+import { User, LogOut, Crown, Calendar, Cloud, CloudOff, Settings, Check } from 'lucide-vue-next'
+import { invoke } from '@tauri-apps/api/core'
 import { useSettingStore } from '../store/settingStore'
 import Button from './ui/Button.vue'
+import Input from './ui/Input.vue'
 
 const settingStore = useSettingStore()
 
@@ -63,6 +65,161 @@ async function handleLogout() {
 
 // 初始化加载
 loadUserInfo()
+
+// ===== 云同步配置 =====
+const syncConfig = ref({
+  repo_url: '',  // 仓库地址
+  token: '',     // 访问令牌
+  branch: 'main' // 分支
+})
+
+const isConfigured = ref(false)
+const isSyncing = ref(false)
+const showConfig = ref(false)
+const lastSyncTime = ref(null)
+const connectionStatus = ref('')
+const connectionSuccess = ref(false)
+
+// 格式化同步时间
+const formattedLastSyncTime = computed(() => {
+  if (!lastSyncTime.value) return ''
+  const date = new Date(lastSyncTime.value * 1000)
+  return date.toLocaleString('zh-CN', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit'
+  })
+})
+
+// 加载已保存的同步配置
+async function loadSyncConfig() {
+  try {
+    const config = await invoke('get_sync_config')
+    if (config) {
+      syncConfig.value = config
+      isConfigured.value = true
+      loadSyncTime()
+    }
+  } catch (error) {
+    console.error('Failed to load sync config:', error)
+  }
+}
+
+// 加载同步时间（从设置中读取）
+async function loadSyncTime() {
+  try {
+    // 从设置中读取上次同步时间
+    const syncTime = await settingStore.get('lastSyncTime', null)
+    if (syncTime) {
+      lastSyncTime.value = syncTime
+    }
+  } catch (error) {
+    console.error('Failed to load sync time:', error)
+  }
+}
+
+// 保存同步配置
+async function saveConfig() {
+  try {
+    await invoke('save_sync_config', { config: syncConfig.value })
+    isConfigured.value = true
+    showConfig.value = false
+    alert('配置保存成功')
+  } catch (error) {
+    alert('保存配置失败: ' + error)
+  }
+}
+
+// 检测连接
+async function testConnection() {
+  connectionStatus.value = '检测中...'
+  connectionSuccess.value = false
+
+  try {
+    const result = await invoke('validate_sync_config', { config: syncConfig.value })
+    if (result.success) {
+      connectionStatus.value = '连接成功'
+      connectionSuccess.value = true
+    } else {
+      connectionStatus.value = result.message
+      connectionSuccess.value = false
+    }
+  } catch (error) {
+    connectionStatus.value = '检测失败: ' + error
+    connectionSuccess.value = false
+  }
+}
+
+// 推送到云端
+async function syncToRemote() {
+  if (!isConfigured.value) {
+    alert('请先配置云同步')
+    return
+  }
+
+  isSyncing.value = true
+  try {
+    const result = await invoke('sync_to_remote', {
+      config: syncConfig.value,
+      workDirectory: await settingStore.get('workDirectory')
+    })
+
+    if (result.success) {
+      alert(result.message)
+      // 更新同步时间
+      lastSyncTime.value = Math.floor(Date.now() / 1000)
+      await settingStore.set('lastSyncTime', lastSyncTime.value)
+    } else {
+      alert('同步失败: ' + result.message)
+    }
+  } catch (error) {
+    alert('同步失败: ' + error)
+  } finally {
+    isSyncing.value = false
+  }
+}
+
+// 从云端拉取
+async function syncFromRemote() {
+  if (!isConfigured.value) {
+    alert('请先配置云同步')
+    return
+  }
+
+  if (!confirm('确定要从云端覆盖本地数据吗？本地修改将会丢失！')) {
+    return
+  }
+
+  isSyncing.value = true
+  try {
+    const result = await invoke('sync_from_remote', {
+      config: syncConfig.value,
+      workDirectory: await settingStore.get('workDirectory')
+    })
+
+    if (result.success) {
+      alert(result.message)
+      // 更新同步时间
+      lastSyncTime.value = Math.floor(Date.now() / 1000)
+      await settingStore.set('lastSyncTime', lastSyncTime.value)
+      // 刷新页面以重新加载数据
+      setTimeout(() => window.location.reload(), 500)
+    } else {
+      alert('同步失败: ' + result.message)
+    }
+  } catch (error) {
+    alert('同步失败: ' + error)
+  } finally {
+    isSyncing.value = false
+  }
+}
+
+// 初始化加载
+onMounted(() => {
+  loadSyncConfig()
+})
 </script>
 
 <template>
@@ -129,6 +286,133 @@ loadUserInfo()
           <div class="flex-1 min-w-0">
             <p class="text-xs text-base-content/50 mb-0.5">登录时间</p>
             <p class="text-sm text-base-content/80 truncate">{{ formattedLoginTime || '未记录' }}</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 云同步卡片 -->
+    <div class="card bg-base-200 shadow-sm rounded-2xl overflow-hidden">
+      <div class="card-body p-4 space-y-4">
+        <!-- 标题和状态 -->
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <h2 class="card-title text-sm font-medium flex items-center gap-2">
+              <Cloud :size="16" />
+              云同步
+            </h2>
+            <div v-if="isConfigured" class="flex items-center gap-1">
+              <Check :size="12" class="text-success" />
+              <span class="text-xs text-success">已配置</span>
+            </div>
+            <div v-else class="flex items-center gap-1">
+              <CloudOff :size="12" class="text-base-content/40" />
+              <span class="text-xs text-base-content/40">未配置</span>
+            </div>
+          </div>
+          <div v-if="lastSyncTime" class="text-xs text-base-content/50">
+            上次同步: {{ formattedLastSyncTime }}
+          </div>
+        </div>
+
+        <!-- 操作按钮 -->
+        <div class="flex gap-2">
+          <Button
+            @click="syncToRemote"
+            :disabled="isSyncing || !isConfigured"
+            :loading="isSyncing"
+            variant="primary"
+            size="sm"
+          >
+            <Cloud :size="14" />
+            立即同步
+          </Button>
+          <Button
+            @click="syncFromRemote"
+            :disabled="isSyncing || !isConfigured"
+            :loading="isSyncing"
+            variant="secondary"
+            size="sm"
+          >
+            <CloudOff :size="14" />
+            覆盖本地
+          </Button>
+          <Button
+            @click="showConfig = !showConfig"
+            variant="ghost"
+            size="sm"
+          >
+            <Settings :size="14" />
+            {{ showConfig ? '收起配置' : '配置' }}
+          </Button>
+        </div>
+
+        <!-- 配置表单 -->
+        <div v-if="showConfig" class="space-y-3 pt-3 border-t border-base-300">
+          <!-- 仓库地址 -->
+          <div>
+            <label class="text-xs text-base-content/60 mb-1.5 block">仓库地址</label>
+            <Input
+              v-model="syncConfig.repo_url"
+              placeholder="例如：https://gitee.com/username/repo 或 username/repo"
+              size="sm"
+            />
+            <p class="text-xs text-base-content/40 mt-1">
+              支持 GitHub/Gitee 完整 URL 或简短格式（用户名/仓库名）
+            </p>
+          </div>
+
+          <!-- Token -->
+          <div>
+            <label class="text-xs text-base-content/60 mb-1.5 block">访问令牌 (Token)</label>
+            <Input
+              v-model="syncConfig.token"
+              type="password"
+              placeholder="输入 Personal Access Token"
+              size="sm"
+            />
+            <p class="text-xs text-base-content/40 mt-1">
+              Token 需要仓库读写权限
+            </p>
+          </div>
+
+          <!-- 分支 -->
+          <div>
+            <label class="text-xs text-base-content/60 mb-1.5 block">分支</label>
+            <Input
+              v-model="syncConfig.branch"
+              placeholder="main"
+              size="sm"
+            />
+          </div>
+
+          <!-- 连接测试状态 -->
+          <div v-if="connectionStatus" :class="[
+            'text-xs px-3 py-2 rounded-lg',
+            connectionSuccess ? 'bg-success/10 text-success' : 'bg-error/10 text-error'
+          ]">
+            {{ connectionStatus }}
+          </div>
+
+          <!-- 操作按钮 -->
+          <div class="flex gap-2 pt-2">
+            <Button
+              @click="testConnection"
+              variant="secondary"
+              size="sm"
+              class="flex-1"
+            >
+              检测连接
+            </Button>
+            <Button
+              @click="saveConfig"
+              variant="primary"
+              size="sm"
+              class="flex-1"
+              :disabled="!syncConfig.repo_url || !syncConfig.token"
+            >
+              保存配置
+            </Button>
           </div>
         </div>
       </div>
