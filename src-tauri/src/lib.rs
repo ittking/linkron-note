@@ -4,7 +4,6 @@ mod autostart;
 mod database;
 mod file_reader;
 mod filesystem;
-mod git_sync;
 mod global_hotkey;
 mod model_provider;
 mod note;
@@ -72,12 +71,6 @@ pub fn run() {
             window_manager::set_window_size,
             model_provider::load_provider_models,
             ai_generator::chat_completion,
-            git_sync::test_git_connection,
-            git_sync::sync_to_remote,
-            git_sync::sync_from_remote,
-            git_sync::get_sync_config,
-            git_sync::save_sync_config,
-            git_sync::get_git_status,
             global_hotkey::register_hotkey,
             global_hotkey::unregister_hotkey,
             global_hotkey::get_supported_keys
