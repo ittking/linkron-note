@@ -3,11 +3,12 @@ import { onMounted, onUnmounted, ref } from 'vue'
 import { getCurrentWindow } from '@tauri-apps/api/window'
 import { listen } from '@tauri-apps/api/event'
 import { useRouter, useRoute } from 'vue-router'
-import { BookOpen, Settings, CheckSquare, Minus, Maximize2, Minimize2 } from 'lucide-vue-next'
+import { BookOpen, Settings, CheckSquare, Minus, Maximize2, Minimize2, Cloud, RefreshCw } from 'lucide-vue-next'
 import { useSettingStore } from './store/settingStore'
 import { useNoteStore } from './store/noteStore'
 import { useWindowControl } from './composables/useWindowControl'
 import { useToast } from './composables/useToast'
+import { useSync } from './composables/useSync'
 import { invoke } from '@tauri-apps/api/core'
 
 const router = useRouter()
@@ -17,6 +18,7 @@ const noteStore = useNoteStore()
 const appWindow = getCurrentWindow()
 const { isFullscreen, isMaximized, toggleFullscreen, maximizeWindow } = useWindowControl()
 const { toastVisible, toastMessage, toastType } = useToast()
+const { isSyncing, formattedLastSyncTime, loadSyncTime } = useSync()
 
 // 全局快捷键相关
 let hotkeyUnlisten = null
@@ -92,6 +94,9 @@ onMounted(async () => {
 
     // 初始化窗口大小
     await initWindowSize()
+
+    // 加载同步时间
+    await loadSyncTime()
   }
 })
 
@@ -225,6 +230,18 @@ onUnmounted(() => {
             <component v-else :is="Component" :key="route.path" />
           </transition>
         </router-view>
+      </div>
+
+      <!-- 底部同步状态栏 -->
+      <div v-if="formattedLastSyncTime || isSyncing"
+        class="h-5 border-t border-base-200 flex items-center justify-between px-3 text-[10px] text-base-content/40 flex-shrink-0">
+        <div class="flex items-center gap-1.5">
+          <span v-if="isSyncing" class="flex items-center gap-1">
+            <RefreshCw :size="10" class="animate-spin" />
+            同步中...
+          </span>
+          <span v-else>上次同步: {{ formattedLastSyncTime }}</span>
+        </div>
       </div>
     </div>
 

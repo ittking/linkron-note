@@ -1,12 +1,15 @@
 import { invoke } from '@tauri-apps/api/core'
 import { useSettingStore } from './settingStore'
+import { useSync } from '../composables/useSync'
 
 /**
  * 笔记数据持久化存储
  * 使用 SQLite 数据库实现笔记的增删改查功能
+ * 包含自动同步钩子
  */
 export function useNoteStore() {
   const settingStore = useSettingStore()
+  const { triggerSync } = useSync()
 
   /**
    * 获取工作目录
@@ -51,10 +54,13 @@ export function useNoteStore() {
       extractUrl: noteData.extractUrl || null,
       images: noteData.images || []
     }
-    return await invoke('create_note', { 
-      noteData: noteDataWithDefaults, 
-      workDirectory 
+    const result = await invoke('create_note', {
+      noteData: noteDataWithDefaults,
+      workDirectory
     })
+    // 触发自动同步
+    triggerSync()
+    return result
   }
 
   /**
@@ -62,7 +68,10 @@ export function useNoteStore() {
    */
   async function updateNote(id, updates) {
     const workDirectory = await getWorkDirectory()
-    return await invoke('update_note', { id, updates, workDirectory })
+    const result = await invoke('update_note', { id, updates, workDirectory })
+    // 触发自动同步
+    triggerSync()
+    return result
   }
 
   /**
@@ -71,6 +80,8 @@ export function useNoteStore() {
   async function deleteNote(id) {
     const workDirectory = await getWorkDirectory()
     await invoke('delete_note', { id, workDirectory })
+    // 触发自动同步
+    triggerSync()
   }
 
   /**
@@ -102,6 +113,8 @@ export function useNoteStore() {
   async function pinNote(id) {
     const workDirectory = await getWorkDirectory()
     await invoke('pin_note', { id, workDirectory })
+    // 触发自动同步
+    triggerSync()
   }
 
   /**

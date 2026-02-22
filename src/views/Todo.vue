@@ -7,10 +7,12 @@ import TodoDialog from '@/components/TodoDialog.vue'
 import { Calendar, CheckSquare } from 'lucide-vue-next'
 import dayjs from 'dayjs'
 import { useWorkDirectory } from '@/composables/useWorkDirectory'
+import { useSync } from '@/composables/useSync'
 
 dayjs.locale('zh-cn')
 
 const { getWorkDirectory } = useWorkDirectory('setting')
+const { triggerSync } = useSync()
 
 // 当前视图：'calendar' 或 'today'
 const currentView = ref('today')
@@ -167,7 +169,7 @@ async function loadMonthTodos() {
 async function createTodo(data) {
   try {
     const workDirectory = await getWorkDirectory()
-    
+
     const result = await invoke('create_todo', {
       date: data.date,
       text: data.text,
@@ -177,10 +179,13 @@ async function createTodo(data) {
     })
 
     const newTodo = createTodoItem(data, result)
-    
+
     todayTodos.value.push(newTodo)
     monthTodos.value.push(newTodo)
     todayTodos.value = sortTodosLocally(todayTodos.value)
+
+    // 触发自动同步
+    triggerSync()
   } catch (error) {
     console.error('创建待办失败:', error)
     throw error
@@ -190,7 +195,7 @@ async function createTodo(data) {
 async function updateTodo(data) {
   try {
     const workDirectory = await getWorkDirectory()
-    
+
     await invoke('update_todo', {
       id: data.id,
       text: data.text,
@@ -203,6 +208,9 @@ async function updateTodo(data) {
     updateTodoItemInArray(todayTodos.value, data)
     updateTodoItemInArray(monthTodos.value, data)
     todayTodos.value = sortTodosLocally(todayTodos.value)
+
+    // 触发自动同步
+    triggerSync()
   } catch (error) {
     console.error('更新待办失败:', error)
     throw error
@@ -219,6 +227,9 @@ async function deleteTodo(id) {
 
     todayTodos.value = todayTodos.value.filter(t => t.id !== id)
     monthTodos.value = monthTodos.value.filter(t => t.id !== id)
+
+    // 触发自动同步
+    triggerSync()
   } catch (error) {
     console.error('删除待办失败:', error)
     throw error
