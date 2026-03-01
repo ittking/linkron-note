@@ -45,7 +45,8 @@ impl Database {
 
 /// 获取数据库路径
 pub fn get_database_path(work_directory: Option<String>) -> Result<String, String> {
-    if let Some(work_dir) = work_directory {
+    // 将空字符串视为 None，使用系统应用数据目录
+    if let Some(work_dir) = work_directory.as_ref().filter(|s| !s.is_empty()) {
         let mut path = PathBuf::from(work_dir);
         path.push("notes.db");
         Ok(path.to_string_lossy().to_string())
@@ -65,7 +66,8 @@ pub fn get_database_path(work_directory: Option<String>) -> Result<String, Strin
 
 /// 获取 JSON 文件路径
 pub fn get_json_path(work_directory: Option<String>) -> Result<String, String> {
-    if let Some(work_dir) = work_directory {
+    // 将空字符串视为 None，使用系统应用数据目录
+    if let Some(work_dir) = work_directory.as_ref().filter(|s| !s.is_empty()) {
         let mut path = PathBuf::from(work_dir);
         path.push("notes.json");
         Ok(path.to_string_lossy().to_string())
