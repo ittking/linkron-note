@@ -243,7 +243,7 @@ watch(aiOptimizationEnabled, async (newValue) => {
             <Toggle v-model="aiOptimizationEnabled" size="sm" />
           </label>
           <label class="label">
-            <span class="label-text-alt text-[11px] text-base-content/40">
+            <span class="label-text-alt text-[11px] text-base-content/40 break-words whitespace-normal leading-relaxed">
               启用后，拖入链接会自动匹配提示词规则，调用 AI 生成优化后的文章
             </span>
           </label>
