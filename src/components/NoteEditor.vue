@@ -19,7 +19,6 @@ import { TagMark, TagInputRuleExtension } from '@/extensions/tag-mark'
 import { ResizableImage } from '@/extensions/resizable-image'
 import { TagSuggestion } from '@/extensions/tag-suggestion'
 import {
-  Hash,
   Image as ImageIcon,
   ListOrdered,
   List,
@@ -287,11 +286,6 @@ function toggleOrderedList() {
   editor.value?.chain().focus().toggleOrderedList().run()
 }
 
-// 插入标签 #
-function insertTag() {
-  editor.value?.chain().focus().insertContent('#').run()
-}
-
 // 插入代码块
 function insertCodeBlock() {
   editor.value?.chain().focus().toggleCodeBlock().run()
@@ -386,13 +380,6 @@ defineExpose({
     <div class="flex items-center justify-between mt-2">
       <!-- 左侧工具栏 -->
       <div class="flex items-center gap-3">
-        <!-- 标签 # -->
-        <button @click="insertTag"
-          class="w-6 h-6 rounded-md flex items-center justify-center text-base-content/50 hover:text-base-content hover:bg-base-200 transition-all duration-200"
-          title="插入标签">
-          <Hash :size="14" />
-        </button>
-
         <!-- 图片 -->
         <button @click="triggerImageUpload"
           class="w-6 h-6 rounded-md flex items-center justify-center text-base-content/50 hover:text-base-content hover:bg-base-200 transition-all duration-200"
