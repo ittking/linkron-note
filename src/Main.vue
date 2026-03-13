@@ -1,7 +1,6 @@
 <script setup>
 import { onMounted, onUnmounted, ref } from 'vue'
 import { getCurrentWindow } from '@tauri-apps/api/window'
-import { listen } from '@tauri-apps/api/event'
 import { useRouter, useRoute } from 'vue-router'
 import { BookOpen, Settings, CheckSquare, Minus, Maximize2, Minimize2, Cloud, RefreshCw } from 'lucide-vue-next'
 import { useSettingStore } from './store/settingStore'
@@ -9,14 +8,13 @@ import { useNoteStore } from './store/noteStore'
 import { useWindowControl } from './composables/useWindowControl'
 import { useToast } from './composables/useToast'
 import { useSync } from './composables/useSync'
-import { invoke } from '@tauri-apps/api/core'
 
 const router = useRouter()
 const route = useRoute()
 const settingStore = useSettingStore()
 const noteStore = useNoteStore()
 const appWindow = getCurrentWindow()
-const { isFullscreen, isMaximized, toggleFullscreen, maximizeWindow } = useWindowControl()
+const { isMaximized, maximizeWindow } = useWindowControl()
 const { toastVisible, toastMessage, toastType } = useToast()
 const { isSyncing, formattedLastSyncTime, loadSyncTime } = useSync()
 
@@ -164,8 +162,10 @@ onUnmounted(() => {
     </div>
 
     <!-- Toast 提示 -->
-    <div :class="['fixed top-4 right-4 z-[9999] px-4 py-3 rounded-lg shadow-lg transition-all duration-300 pointer-events-none', toastVisible ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0', toastType === 'success' ? 'bg-success text-success-content' : toastType === 'error' ? 'bg-error text-error-content' : 'bg-info text-info-content']">
-      {{ toastMessage }}
+    <div v-if="toastVisible" class="toast toast-start toast-bottom z-[9999]">
+      <div :class="['alert', toastType === 'success' ? 'alert-success' : toastType === 'error' ? 'alert-error' : 'alert-info']">
+        <span>{{ toastMessage }}</span>
+      </div>
     </div>
   </div>
 </template>
