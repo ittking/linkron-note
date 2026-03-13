@@ -4,14 +4,6 @@
 #![allow(deprecated)]
 
 use tauri::{App, Manager, WebviewWindow};
-use serde::{Deserialize, Serialize};
-
-/// 窗口大小
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct WindowSize {
-    pub width: u32,
-    pub height: u32,
-}
 
 #[cfg(windows)]
 use windows::Win32::Foundation::HWND;
@@ -118,35 +110,6 @@ pub fn setup_window_manager(app: &App) -> Result<(), Box<dyn std::error::Error>>
             set_window_on_all_desktops(&window);
         }
     }
-
-    Ok(())
-}
-
-/// 获取窗口大小
-#[tauri::command]
-pub fn get_window_size(window: WebviewWindow) -> Result<WindowSize, String> {
-    let size = window.outer_size()
-        .map_err(|e| format!("获取窗口大小失败: {}", e))?;
-
-    Ok(WindowSize {
-        width: size.width,
-        height: size.height,
-    })
-}
-
-/// 设置窗口大小
-#[tauri::command]
-pub fn set_window_size(window: WebviewWindow, size: WindowSize) -> Result<(), String> {
-    // 先设置窗口可调整大小
-    window.set_resizable(true)
-        .map_err(|e| format!("设置窗口可调整大小失败: {}", e))?;
-
-    // 设置窗口大小
-    use tauri::LogicalSize;
-    let logical_size = LogicalSize::new(size.width, size.height);
-
-    window.set_size(logical_size)
-        .map_err(|e| format!("设置窗口大小失败: {}", e))?;
 
     Ok(())
 }

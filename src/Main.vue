@@ -20,9 +20,6 @@ const { isFullscreen, isMaximized, toggleFullscreen, maximizeWindow } = useWindo
 const { toastVisible, toastMessage, toastType } = useToast()
 const { isSyncing, formattedLastSyncTime, loadSyncTime } = useSync()
 
-// 全局快捷键相关
-let hotkeyUnlisten = null
-
 const tabs = [
   { name: '笔记', path: '/note', icon: BookOpen },
   { name: '待办', path: '/todo', icon: CheckSquare },
@@ -89,92 +86,13 @@ onMounted(async () => {
       console.error('Failed to init config:', error)
     }
 
-    // 初始化全局快捷键
-    await initGlobalHotkey()
-
-    // 初始化窗口大小
-    await initWindowSize()
-
     // 加载同步时间
     await loadSyncTime()
   }
 })
 
-// 初始化全局快捷键
-async function initGlobalHotkey() {
-  try {
-    // 获取保存的快捷键或默认值
-    const savedHotkey = await settingStore.get('globalHotkey', '')
-    let hotkey = savedHotkey
-
-    if (!hotkey) {
-      const os = await invoke('get_os')
-      hotkey = os === 'macos' ? 'Option' : 'Alt'
-    }
-
-    // 注册快捷键
-    await invoke('register_hotkey', { keyName: hotkey })
-
-    // 监听快捷键事件
-    hotkeyUnlisten = await listen('global-hotkey-triggered', () => {
-      toggleWindowVisibility()
-    })
-  } catch (error) {
-    console.error('Failed to init global hotkey:', error)
-  }
-}
-
-// 切换窗口显示/隐藏
-async function toggleWindowVisibility() {
-  try {
-    const isVisible = await appWindow.isVisible()
-    const isMinimized = await appWindow.isMinimized()
-
-    if (!isVisible || isMinimized) {
-      // 如果窗口不可见或已最小化，显示并恢复窗口
-      if (!isVisible) {
-        await appWindow.show()
-      }
-      if (isMinimized) {
-        await appWindow.unminimize()
-      }
-      await appWindow.setFocus()
-    } else {
-      // 如果窗口可见，隐藏窗口
-      await appWindow.hide()
-    }
-  } catch (error) {
-    console.error('Failed to toggle window visibility:', error)
-  }
-}
-
-// 初始化窗口大小
-async function initWindowSize() {
-  try {
-    // 从 store 读取保存的窗口大小
-    const savedWidth = await settingStore.get('windowWidth', null)
-    const savedHeight = await settingStore.get('windowHeight', null)
-
-    // 如果有保存的窗口大小，应用它
-    if (savedWidth !== null && savedHeight !== null) {
-      await invoke('set_window_size', {
-        size: {
-          width: Number(savedWidth),
-          height: Number(savedHeight)
-        }
-      })
-    }
-    // 如果没有保存的值，使用 tauri.conf.json 中的默认值（360x780），无需设置
-  } catch (error) {
-    console.error('Failed to init window size:', error)
-  }
-}
-
 onUnmounted(() => {
-  // 清理快捷键监听器
-  if (hotkeyUnlisten) {
-    hotkeyUnlisten()
-  }
+  // 清理工作
 })
 
 </script>

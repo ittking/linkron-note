@@ -5,7 +5,6 @@ mod autostart;
 mod database;
 mod file_reader;
 mod filesystem;
-mod global_hotkey;
 mod model_provider;
 mod note;
 mod protocol;
@@ -24,7 +23,6 @@ pub fn run() {
         .register_uri_scheme_protocol("linkron", protocol::iterm_protocol_handler)
         .setup(|app| {
             window_manager::setup_window_manager(app)?;
-            global_hotkey::init_hotkey_listener(app.handle().clone());
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -68,13 +66,8 @@ pub fn run() {
             file_reader::get_file_metadata,
             web_scraper::fetch_webpage_html,
             window_manager::get_os,
-            window_manager::get_window_size,
-            window_manager::set_window_size,
             model_provider::load_provider_models,
             ai_generator::chat_completion,
-            global_hotkey::register_hotkey,
-            global_hotkey::unregister_hotkey,
-            global_hotkey::get_supported_keys,
             api_sync::check_git_installed,
             api_sync::validate_sync_config,
             api_sync::sync_to_remote,

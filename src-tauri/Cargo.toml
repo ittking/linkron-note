@@ -37,8 +37,6 @@ encoding_rs = "0.8"
 rand = "0.8"
 reqwest = { version = "0.12", features = ["json"] }
 tokio = { version = "1", features = ["full"] }
-global-hotkey = "0.5"
-once_cell = "1.19"
 base64 = "0.22"
 sha2 = "0.10"
 
