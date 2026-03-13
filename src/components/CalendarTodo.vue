@@ -238,6 +238,24 @@ const calendarWeeks = computed(() => {
 
   return weeks
 })
+
+// 滚动容器引用
+const scrollContainerRef = ref(null)
+
+// 处理滚轮事件，将垂直滚轮转换为水平滚动
+function handleWheel(event) {
+  const container = scrollContainerRef.value
+  if (!container) return
+
+  // 只有当容器有水平滚动条时才转换
+  if (container.scrollWidth > container.clientWidth) {
+    // 阻止默认的垂直滚动
+    event.preventDefault()
+
+    // 将垂直滚轮的 deltaY 转换为水平滚动
+    container.scrollLeft += event.deltaY
+  }
+}
 </script>
 
 <template>
@@ -288,7 +306,9 @@ const calendarWeeks = computed(() => {
     </div>
 
     <!-- 日历主体 -->
-    <div class="flex-1 overflow-auto no-scrollbar relative flex flex-col">
+    <div ref="scrollContainerRef"
+      class="flex-1 overflow-auto no-scrollbar relative flex flex-col"
+      @wheel="handleWheel">
       <!-- 星期标题 -->
       <div class="grid grid-cols-[repeat(7,minmax(100px,1fr))] shrink-0">
         <div v-for="day in ['周日', '周一', '周二', '周三', '周四', '周五', '周六']" :key="day"
