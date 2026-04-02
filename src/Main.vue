@@ -2,7 +2,7 @@
 import { onMounted, onUnmounted } from 'vue'
 import { getCurrentWindow } from '@tauri-apps/api/window'
 import { useRouter, useRoute } from 'vue-router'
-import { BookOpen, Settings, CheckSquare, Minus, Maximize2, Minimize2, Cloud, RefreshCw } from 'lucide-vue-next'
+import { BookOpen, Settings, CheckSquare, Minus, Maximize, Square, Cloud, RefreshCw, X } from 'lucide-vue-next'
 import { useSettingStore } from './store/settingStore'
 import { useNoteStore } from './store/noteStore'
 import { useWindowControl } from './composables/useWindowControl'
@@ -47,6 +47,15 @@ async function handleMaximizeWindow() {
     await maximizeWindow()
   } catch (error) {
     console.error('Failed to maximize/restore window:', error)
+  }
+}
+
+// 关闭窗口（隐藏到系统托盘）
+async function closeWindow() {
+  try {
+    await appWindow.hide()
+  } catch (error) {
+    console.error('Failed to hide window:', error)
   }
 }
 
@@ -130,8 +139,14 @@ onUnmounted(() => {
             class="btn btn-ghost btn-sm w-6 h-6 min-h-0 p-0 rounded hover:bg-base-200 text-base-content/60 hover:text-base-content flex items-center justify-center"
             :title="isMaximized ? '恢复' : '最大化'"
             @click="handleMaximizeWindow">
-            <Maximize2 v-if="!isMaximized" :size="14" />
-            <Minimize2 v-else :size="14" />
+            <Maximize v-if="!isMaximized" :size="14" />
+            <Square v-else :size="14" />
+          </button>
+          <button
+            class="btn btn-ghost btn-sm w-6 h-6 min-h-0 p-0 rounded hover:bg-error/20 hover:text-error text-base-content/60 flex items-center justify-center"
+            title="关闭"
+            @click="closeWindow">
+            <X :size="16" />
           </button>
         </div>
       </div>
