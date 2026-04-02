@@ -53,7 +53,6 @@
   },
   "plugins": {
     "updater": {
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDJENTc5MEZGMEJDNEY2MTEKUldRUjlzUUwvNUJYTGJwR0ZkK0I0ZWN3NlF5T24wb1lYb2t4bW43NTF4MUlHUi9nZ0lCR3pwdk0K",
       "endpoints": [
         "https://github.com/ittking/linkron-note/releases/latest/download/latest.json"
       ]
