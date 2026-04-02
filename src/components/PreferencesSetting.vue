@@ -3,7 +3,7 @@ import { ref, onMounted, onUnmounted, watch } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
 import { open } from '@tauri-apps/plugin-dialog'
 import { useSettingStore } from '../store/settingStore'
-import { Power, Folder, Image, Sparkles } from 'lucide-vue-next'
+import { Power, Folder, Image } from 'lucide-vue-next'
 import Toggle from './ui/Toggle.vue'
 import Input from './ui/Input.vue'
 import Button from './ui/Button.vue'
@@ -20,15 +20,11 @@ const noteImageMaxCount = ref(4)
 const workDirectory = ref('')
 const workDirectoryStatus = ref(null)
 
-// AI 介入优化
-const aiOptimizationEnabled = ref(false)
-
 // 初始化
 onMounted(async () => {
   await loadAutoStartStatus()
   await loadWorkDirectory()
   await loadNoteImageMaxCount()
-  await loadAiOptimizationStatus()
 })
 
 // 加载开机启动状态
@@ -140,24 +136,6 @@ watch(noteImageMaxCount, async (newValue) => {
   }
 })
 
-// 加载 AI 介入优化状态
-async function loadAiOptimizationStatus() {
-  try {
-    aiOptimizationEnabled.value = await settingStore.get('aiOptimizationEnabled', false)
-  } catch (error) {
-    console.error('Failed to load AI optimization status:', error)
-  }
-}
-
-// 监听 AI 介入优化状态变化
-watch(aiOptimizationEnabled, async (newValue) => {
-  try {
-    await settingStore.set('aiOptimizationEnabled', newValue)
-  } catch (error) {
-    console.error('Failed to save AI optimization status:', error)
-  }
-})
-
 </script>
 
 <template>
@@ -226,27 +204,6 @@ watch(aiOptimizationEnabled, async (newValue) => {
             placeholder="默认为 4"
             size="sm"
           />
-        </div>
-      </div>
-    </div>
-
-    <!-- AI 介入优化 -->
-    <div class="card bg-base-200 shadow-sm">
-      <div class="card-body p-4">
-        <h2 class="card-title text-sm font-medium">
-          <Sparkles :size="16" />
-          AI优化
-        </h2>
-        <div class="form-control">
-          <label class="label cursor-pointer flex justify-between gap-4">
-            <span class="label-text">链接自动优化生成文章</span>
-            <Toggle v-model="aiOptimizationEnabled" size="sm" />
-          </label>
-          <label class="label">
-            <span class="label-text-alt text-[11px] text-base-content/40 break-words whitespace-normal leading-relaxed">
-              启用后，拖入链接会自动匹配提示词规则，调用 AI 生成优化后的文章
-            </span>
-          </label>
         </div>
       </div>
     </div>

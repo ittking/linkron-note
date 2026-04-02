@@ -28,7 +28,9 @@
       "Bash(git worktree add:*)",
       "Bash(cargo test:*)",
       "Bash(source:*)",
-      "Bash(echo:*)"
+      "Bash(echo:*)",
+      "Bash(cargo --version)",
+      "Bash(winget install:*)"
     ]
   },
   "agents": {

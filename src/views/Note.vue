@@ -19,7 +19,6 @@ import { useWorkDirectory } from '@/composables/useWorkDirectory'
 import { useToast } from '@/composables/useToast'
 import { useConfirmDialog } from '@/composables/useConfirmDialog'
 import { useSettingStore } from '@/store/settingStore'
-import { optimizeWebContent } from '@/utils/aiOptimizer'
 
 const noteStore = useNoteStore()
 const settingStore = useSettingStore()
@@ -569,31 +568,16 @@ async function createLinkNote(url) {
     try {
         startProcessing()
 
-        // 第一步：获取网页内容
+        // 获取网页内容
         const { content } = await scrapeWebPage(url)
-
-        // 第二步：调用 AI 优化内容
-        let finalContent = content
-        try {
-            const { content: optimizedContent, optimized } = await optimizeWebContent(url, content)
-            finalContent = optimizedContent
-
-            if (optimized) {
-                showToast('AI 文章生成成功', 'success')
-            } else {
-                showToast('链接笔记创建成功', 'success')
-            }
-        } catch (error) {
-            showToast('AI 优化失败，使用原始内容: ' + error.message, 'error')
-            finalContent = content
-        }
 
         const newNote = await noteStore.addNote({
             type: 'link',
-            content: finalContent,
+            content: content,
             sourceUrl: url
         })
         notes.value.unshift(newNote)
+        showToast('链接笔记创建成功', 'success')
     } catch (error) {
         showToast('链接抓取失败: ' + error.message, 'error')
     } finally {

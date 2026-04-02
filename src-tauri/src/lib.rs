@@ -1,11 +1,9 @@
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
-mod ai_generator;
 mod api_sync;
 mod autostart;
 mod database;
 mod file_reader;
 mod filesystem;
-mod model_provider;
 mod note;
 mod protocol;
 mod tag;
@@ -66,8 +64,6 @@ pub fn run() {
             file_reader::get_file_metadata,
             web_scraper::fetch_webpage_html,
             window_manager::get_os,
-            model_provider::load_provider_models,
-            ai_generator::chat_completion,
             api_sync::check_git_installed,
             api_sync::validate_sync_config,
             api_sync::sync_to_remote,

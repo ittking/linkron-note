@@ -1,8 +1,7 @@
 <script setup>
 import { ref } from 'vue'
-import { Settings, Bot, Palette, Info } from 'lucide-vue-next'
+import { Settings, Palette, Info } from 'lucide-vue-next'
 import PreferencesSetting from '../components/PreferencesSetting.vue'
-import ModelSetting from '../components/ModelSetting.vue'
 import ThemeSetting from '../components/ThemeSetting.vue'
 import AboutSetting from '../components/AboutSetting.vue'
 
@@ -10,7 +9,6 @@ const activeTab = ref('preferences')
 
 const tabs = [
   { id: 'preferences', label: '偏好', icon: Settings },
-  { id: 'model', label: '模型', icon: Bot },
   { id: 'theme', label: '主题', icon: Palette },
   { id: 'about', label: '关于', icon: Info }
 ]
@@ -36,7 +34,6 @@ function setActiveTab(tabId) {
     <!-- Tab 内容 -->
     <div class="flex-1 p-4 pt-2 overflow-y-auto no-scrollbar w-full">
       <PreferencesSetting v-if="activeTab === 'preferences'" />
-      <ModelSetting v-if="activeTab === 'model'" />
       <ThemeSetting v-if="activeTab === 'theme'" />
       <AboutSetting v-if="activeTab === 'about'" />
     </div>
