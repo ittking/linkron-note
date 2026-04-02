@@ -121,56 +121,130 @@ pub async fn validate_sync_config(config: ApiSyncConfig) -> Result<SyncResult, S
     // 解析仓库地址
     let (owner, repo) = parse_repo_url(&config.repo_url)?;
 
-    // 测试获取仓库信息
     let client = build_client()?;
-    let url = format!("https://gitee.com/api/v5/repos/{}/{}", owner, repo);
 
-    let response = client
-        .get(&url)
+    // 1. 先测试获取仓库信息
+    let repo_url = format!("https://gitee.com/api/v5/repos/{}/{}", owner, repo);
+
+    let repo_response = client
+        .get(&repo_url)
         .header("Authorization", format!("Bearer {}", config.token))
         .header("User-Agent", "linkron")
         .send()
         .await;
 
-    match response {
+    match repo_response {
         Ok(resp) => {
-            if resp.status().is_success() {
-                Ok(SyncResult {
-                    success: true,
-                    message: "连接成功，仓库访问正常".to_string(),
-                    details: None,
-                })
-            } else {
+            if !resp.status().is_success() {
                 let status = resp.status();
                 let error_text = resp.text().await.unwrap_or_else(|_| "无法读取错误信息".to_string());
 
                 if status.as_u16() == 401 {
-                    Ok(SyncResult {
+                    return Ok(SyncResult {
                         success: false,
                         message: "Token 无效或权限不足".to_string(),
                         details: None,
-                    })
+                    });
                 } else if status.as_u16() == 404 {
-                    Ok(SyncResult {
+                    return Ok(SyncResult {
                         success: false,
                         message: "仓库不存在或无访问权限".to_string(),
                         details: None,
-                    })
+                    });
                 } else {
-                    Ok(SyncResult {
+                    return Ok(SyncResult {
                         success: false,
                         message: format!("连接失败: {} - {}", status, error_text),
                         details: None,
-                    })
+                    });
                 }
             }
         }
-        Err(e) => Ok(SyncResult {
-            success: false,
-            message: format!("网络请求失败: {}", e),
-            details: None,
-        }),
+        Err(e) => {
+            return Ok(SyncResult {
+                success: false,
+                message: format!("网络请求失败: {}", e),
+                details: None,
+            });
+        }
     }
+
+    // 2. 验证分支是否存在
+    let branches_url = format!("https://gitee.com/api/v5/repos/{}/{}/branches", owner, repo);
+
+    let branches_response = client
+        .get(&branches_url)
+        .header("Authorization", format!("Bearer {}", config.token))
+        .header("User-Agent", "linkron")
+        .send()
+        .await;
+
+    let _branch_exists = match branches_response {
+        Ok(resp) => {
+            if resp.status().is_success() {
+                // 解析分支列表，检查配置的分支是否存在
+                if let Ok(branches_json) = resp.json::<serde_json::Value>().await {
+                    if let Some(branches) = branches_json.as_array() {
+                        // 检查分支是否存在
+                        let found = branches.iter().any(|branch: &serde_json::Value| {
+                            if let Some(branch_name) = branch.get("name") {
+                                if let Some(name_str) = branch_name.as_str() {
+                                    return name_str == config.branch;
+                                }
+                            }
+                            false
+                        });
+
+                        if !found {
+                            // 分支不存在，列出可用分支
+                            let available_branches: Vec<String> = branches
+                                .iter()
+                                .filter_map(|branch: &serde_json::Value| {
+                                    branch.get("name").and_then(|n: &serde_json::Value| n.as_str()).map(|s| s.to_string())
+                                })
+                                .collect();
+
+                            let branch_list = available_branches.join(", ");
+                            return Ok(SyncResult {
+                                success: false,
+                                message: format!(
+                                    "分支 '{}' 不存在。可用分支: {}",
+                                    config.branch,
+                                    branch_list
+                                ),
+                                details: None,
+                            });
+                        }
+                    }
+                    true
+                } else {
+                    false
+                }
+            } else {
+                let status = resp.status();
+                let error_text = resp.text().await.unwrap_or_else(|_| "无法读取错误信息".to_string());
+                return Ok(SyncResult {
+                    success: false,
+                    message: format!("获取分支列表失败: {} - {}", status, error_text),
+                    details: None,
+                });
+            }
+        }
+        Err(e) => {
+            return Ok(SyncResult {
+                success: false,
+                message: format!("获取分支列表失败: {}", e),
+                details: None,
+            });
+        }
+    };
+
+    // 3. 验证通过
+    Ok(SyncResult {
+        success: true,
+        message: format!("连接成功，仓库访问正常，分支 '{}' 有效", config.branch),
+        details: None,
+    })
 }
 
 /// 读取本地文件内容并编码为base64

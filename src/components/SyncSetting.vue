@@ -1,6 +1,6 @@
 <script setup>
 import { ref, onMounted } from 'vue'
-import { Cloud, CloudUpload, CloudDownload, TestTube, Check, X, Loader2, Clock } from 'lucide-vue-next'
+import { Cloud, CloudUpload, CloudDownload, RefreshCw, Check, X, Loader2, Clock } from 'lucide-vue-next'
 import Input from './ui/Input.vue'
 import Button from './ui/Button.vue'
 import Toggle from './ui/Toggle.vue'
@@ -242,7 +242,7 @@ function getGiteeTokenHelpUrl() {
               @click="handleTestConnection"
             >
               <Loader2 v-if="isTesting" :size="14" class="animate-spin mr-1" />
-              <TestTube v-else :size="14" class="mr-1" />
+              <RefreshCw v-else :size="14" class="mr-1" />
               测试连接
             </Button>
             <Button
