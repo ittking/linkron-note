@@ -155,19 +155,16 @@ fn create_linux_tray(app_handle: &AppHandle) -> Result<(), String> {
 }
 
 /// 加载应用图标
-fn load_default_icon(app_handle: &AppHandle) -> Result<tray_icon::Icon, String> {
-    // 使用路径解析器获取正确的资源路径
-    let icon_path = app_handle
-        .path_resolver()
-        .resource_dir()
-        .map_err(|e| format!("Failed to get resource dir: {}", e))?
-        .join("../../public/icons/32x32.png");
+fn load_default_icon(_app_handle: &AppHandle) -> Result<tray_icon::Icon, String> {
+    // 首先尝试 public/icons 目录（用户要求的图标位置）
+    let manifest_dir = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    let icon_path = manifest_dir.join("../public/icons/32x32.png");
 
-    // 如果上面的路径不存在，尝试相对于当前可执行文件的路径
+    // 如果 public/icons 不存在，回退到 src-tauri/icons
     let icon_path = if icon_path.exists() {
         icon_path
     } else {
-        std::path::PathBuf::from("public/icons/32x32.png")
+        manifest_dir.join("icons/32x32.png")
     };
 
     // 如果还是不存在，尝试 src-tauri/icons
