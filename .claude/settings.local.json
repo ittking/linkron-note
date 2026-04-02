@@ -30,7 +30,8 @@
       "Bash(source:*)",
       "Bash(echo:*)",
       "Bash(cargo --version)",
-      "Bash(winget install:*)"
+      "Bash(winget install:*)",
+      "mcp__web-search-prime__web_search_prime"
     ]
   },
   "agents": {
