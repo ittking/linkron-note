@@ -169,7 +169,6 @@ fn load_default_icon(app_handle: &AppHandle) -> Result<tray_icon::Icon, String> 
     let resource_paths = vec![
         // 相对于资源目录的路径
         "icons/32x32.png",
-        "public/icons/32x32.png",
     ];
 
     let mut icon_data = None;

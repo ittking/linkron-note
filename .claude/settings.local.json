@@ -37,7 +37,9 @@
       "Bash(pnpm tauri:*)",
       "Bash(cd:*)",
       "Bash(git branch:*)",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Bash(mkdir -p icons)",
+      "Bash(cp -r public/icons/* icons/)"
     ]
   },
   "agents": {
