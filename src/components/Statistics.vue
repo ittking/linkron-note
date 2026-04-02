@@ -13,6 +13,7 @@ const todoCount = ref(0)
 // 加载统计数据
 async function loadStatistics() {
   try {
+    console.log('加载统计数据')
     const workDirectory = await getWorkDirectory()
     
     // 获取笔记数量

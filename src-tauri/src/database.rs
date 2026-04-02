@@ -298,8 +298,8 @@ pub fn count_notes_by_tags(tags: Vec<String>, work_directory: Option<String>) ->
 
 /// Tauri 命令：获取笔记总数
 #[tauri::command]
-pub fn count_notes(work_directory: String) -> Result<i64, String> {
-    let db_path = get_database_path(Some(work_directory))?;
+pub fn count_notes(work_directory: Option<String>) -> Result<i64, String> {
+    let db_path = get_database_path(work_directory)?;
     let db = Database::new(&db_path).map_err(|e| format!("Failed to open database: {}", e))?;
     note::count_notes(&db.conn).map_err(|e| format!("Failed to count notes: {}", e))
 }
