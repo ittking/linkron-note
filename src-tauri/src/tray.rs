@@ -156,32 +156,26 @@ fn create_linux_tray(app_handle: &AppHandle) -> Result<(), String> {
     Ok(())
 }
 
-/// 加载默认图标
+/// 加载应用图标
 fn load_default_icon() -> Result<tray_icon::Icon, String> {
-    // 创建一个简单的默认图标 (16x16 像素)
-    let mut pixels = vec![255u8; 16 * 16 * 4];
+    // 从 src-tauri/icons/32x32.png 加载图标
+    let icon_path = std::path::PathBuf::from("icons/32x32.png");
 
-    // 创建一个简单的 L 形状
-    for y in 0..16 {
-        for x in 0..16 {
-            let idx = (y * 16 + x) * 4;
-            // 简单的 L 形状 - 第一列和最后一行
-            if x == 0 || y == 15 {
-                pixels[idx] = 100;     // R
-                pixels[idx + 1] = 100; // G
-                pixels[idx + 2] = 200; // B
-                pixels[idx + 3] = 255; // A
-            } else {
-                pixels[idx] = 200;     // R
-                pixels[idx + 1] = 200; // G
-                pixels[idx + 2] = 200; // B
-                pixels[idx + 3] = 255; // A
-            }
-        }
-    }
+    // 读取图标文件
+    let icon_data = std::fs::read(&icon_path)
+        .map_err(|e| format!("Failed to read icon file: {}", e))?;
 
-    let icon = tray_icon::Icon::from_rgba(pixels, 16, 16)
-        .map_err(|e| format!("Failed to create icon: {}", e))?;
+    // 使用 image crate 解析 PNG
+    let image = image::load_from_memory(&icon_data)
+        .map_err(|e| format!("Failed to parse icon image: {}", e))?
+
+    .to_rgba8();
+
+    let icon = tray_icon::Icon::from_rgba(
+        image.as_raw().to_vec(),
+        image.width(),
+        image.height()
+    ).map_err(|e| format!("Failed to create icon: {}", e))?;
 
     Ok(icon)
 }

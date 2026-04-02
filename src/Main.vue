@@ -1,5 +1,5 @@
 <script setup>
-import { onMounted, onUnmounted, ref } from 'vue'
+import { onMounted, onUnmounted } from 'vue'
 import { getCurrentWindow } from '@tauri-apps/api/window'
 import { useRouter, useRoute } from 'vue-router'
 import { BookOpen, Settings, CheckSquare, Minus, Maximize2, Minimize2, Cloud, RefreshCw } from 'lucide-vue-next'
