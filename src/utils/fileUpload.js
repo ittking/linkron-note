@@ -5,6 +5,8 @@
  * 协议说明：
  * - 数据库统一存储为 linkron://localhost/resources/... 格式
  * - 前端渲染时根据平台转换为可用协议
+ * - 同步导出时转换为 resources/... 相对路径
+ * - 同步导入时转换回 linkron://localhost/resources/... 格式
  */
 
 import { invoke } from '@tauri-apps/api/core'
@@ -214,4 +216,27 @@ export async function revealFile(protocolUrl, workDirectory) {
     console.error('显示文件失败:', error)
     throw new Error(`显示文件失败: ${error.message}`)
   }
+}
+
+/**
+ * 导出转换：将存储的 linkron:// 协议 URL 转换为相对路径（用于同步到 git）
+ * @param {string} content - 笔记 HTML 内容
+ * @returns {string} 转换后的内容
+ */
+export function convertUrlsForExport(content) {
+  if (!content) return content
+  // linkron://localhost/resources/xxx → resources/xxx
+  return content.replace(/linkron:\/\/localhost\/resources\//g, 'resources/')
+}
+
+/**
+ * 导入转换：将相对路径转换为 linkron:// 协议 URL（从 git 同步导入）
+ * @param {string} content - 笔记 HTML 内容
+ * @returns {string} 转换后的内容
+ */
+export function convertUrlsFromImport(content) {
+  if (!content) return content
+  // resources/xxx → linkron://localhost/resources/xxx
+  // 匹配 src="resources/ 或 空格 resources/ 确保只匹配完整路径
+  return content.replace(/(src=["']| )resources\//g, '$1linkron://localhost/resources/')
 }

@@ -11,7 +11,8 @@ import Image from '@tiptap/extension-image'
 import { common, createLowlight } from 'lowlight'
 import tippy from 'tippy.js'
 import { useSettingStore } from '@/store/settingStore'
-import { saveImage, deleteResource } from '@/utils/fileUpload'
+import { saveImage, deleteResource, convertUrlsForExport, convertResourceUrl } from '@/utils/fileUpload'
+import { convertImageUrlsInHtml } from '@/utils/imageExtractor'
 import { useWorkDirectory } from '@/composables/useWorkDirectory'
 import SelectionMenu from './SelectionMenu.vue'
 import ImageViewer from './ImageViewer.vue'
@@ -68,11 +69,13 @@ const isUnmounting = ref(false) // 标志：组件是否正在卸载
 const { getWorkDirectory } = useWorkDirectory('setting')
 
 // 组件挂载时初始化编辑器内容
-onMounted(() => {
+onMounted(async () => {
   // 只在编辑模式下初始化内容
   if (props.isEditing && editor.value && props.modelValue) {
+    // 转换 URL 为当前平台特定格式
+    const content = await convertImageUrlsInHtml(props.modelValue)
     // 设置内容，不触发更新事件，并标记为初始化
-    editor.value.commands.setContent(props.modelValue, false)
+    editor.value.commands.setContent(content, false)
     // 在下一个事件循环中标记初始化完成
     setTimeout(() => {
       if (editor.value) {
@@ -316,14 +319,16 @@ async function handleImageUpload(event) {
       // 使用抽离的工具方法保存图片
       const workDirectory = await getWorkDirectory()
       const imageUrl = await saveImage(file, workDirectory)
-      // imageUrl 现在已经是完整 URL: http://linkron.localhost/resources/images/...
+      // imageUrl 从后端返回是 linkron://localhost/resources/images/...
+      // 需要转换为当前平台可显示的 URL
+      const displayUrl = await convertResourceUrl(imageUrl)
 
       // 插入到编辑器光标处
       if (editor.value) {
         editor.value.chain().focus().insertContent({
           type: 'resizableImage',
           attrs: {
-            src: imageUrl,
+            src: displayUrl,
             alt: file.name,
           }
         }).run()
@@ -345,9 +350,12 @@ function clearEditor() {
 
 async function handleSubmit() {
   if (hasContent.value) {
+    let content = editor.value.getHTML()
+    // 保存到数据库之前，将 http://linkron.localhost/ 转换为 linkron://localhost/ 统一存储
+    content = convertUrlsForExport(content)
     // 通过 emit 传递笔记数据（不包含 images）
     emit('submit', {
-      content: editor.value.getHTML()
+      content
     })
 
     // 提交后清空编辑器
