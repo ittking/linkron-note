@@ -57,7 +57,8 @@ function handleDialogSave(data) {
 
 // 处理编辑对话框删除
 function handleDialogDelete(id) {
-  deleteTodo(id)
+  pendingDeleteId.value = id
+  showConfirm('确认删除', '确定要删除这个待办事项吗？删除后无法恢复。', confirmDeleteTodo)
 }
 
 // 辅助函数：解析 reminder JSON
@@ -225,7 +226,7 @@ async function updateTodo(data) {
 // 点击删除按钮，显示确认对话框
 function requestDeleteTodo(id) {
   pendingDeleteId.value = id
-  showConfirm('确认删除', '确定要删除这个待办事项吗？删除后无法恢复。')
+  showConfirm('确认删除', '确定要删除这个待办事项吗？删除后无法恢复。', confirmDeleteTodo)
 }
 
 // 确认删除
@@ -292,19 +293,19 @@ onMounted(() => {
 
 <template>
   <div class="h-full relative">
-    <!-- 日历视图 -->
-    <CalendarTodo 
-      v-if="currentView === 'calendar'"
-      :year="calendarYear"
-      :month="calendarMonth"
-      :todos="monthTodos"
-      :loading="loading"
-      @month-change="handleMonthChange"
-      @create="createTodo"
-      @update="updateTodo"
-      @delete="deleteTodo"
-      @open-edit="openEditDialog"
-    />
+     <!-- 日历视图 -->
+     <CalendarTodo 
+       v-if="currentView === 'calendar'"
+       :year="calendarYear"
+       :month="calendarMonth"
+       :todos="monthTodos"
+       :loading="loading"
+       @month-change="handleMonthChange"
+       @create="createTodo"
+       @update="updateTodo"
+       @delete="requestDeleteTodo"
+       @open-edit="openEditDialog"
+     />
     
      <!-- 今日列表视图 -->
      <TodayTodoList 
@@ -328,28 +329,27 @@ onMounted(() => {
        @delete="handleDialogDelete"
      />
 
-     <!-- 删除确认对话框 -->
-     <div v-if="confirmVisible" class="modal modal-open">
-       <div class="modal-box">
-         <h3 class="font-bold text-lg">{{ confirmTitle }}</h3>
-         <p class="py-4 text-base-content/70">{{ confirmContent }}</p>
-         <div class="modal-action justify-end gap-2">
-           <button class="btn" @click="document.activeElement?.blur()">取消</button>
-           <button class="btn btn-error" @click="handleConfirmOk(confirmDeleteTodo)">确定删除</button>
-         </div>
-       </div>
-       <div class="modal-backdrop" @click="document.activeElement?.blur()">
-     </div>
-   </div>
+      <!-- 删除确认对话框 -->
+      <div v-if="confirmVisible" class="modal modal-open">
+        <div class="modal-box">
+          <h3 class="font-bold text-lg">{{ confirmTitle }}</h3>
+          <p class="py-4 text-base-content/70">{{ confirmContent }}</p>
+          <div class="modal-action justify-end gap-2">
+            <button class="btn" @click="confirmVisible = false">取消</button>
+            <button class="btn btn-error" @click="handleConfirmOk">确定删除</button>
+          </div>
+        </div>
+        <div class="modal-backdrop" @click="confirmVisible = false"></div>
+      </div>
 
-    <!-- 悬浮切换按钮 -->
-    <button
-      @click="toggleView"
-      class="fixed bottom-6 right-6 z-50 w-10 h-10 bg-primary text-primary-content rounded-full flex items-center justify-center shadow-lg hover:bg-primary/90 hover:scale-105 transition-all duration-200"
-      :title="currentView === 'calendar' ? '切换到今日列表' : '切换到日历视图'"
-    >
-      <Calendar v-if="currentView === 'today'" :size="18" />
-      <CheckSquare v-else :size="18" />
-    </button>
-  </div>
-</template>
+     <!-- 悬浮切换按钮 -->
+     <button
+       @click="toggleView"
+       class="fixed bottom-6 right-6 z-50 w-10 h-10 bg-primary text-primary-content rounded-full flex items-center justify-center shadow-lg hover:bg-primary/90 hover:scale-105 transition-all duration-200"
+       :title="currentView === 'calendar' ? '切换到今日列表' : '切换到日历视图'"
+     >
+       <Calendar v-if="currentView === 'today'" :size="18" />
+       <CheckSquare v-else :size="18" />
+     </button>
+   </div>
+ </template>
