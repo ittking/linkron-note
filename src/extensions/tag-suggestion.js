@@ -173,7 +173,7 @@ export const TagSuggestion = Extension.create({
         props: {
           handleKeyDown(view, event) {
             const pluginState = pluginKey.getState(view.state)
-            
+
             if (!pluginState || !pluginState.active || !pluginState.popup) {
               return false
             }
@@ -197,7 +197,8 @@ export const TagSuggestion = Extension.create({
               return true
             }
 
-            if (event.key === 'Enter') {
+            // 只有在有建议项时才拦截 Enter
+            if (event.key === 'Enter' && pluginState.items && pluginState.items.length > 0) {
               event.preventDefault()
               selectItem(pluginState, editor)
               return true

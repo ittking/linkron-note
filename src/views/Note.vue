@@ -329,7 +329,6 @@ async function handleEditorSubmit(noteData) {
                 isEditing.value = false
                 editorContent.value = ''
                 editorSourceUrl.value = ''
-                showToast('笔记更新成功', 'success')
             } catch (error) {
                 showToast('笔记更新失败：' + error.message, 'error')
             }
@@ -342,7 +341,6 @@ async function handleEditorSubmit(noteData) {
             notes.value.unshift(newNote)
             editorContent.value = ''
             editorSourceUrl.value = ''
-            showToast('笔记创建成功', 'success')
         }
     }
 }
@@ -477,7 +475,6 @@ async function handleFileToEditor(file) {
 
             // 直接添加到编辑器，不进行 AI 优化
             editorContent.value += (editorContent.value ? '<br>' : '') + content
-            showToast('网页内容已添加到编辑器', 'success')
         } catch (error) {
             showToast('网页抓取失败: ' + error.message, 'error')
         } finally {
@@ -488,7 +485,6 @@ async function handleFileToEditor(file) {
 
     const htmlContent = result.content.replace(/\n/g, '<br>')
     editorContent.value += (editorContent.value ? '<br>' : '') + `<p>${htmlContent}</p>`
-    showToast(`${getFileTypeDescription(file.name)}内容已添加到编辑器`, 'success')
 }
 
 // 将数据添加到编辑器
@@ -513,7 +509,6 @@ async function handleDataToEditor(data) {
 
             // 直接添加到编辑器，不进行 AI 优化
             editorContent.value += (editorContent.value ? '<br>' : '') + content
-            showToast('网页内容已添加到编辑器', 'success')
         } catch (error) {
             showToast('网页抓取失败: ' + error.message, 'error')
         } finally {
@@ -555,7 +550,6 @@ async function handleDroppedFile(file) {
         extractUrl: result.savedPath
     })
     notes.value.unshift(newNote)
-    showToast(`${getFileTypeDescription(file.name)}笔记创建成功`, 'success')
 }
 
 // 创建链接笔记
@@ -577,7 +571,6 @@ async function createLinkNote(url) {
             sourceUrl: url
         })
         notes.value.unshift(newNote)
-        showToast('链接笔记创建成功', 'success')
     } catch (error) {
         showToast('链接抓取失败: ' + error.message, 'error')
     } finally {
@@ -593,7 +586,6 @@ async function createTextNote(text) {
             content: text
         })
         notes.value.unshift(newNote)
-        showToast('文字笔记创建成功', 'success')
     } catch (error) {
         showToast('创建笔记失败', 'error')
     }
@@ -636,7 +628,6 @@ function handleMenuEdit(note) {
         editorContent.value = note.content
     })
     isEditing.value = true
-    showToast('进入编辑模式', 'info')
 }
 
 function handleMenuDelete(note) {
@@ -659,7 +650,6 @@ function handleMenuPin(note) {
         }
         // 重新加载笔记列表以应用正确的排序
         loadNotes(true)
-        showToast(note.pinned ? '已取消置顶' : '已置顶', 'success')
     }).catch(error => {
         showToast('操作失败：' + error.message, 'error')
     })
@@ -675,7 +665,6 @@ function handleCancelEdit() {
     isEditing.value = false
     editorContent.value = ''
     editorSourceUrl.value = ''
-    showToast('已取消编辑', 'info')
 }
 
 // 侧边栏状态

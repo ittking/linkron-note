@@ -38,27 +38,8 @@ export const TagInputRuleExtension = Mark.create({
         props: {
           // 拦截键盘事件
           handleKeyDown: (view, event) => {
-            const { state } = view
-            const { from, to } = state.selection
-
-            // 检查光标是否在标签 mark 内
-            const tagMark = state.schema.marks.tag
-            let isInTag = false
-
-            // 检查光标位置是否在标签 mark 内
-            state.doc.nodesBetween(from, to, (node, pos) => {
-              if (node.marks.some(mark => mark.type === tagMark)) {
-                isInTag = true
-                return false
-              }
-            })
-
-            // 如果在标签内，拦截回车键
-            if (isInTag && event.key === 'Enter') {
-              event.preventDefault()
-              return true
-            }
-
+            // 不再拦截 Enter 键，允许在任何情况下换行
+            // 标签只通过空格创建
             return false
           },
           // 处理文本输入
