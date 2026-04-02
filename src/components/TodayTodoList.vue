@@ -1,6 +1,6 @@
 <script setup>
 import { ref, computed, nextTick, watch, onMounted, onBeforeUnmount } from 'vue'
-import { Check, Clock, X, MoreHorizontal, Repeat } from 'lucide-vue-next'
+import { Check, Clock, X, Repeat } from 'lucide-vue-next'
 import dayjs from 'dayjs'
 import dayjsLocale from 'dayjs/locale/zh-cn'
 import DateTimePicker from './ui/DateTimePicker.vue'
@@ -42,10 +42,6 @@ onBeforeUnmount(() => {
     clearInterval(timer)
   }
 })
-
-// 编辑状态
-const editingTodoId = ref(null)
-const editingTodoText = ref('')
 
 // 选中的日期
 const selectedDate = ref(dayjs().format('YYYY-MM-DD'))
@@ -218,44 +214,7 @@ function updateReminderTime(todo, value) {
   })
 }
 
-// 开始编辑
-function startEditing(todo) {
-  editingTodoId.value = todo.id
-  editingTodoText.value = todo.text
-  // 使用 nextTick 确保 DOM 更新后再聚焦
-  nextTick(() => {
-    const inputEl = document.getElementById(`todo-input-${todo.id}`)
-    if (inputEl) {
-      inputEl.focus()
-      inputEl.select()
-    }
-  })
-}
-
-// 取消编辑
-function cancelEditing() {
-  editingTodoId.value = null
-  editingTodoText.value = ''
-}
-
-// 更新待办文本
-function updateTodoText(todo) {
-  if (!editingTodoText.value.trim()) {
-    cancelEditing()
-    return
-  }
-
-  emit('update', {
-    id: todo.id,
-    text: editingTodoText.value.trim(),
-    status: todo.status,
-    reminder: stringifyReminder(todo.reminder)
-  })
-
-  cancelEditing()
-}
-
-// 打开编辑对话框
+// 打开编辑对话框 - 整个卡片点击
 function openEditDialog(todo) {
   emit('open-edit', selectedDate.value, todo)
 }
@@ -317,87 +276,76 @@ const sortedTodos = computed(() => props.todos)
         <div class="text-sm">今日暂无待办事项</div>
       </div>
 
-      <div v-else class="space-y-3">
-        <div v-for="todo in sortedTodos" :key="todo.id"
-          class="group flex items-start gap-3 p-3 bg-primary/5 rounded-lg">
-          <!-- 圆形 Checkbox -->
-          <button @click="toggleTodoStatus(todo)"
-            class="flex-shrink-0 w-4 h-4 rounded-full border-2 flex items-center justify-center transition-all" :style="{
-              borderColor: todo.status === 'completed' ? 'rgba(16, 185, 129, 0.5)' :
-                todo.status === 'cancelled' ? 'rgba(239, 68, 68, 0.5)' :
-                  todo.status === 'pending' ? 'rgba(245, 158, 11, 0.5)' :
-                    STATUS_COLORS[todo.status],
-              backgroundColor: 'transparent'
-            }">
-            <div v-if="todo.status === 'completed'" class="w-1.5 h-1.5 rounded-full" style="background-color: #10B981">
-            </div>
-            <div v-else-if="todo.status === 'cancelled'" class="w-1.5 h-1.5 rounded-full"
-              style="background-color: #EF4444">
-            </div>
-            <div v-else-if="todo.status === 'pending'" class="w-1.5 h-1.5 rounded-full"
-              style="background-color: #F59E0B">
-            </div>
-          </button>
+       <div v-else class="space-y-3">
+         <div v-for="todo in sortedTodos" :key="todo.id"
+           class="group flex items-start gap-3 p-3 bg-primary/5 rounded-lg cursor-pointer hover:bg-primary/10 transition-colors"
+           @click="openEditDialog(todo)">
+           <!-- 圆形 Checkbox -->
+           <button @click.stop="toggleTodoStatus(todo)"
+             class="flex-shrink-0 w-4 h-4 rounded-full border-2 flex items-center justify-center transition-all" :style="{
+               borderColor: todo.status === 'completed' ? 'rgba(16, 185, 129, 0.5)' :
+                 todo.status === 'cancelled' ? 'rgba(239, 68, 68, 0.5)' :
+                   todo.status === 'pending' ? 'rgba(245, 158, 11, 0.5)' :
+                     STATUS_COLORS[todo.status],
+               backgroundColor: 'transparent'
+             }">
+             <div v-if="todo.status === 'completed'" class="w-1.5 h-1.5 rounded-full" style="background-color: #10B981">
+             </div>
+             <div v-else-if="todo.status === 'cancelled'" class="w-1.5 h-1.5 rounded-full"
+               style="background-color: #EF4444">
+             </div>
+             <div v-else-if="todo.status === 'pending'" class="w-1.5 h-1.5 rounded-full"
+               style="background-color: #F59E0B">
+             </div>
+           </button>
 
-          <!-- 待办内容 -->
-          <div class="flex-1 min-w-0 line-height-1">
-            <!-- 编辑模式 -->
-            <input v-if="editingTodoId === todo.id" :id="`todo-input-${todo.id}`" v-model="editingTodoText"
-              @blur="updateTodoText(todo)" @keyup.enter="updateTodoText(todo)" @keyup.esc="cancelEditing"
-              class="w-full text-sm bg-transparent border-none focus:outline-none focus:ring-0 p-0 !m-0" />
-            <!-- 显示模式 -->
-            <div v-else @click="todo.status !== 'completed' && todo.status !== 'cancelled' && startEditing(todo)"
-              class="text-sm cursor-pointer" :class="{
-                'line-through opacity-60': todo.status === 'completed' || todo.status === 'cancelled' || todo.status === 'pending'
-              }">
-              {{ todo.text }}
-            </div>
+           <!-- 待办内容 -->
+           <div class="flex-1 min-w-0 line-height-1">
+             <!-- 直接显示，点击整卡弹出编辑 -->
+             <div class="text-sm" :class="{
+               'line-through opacity-60': todo.status === 'completed' || todo.status === 'cancelled' || todo.status === 'pending'
+             }">
+               {{ todo.text }}
+             </div>
 
-            <!-- 提醒时间 -->
-            <div class="mt-3">
-              <DateTimePicker :model-value="getReminderTime(todo)"
-                @update:model-value="(value) => updateReminderTime(todo, value)"
-                :mode="todo.reminder?.type === 'repeat' ? 'time' : 'datetime'" :min="dayjs().format('YYYY-MM-DDTHH:mm')"
-                :clearable="true">
-                <template #default="{ toggle, hasValue }">
-                  <div class="inline-block">
-                    <div @click="toggle"
-                      class="flex items-start gap-1 text-xs cursor-pointer hover:text-primary transition-colors leading-tight"
-                      :class="{
-                        'text-base-content/50': !hasValue,
-                        'text-base-content/70': hasValue
-                      }">
-                      <span>
-                        <Repeat v-if="hasValue && todo.reminder?.type === 'repeat'" :size="14" />
-                        <Clock v-else :size="14" />
-                      </span>
-                      <span v-if="hasValue">{{ formatReminderTime(getReminderTime(todo), todo) }}</span>
-                      <span v-if="!hasValue">今日</span>
-                    </div>
-                  </div>
-                </template>
-              </DateTimePicker>
-            </div>
-          </div>
+             <!-- 提醒时间 -->
+             <div class="mt-3">
+               <DateTimePicker :model-value="getReminderTime(todo)"
+                 @update:model-value="(value) => updateReminderTime(todo, value)"
+                 :mode="todo.reminder?.type === 'repeat' ? 'time' : 'datetime'" :min="dayjs().format('YYYY-MM-DDTHH:mm')"
+                 :clearable="true">
+                 <template #default="{ toggle, hasValue }">
+                   <div class="inline-block">
+                     <div @click.stop="toggle"
+                       class="flex items-start gap-1 text-xs cursor-pointer hover:text-primary transition-colors leading-tight"
+                       :class="{
+                         'text-base-content/50': !hasValue,
+                         'text-base-content/70': hasValue
+                       }">
+                       <span>
+                         <Repeat v-if="hasValue && todo.reminder?.type === 'repeat'" :size="14" />
+                         <Clock v-else :size="14" />
+                       </span>
+                       <span v-if="hasValue">{{ formatReminderTime(getReminderTime(todo), todo) }}</span>
+                       <span v-if="!hasValue">今日</span>
+                     </div>
+                   </div>
+                 </template>
+               </DateTimePicker>
+             </div>
+           </div>
 
-          <!-- 更多操作按钮 -->
-          <button @click="openEditDialog(todo)"
-            class="flex-shrink-0 p-1 text-base-content/40 hover:text-primary hover:bg-primary/10 rounded transition-colors opacity-0 group-hover:opacity-100"
-            title="编辑">
-            <MoreHorizontal :size="14" />
-          </button>
-
-          <!-- 删除按钮 -->
-          <button @click="deleteTodo(todo)"
-            class="flex-shrink-0 p-1 text-base-content/40 hover:text-error hover:bg-error/10 rounded transition-colors opacity-0 group-hover:opacity-100"
-            title="删除">
-            <X :size="14" />
-          </button>
-        </div>
-      </div>
-    </div>
-  </div>
-</template>
+           <!-- 删除按钮 -->
+           <button @click.stop="deleteTodo(todo)"
+             class="flex-shrink-0 p-1 text-base-content/40 hover:text-error hover:bg-error/10 rounded transition-colors opacity-0 group-hover:opacity-100"
+             title="删除">
+             <X :size="14" />
+           </button>
+         </div>
+       </div>
+     </div>
+   </div>
+ </template>
 
 <style scoped>
 .no-scrollbar {

@@ -8,6 +8,7 @@ import { Calendar, CheckSquare } from 'lucide-vue-next'
 import dayjs from 'dayjs'
 import { useWorkDirectory } from '@/composables/useWorkDirectory'
 import { useSync } from '@/composables/useSync'
+import { useConfirmDialog } from '@/composables/useConfirmDialog'
 
 dayjs.locale('zh-cn')
 
@@ -33,6 +34,10 @@ const today = computed(() => dayjs().format('YYYY-MM-DD'))
 const showEditDialog = ref(false)
 const editDialogDate = ref('')
 const editDialogTodo = ref(null)
+
+// 删除确认对话框
+const { confirmVisible, confirmTitle, confirmContent, showConfirm, handleConfirmOk } = useConfirmDialog()
+const pendingDeleteId = ref(null)
 
 // 打开编辑对话框
 function openEditDialog(date, todo = null) {
@@ -217,7 +222,17 @@ async function updateTodo(data) {
   }
 }
 
-async function deleteTodo(id) {
+// 点击删除按钮，显示确认对话框
+function requestDeleteTodo(id) {
+  pendingDeleteId.value = id
+  showConfirm('确认删除', '确定要删除这个待办事项吗？删除后无法恢复。')
+}
+
+// 确认删除
+async function confirmDeleteTodo() {
+  const id = pendingDeleteId.value
+  if (!id) return
+  
   try {
     const workDirectory = await getWorkDirectory()
     await invoke('delete_todo', {
@@ -291,27 +306,41 @@ onMounted(() => {
       @open-edit="openEditDialog"
     />
     
-    <!-- 今日列表视图 -->
-    <TodayTodoList 
-      v-else
-      :todos="todayTodos"
-      :loading="loading"
-      @create="createTodo"
-      @update="updateTodo"
-      @delete="deleteTodo"
-      @toggle-status="toggleTodoStatus"
-      @date-change="handleDateChange"
-      @open-edit="openEditDialog"
-    />
+     <!-- 今日列表视图 -->
+     <TodayTodoList 
+       v-else
+       :todos="todayTodos"
+       :loading="loading"
+       @create="createTodo"
+       @update="updateTodo"
+       @delete="requestDeleteTodo"
+       @toggle-status="toggleTodoStatus"
+       @date-change="handleDateChange"
+       @open-edit="openEditDialog"
+     />
 
-    <!-- 编辑对话框 -->
-    <TodoDialog
-      v-model:show="showEditDialog"
-      :date="editDialogDate"
-      :todo="editDialogTodo"
-      @save="handleDialogSave"
-      @delete="handleDialogDelete"
-    />
+     <!-- 编辑对话框 -->
+     <TodoDialog
+       v-model:show="showEditDialog"
+       :date="editDialogDate"
+       :todo="editDialogTodo"
+       @save="handleDialogSave"
+       @delete="handleDialogDelete"
+     />
+
+     <!-- 删除确认对话框 -->
+     <div v-if="confirmVisible" class="modal modal-open">
+       <div class="modal-box">
+         <h3 class="font-bold text-lg">{{ confirmTitle }}</h3>
+         <p class="py-4 text-base-content/70">{{ confirmContent }}</p>
+         <div class="modal-action justify-end gap-2">
+           <button class="btn" @click="document.activeElement?.blur()">取消</button>
+           <button class="btn btn-error" @click="handleConfirmOk(confirmDeleteTodo)">确定删除</button>
+         </div>
+       </div>
+       <div class="modal-backdrop" @click="document.activeElement?.blur()">
+     </div>
+   </div>
 
     <!-- 悬浮切换按钮 -->
     <button
