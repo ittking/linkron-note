@@ -8,6 +8,7 @@ mod note;
 mod protocol;
 mod tag;
 mod todo;
+mod tray;
 mod web_scraper;
 mod window_manager;
 
@@ -21,6 +22,16 @@ pub fn run() {
         .register_uri_scheme_protocol("linkron", protocol::iterm_protocol_handler)
         .setup(|app| {
             window_manager::setup_window_manager(app)?;
+
+            // 创建系统托盘/Dock菜单
+            #[cfg(any(target_os = "windows", target_os = "macos", target_os = "linux"))]
+            {
+                let app_handle = app.handle();
+                if let Err(e) = tray::create_system_menu(&app_handle) {
+                    eprintln!("Failed to create system menu: {}", e);
+                }
+            }
+
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -67,7 +78,9 @@ pub fn run() {
             api_sync::check_git_installed,
             api_sync::validate_sync_config,
             api_sync::sync_to_remote,
-            api_sync::sync_from_remote
+            api_sync::sync_from_remote,
+            tray::show_main_window,
+            tray::quit_app
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
