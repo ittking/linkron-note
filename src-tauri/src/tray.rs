@@ -28,18 +28,17 @@ fn create_windows_tray(app_handle: &AppHandle) -> Result<(), String> {
         .map_err(|e| format!("Failed to create menu: {}", e))?;
 
     // 从资源加载图标，如果没有则使用默认图标
-    let icon = load_default_icon()?;
+    let icon = load_default_icon(app_handle)?;
 
     // 创建托盘图标并 leak 以保持其生命周期
     let _tray = Box::leak(Box::new(
-        TrayIcon::new(
-            tray_icon::TrayIconAttributes {
-                menu: Some(Box::new(menu)),
-                tooltip: Some("LINKRON".to_string()),
-                icon: Some(icon),
-                ..Default::default()
-            }
-        ).map_err(|e| format!("Failed to create tray icon: {}", e))?
+        TrayIcon::new(tray_icon::TrayIconAttributes {
+            menu: Some(Box::new(menu)),
+            tooltip: Some("LINKRON".to_string()),
+            icon: Some(icon),
+            ..Default::default()
+        })
+        .map_err(|e| format!("Failed to create tray icon: {}", e))?,
     ));
 
     // 处理菜单点击事件
@@ -121,17 +120,16 @@ fn create_linux_tray(app_handle: &AppHandle) -> Result<(), String> {
     let menu = Menu::with_items(&[&show_main_item, &quit_item])
         .map_err(|e| format!("Failed to create menu: {}", e))?;
 
-    let icon = load_default_icon()?;
+    let icon = load_default_icon(app_handle)?;
 
     let _tray = Box::leak(Box::new(
-        TrayIcon::new(
-            tray_icon::TrayIconAttributes {
-                menu: Some(Box::new(menu)),
-                tooltip: Some("LINKRON".to_string()),
-                icon: Some(icon),
-                ..Default::default()
-            }
-        ).map_err(|e| format!("Failed to create tray icon: {}", e))?
+        TrayIcon::new(tray_icon::TrayIconAttributes {
+            menu: Some(Box::new(menu)),
+            tooltip: Some("LINKRON".to_string()),
+            icon: Some(icon),
+            ..Default::default()
+        })
+        .map_err(|e| format!("Failed to create tray icon: {}", e))?,
     ));
 
     let app_handle = app_handle.clone();
@@ -157,25 +155,48 @@ fn create_linux_tray(app_handle: &AppHandle) -> Result<(), String> {
 }
 
 /// 加载应用图标
-fn load_default_icon() -> Result<tray_icon::Icon, String> {
-    // 从 src-tauri/icons/32x32.png 加载图标
-    let icon_path = std::path::PathBuf::from("icons/32x32.png");
+fn load_default_icon(app_handle: &AppHandle) -> Result<tray_icon::Icon, String> {
+    // 使用路径解析器获取正确的资源路径
+    let icon_path = app_handle
+        .path_resolver()
+        .resource_dir()
+        .map_err(|e| format!("Failed to get resource dir: {}", e))?
+        .join("../../public/icons/32x32.png");
+
+    // 如果上面的路径不存在，尝试相对于当前可执行文件的路径
+    let icon_path = if icon_path.exists() {
+        icon_path
+    } else {
+        std::path::PathBuf::from("public/icons/32x32.png")
+    };
+
+    // 如果还是不存在，尝试 src-tauri/icons
+    let icon_path = if icon_path.exists() {
+        icon_path
+    } else {
+        let exe_dir = std::env::current_exe()
+            .map_err(|e| format!("Failed to get current exe dir: {}", e))?
+            .parent()
+            .map(|p| p.join("../../public/icons/32x32.png"))
+            .unwrap_or(std::path::PathBuf::from("public/icons/32x32.png"));
+        if exe_dir.exists() {
+            exe_dir
+        } else {
+            std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("icons/32x32.png")
+        }
+    };
 
     // 读取图标文件
     let icon_data = std::fs::read(&icon_path)
-        .map_err(|e| format!("Failed to read icon file: {}", e))?;
+        .map_err(|e| format!("Failed to read icon file from {:?}: {}", icon_path, e))?;
 
     // 使用 image crate 解析 PNG
     let image = image::load_from_memory(&icon_data)
-        .map_err(|e| format!("Failed to parse icon image: {}", e))?
+        .map_err(|e| format!("Failed to parse icon image from {:?}: {}", icon_path, e))?
+        .to_rgba8();
 
-    .to_rgba8();
-
-    let icon = tray_icon::Icon::from_rgba(
-        image.as_raw().to_vec(),
-        image.width(),
-        image.height()
-    ).map_err(|e| format!("Failed to create icon: {}", e))?;
+    let icon = tray_icon::Icon::from_rgba(image.as_raw().to_vec(), image.width(), image.height())
+        .map_err(|e| format!("Failed to create icon: {}", e))?;
 
     Ok(icon)
 }
