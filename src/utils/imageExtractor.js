@@ -28,3 +28,47 @@ export function extractImagesFromHtml(html) {
 
   return images
 }
+
+/**
+ * 将 HTML 内容中的 linkron:// 协议转换为平台特定的 URL
+ * @param {string} html - HTML 内容
+ * @returns {string} 转换后的 HTML 内容
+ */
+export async function convertImageUrlsInHtml(html) {
+  if (!html) return html
+
+  const platform = await getPlatform()
+
+  // macOS 不需要转换
+  if (platform === 'macos') {
+    return html
+  }
+
+  // Windows/Linux 替换 linkron:// 为 http://linkron.localhost/
+  return html.replace(/linkron:\/\/localhost\//g, 'http://linkron.localhost/')
+}
+
+/**
+ * 获取当前平台（缓存版本）
+ * @returns {Promise<string>} 'windows' | 'macos' | 'linux'
+ */
+let cachedPlatform = null
+
+async function getPlatform() {
+  if (cachedPlatform) return cachedPlatform
+
+  try {
+    // 通过检测 UserAgent 或其他方式判断平台
+    const userAgent = navigator.userAgent
+    if (userAgent.includes('Mac')) {
+      cachedPlatform = 'macos'
+    } else if (userAgent.includes('Win')) {
+      cachedPlatform = 'windows'
+    } else {
+      cachedPlatform = 'linux'
+    }
+    return cachedPlatform
+  } catch {
+    return 'windows'
+  }
+}

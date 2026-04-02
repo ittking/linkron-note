@@ -56,7 +56,7 @@ pub async fn save_image(file_data: Vec<u8>, file_name: String, work_directory: O
     std::fs::write(&file_path, &file_data)
         .map_err(|e| format!("Failed to write image file: {}", e))?;
 
-    // 返回完整 URL
+    // 返回完整 URL (统一使用 linkron:// 协议，前端根据平台转换)
     Ok(format!("linkron://localhost/resources/images/{}", unique_file_name))
 }
 
@@ -118,7 +118,7 @@ pub async fn save_file(
         format!("files/{}", unique_file_name)
     };
 
-    // 生成完整 URL
+    // 生成完整 URL (统一使用 linkron:// 协议，前端根据平台转换)
     let full_url = format!("linkron://localhost/resources/{}", resource_path);
     Ok(full_url)
 }
@@ -136,13 +136,14 @@ pub async fn save_file(
 pub fn delete_resource_by_url(url: String, work_directory: Option<String>) -> Result<(), String> {
     use std::path::PathBuf;
 
-    // 检查是否是本地资源 URL
-    if !url.starts_with("linkron://localhost/resources/") {
+    // 检查是否是本地资源 URL (支持 linkron:// 和 http://linkron.localhost/ 两种格式)
+    let resource_path = if url.starts_with("linkron://localhost/resources/") {
+        url.trim_start_matches("linkron://localhost/resources/")
+    } else if url.starts_with("http://linkron.localhost/resources/") {
+        url.trim_start_matches("http://linkron.localhost/resources/")
+    } else {
         return Ok(()); // 外部 URL，跳过删除
-    }
-
-    // 提取资源路径：移除 linkron://localhost/resources/ 前缀
-    let resource_path = url.trim_start_matches("linkron://localhost/resources/");
+    };
 
     // 确定基础目录
     let base_dir = if let Some(work_dir) = work_directory {
@@ -181,13 +182,14 @@ pub fn delete_resource_by_url(url: String, work_directory: Option<String>) -> Re
 pub fn get_local_path_from_protocol(protocol_url: String, work_directory: Option<String>) -> Result<String, String> {
     use std::path::PathBuf;
 
-    // 检查是否是本地资源 URL
-    if !protocol_url.starts_with("linkron://localhost/resources/") {
+    // 检查是否是本地资源 URL (支持 linkron:// 和 http://linkron.localhost/ 两种格式)
+    let resource_path = if protocol_url.starts_with("linkron://localhost/resources/") {
+        protocol_url.trim_start_matches("linkron://localhost/resources/")
+    } else if protocol_url.starts_with("http://linkron.localhost/resources/") {
+        protocol_url.trim_start_matches("http://linkron.localhost/resources/")
+    } else {
         return Err("Not a local resource URL".to_string());
-    }
-
-    // 提取资源路径：移除 linkron://localhost/resources/ 前缀
-    let resource_path = protocol_url.trim_start_matches("linkron://localhost/resources/");
+    };
 
     // 确定基础目录
     let base_dir = if let Some(work_dir) = work_directory {

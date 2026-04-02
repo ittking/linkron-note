@@ -7,7 +7,7 @@ import { useNoteStore } from '@/store/noteStore'
 import { useSettingStore } from '@/store/settingStore'
 import { revealFile } from '@/utils/fileUpload'
 import { useWorkDirectory } from '@/composables/useWorkDirectory'
-import { extractImagesFromHtml } from '@/utils/imageExtractor'
+import { extractImagesFromHtml, convertImageUrlsInHtml } from '@/utils/imageExtractor'
 import ImageViewer from './ImageViewer.vue'
 import Dropdown from './ui/Dropdown.vue'
 import StarterKit from '@tiptap/starter-kit'
@@ -76,9 +76,10 @@ const noteType = computed(() => {
 const isLinkNote = computed(() => noteType.value === 'link')
 const isFileNote = computed(() => noteType.value === 'file')
 
-// 从内容中提取所有图片
+// 从内容中提取所有图片（使用转换后的内容）
 const allImages = computed(() => {
-  return extractImagesFromHtml(props.note.content || '')
+  const content = convertedContent.value || props.note.content || ''
+  return extractImagesFromHtml(content)
 })
 
 // 显示的图片列表
@@ -117,6 +118,21 @@ watch(() => props.note.extractUrl, async (newExtractUrl) => {
   }
 }, { immediate: true })
 
+// 转换后的内容（用于平台适配）
+const convertedContent = ref('')
+const isContentLoaded = ref(false)
+
+// 监听 note.content 变化，转换 URL
+watch(() => props.note.content, async (newContent) => {
+  if (newContent) {
+    convertedContent.value = await convertImageUrlsInHtml(newContent)
+    isContentLoaded.value = true
+  } else {
+    convertedContent.value = ''
+    isContentLoaded.value = true
+  }
+}, { immediate: true })
+
 // 提取文件名
 const extractFileName = computed(() => {
   if (!props.note.extractUrl) return ''
@@ -130,7 +146,7 @@ const renderedContent = computed(() => {
 
 // 创建只读编辑器实例
 const editor = useEditor({
-  content: props.note.content || '',
+  content: '', // 初始为空，通过 watch 设置
   extensions: [
     StarterKit.configure({
       bulletList: {
@@ -163,9 +179,9 @@ const editor = useEditor({
   },
 })
 
-// 监听内容变化，更新编辑器
-watch([editor, () => props.note.content], ([newEditor, newContent]) => {
-  if (newEditor && newContent && newContent !== newEditor.getHTML()) {
+// 监听转换后的内容变化，更新编辑器
+watch([editor, convertedContent, isContentLoaded], ([newEditor, newContent, loaded]) => {
+  if (newEditor && loaded && newContent && newContent !== newEditor.getHTML()) {
     newEditor.commands.setContent(newContent, false)
   }
 }, { immediate: true })

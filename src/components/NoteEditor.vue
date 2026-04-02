@@ -102,13 +102,24 @@ const editor = useEditor({
   content: '', // 初始为空，在 onMounted 中设置
   extensions: [
     StarterKit.configure({
+      paragraph: {
+        HTMLAttributes: {
+          class: 'paragraph',
+        },
+      },
       bulletList: {
         keepMarks: true,
         keepAttributes: false,
+        HTMLAttributes: {
+          class: 'bullet-list',
+        },
       },
       orderedList: {
         keepMarks: true,
         keepAttributes: false,
+        HTMLAttributes: {
+          class: 'ordered-list',
+        },
       },
       codeBlock: false, // 禁用默认的 CodeBlock，使用 CodeBlockLowlight 代替
       link: false, // 排除 Link 扩展，因为我们要单独添加并配置它
@@ -129,6 +140,8 @@ const editor = useEditor({
     ResizableImage,
     Placeholder.configure({
       placeholder: props.placeholder,
+      // 确保 placeholder 不干扰正常输入
+      showOnlyWhenEditable: true,
     }),
     TagMark,
     TagInputRuleExtension,

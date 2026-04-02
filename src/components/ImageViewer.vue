@@ -2,7 +2,7 @@
 import { ref, onMounted, onBeforeUnmount, watch, computed } from 'vue'
 import { X, ZoomIn, ZoomOut, RotateCw, FolderOpen, ChevronLeft, ChevronRight } from 'lucide-vue-next'
 import { useSettingStore } from '@/store/settingStore'
-import { revealFile } from '@/utils/fileUpload'
+import { revealFile, convertResourceUrl } from '@/utils/fileUpload'
 
 const props = defineProps({
   src: {
@@ -44,31 +44,53 @@ const dragStart = ref({ x: 0, y: 0 })
 const startPosition = ref({ x: 0, y: 0 })
 const currentImageIndex = ref(0)
 
-// 计算当前显示的图片
-const currentImage = computed(() => {
-  if (props.images && props.images.length > 0) {
-    return props.images[currentImageIndex.value] || props.images[0]
+// 转换后的图片地址（平台适配）
+const convertedSrc = ref('')
+const convertedImages = ref([])
+
+// 监听 props.src 变化，转换 URL
+watch(() => props.src, async (newSrc) => {
+  if (newSrc) {
+    convertedSrc.value = await convertResourceUrl(newSrc)
+  } else {
+    convertedSrc.value = ''
   }
-  return props.src
+}, { immediate: true })
+
+// 监听 props.images 变化，转换所有 URL
+watch(() => props.images, async (newImages) => {
+  if (newImages && newImages.length > 0) {
+    convertedImages.value = await Promise.all(newImages.map(img => convertResourceUrl(img)))
+  } else {
+    convertedImages.value = []
+  }
+}, { immediate: true, deep: true })
+
+// 计算当前显示的图片（使用转换后的 URL）
+const currentImage = computed(() => {
+  if (convertedImages.value && convertedImages.value.length > 0) {
+    return convertedImages.value[currentImageIndex.value] || convertedImages.value[0]
+  }
+  return convertedSrc.value
 })
 
 // 初始化时根据 src 查找索引
 function initCurrentIndex() {
-  if (props.images && props.images.length > 0) {
-    const index = props.images.findIndex(img => img === props.src)
+  if (convertedImages.value && convertedImages.value.length > 0) {
+    const index = convertedImages.value.findIndex(img => img === convertedSrc.value)
     currentImageIndex.value = index >= 0 ? index : 0
   }
 }
 
 // 是否有多个图片
 const hasMultipleImages = computed(() => {
-  return props.images && props.images.length > 1
+  return convertedImages.value && convertedImages.value.length > 1
 })
 
 // 当前图片编号
 const imageNumber = computed(() => {
   if (hasMultipleImages.value) {
-    return `${currentImageIndex.value + 1} / ${props.images.length}`
+    return `${currentImageIndex.value + 1} / ${convertedImages.value.length}`
   }
   return ''
 })
@@ -272,7 +294,7 @@ onBeforeUnmount(() => {
       aspectRatio === 'portrait' ? 'aspect-[3/4]' : 'aspect-video',
     className
   ]" @click="openPreview">
-    <img :src="src" :alt="alt" class="w-full h-full object-cover" loading="lazy" />
+    <img :src="convertedSrc" :alt="alt" class="w-full h-full object-cover" loading="lazy" />
   </div>
 
   <!-- 预览弹窗 -->
