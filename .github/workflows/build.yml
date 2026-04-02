@@ -41,19 +41,21 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: 'npm'
+          cache: 'pnpm'
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
-
-      - name: Install pnpm
-        run: npm install -g pnpm
 
       - name: Install frontend dependencies
         run: pnpm install
@@ -88,6 +90,11 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
       - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
@@ -95,7 +102,6 @@ jobs:
 
       - name: Generate updater JSON
         run: |
-          pnpm install -g @tauri-apps/cli
           # This will be handled by tauri build automatically
           echo "Updater artifacts generated during build"
 
