@@ -67,9 +67,9 @@ fn create_windows_tray(app_handle: &AppHandle) -> Result<(), String> {
 /// macOS Dock 菜单
 #[cfg(target_os = "macos")]
 fn create_macos_dock_menu(app_handle: &AppHandle) -> Result<(), String> {
-    use cocoa::appkit::{NSApp, NSApplication, NSMenu, NSMenuItem};
+    use cocoa::appkit::{NSApp, NSMenu, NSMenuItem};
     use cocoa::base::{id, nil};
-    use cocoa::foundation::NSString;
+    use cocoa::foundation::{NSAutoreleasePool, NSString};
     use objc::runtime::Object;
     use objc::{class, msg_send, sel, sel_impl};
 
@@ -157,7 +157,8 @@ fn create_linux_tray(app_handle: &AppHandle) -> Result<(), String> {
     Ok(())
 }
 
-/// 加载应用图标
+/// 加载应用图标（仅 Windows 和 Linux）
+#[cfg(any(target_os = "windows", target_os = "linux"))]
 fn load_default_icon(_app_handle: &AppHandle) -> Result<tray_icon::Icon, String> {
     // 首先尝试 public/icons 目录（用户要求的图标位置）
     let manifest_dir = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
