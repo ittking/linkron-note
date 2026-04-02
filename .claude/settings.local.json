@@ -34,7 +34,8 @@
       "mcp__web-search-prime__web_search_prime",
       "Bash(pnpm install:*)",
       "Bash(npm run:*)",
-      "Bash(pnpm tauri:*)"
+      "Bash(pnpm tauri:*)",
+      "Bash(cd:*)"
     ]
   },
   "agents": {

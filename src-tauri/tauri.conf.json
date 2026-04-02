@@ -55,7 +55,7 @@
     "updater": {
       "pubkey": "YOUR_PUBLIC_KEY_HERE",
       "endpoints": [
-        "https://github.com/ittking/iterm/releases/latest/download/latest.json"
+        "https://github.com/ittking/linkron-note/releases/latest/download/latest.json"
       ]
     }
   }
