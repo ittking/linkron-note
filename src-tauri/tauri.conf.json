@@ -11,6 +11,9 @@
   },
   "app": {
     "macOSPrivateApi": true,
+    "singleInstance": {
+      "active": true
+    },
     "windows": [
       {
         "title": "linkron",

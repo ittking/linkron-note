@@ -27,7 +27,7 @@ fn create_windows_tray(app_handle: &AppHandle) -> Result<(), String> {
     let menu = Menu::with_items(&[&show_main_item, &quit_item])
         .map_err(|e| format!("Failed to create menu: {}", e))?;
 
-    // 从资源加载图标，如果没有则使用默认图标
+    // 从资源加载图标
     let icon = load_default_icon(app_handle)?;
 
     // 创建托盘图标并 leak 以保持其生命周期
@@ -159,47 +159,98 @@ fn create_linux_tray(app_handle: &AppHandle) -> Result<(), String> {
 
 /// 加载应用图标（仅 Windows 和 Linux）
 #[cfg(any(target_os = "windows", target_os = "linux"))]
-fn load_default_icon(_app_handle: &AppHandle) -> Result<tray_icon::Icon, String> {
-    // 首先尝试 public/icons 目录（用户要求的图标位置）
-    let manifest_dir = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-    let icon_path = manifest_dir.join("../public/icons/32x32.png");
+fn load_default_icon(app_handle: &AppHandle) -> Result<tray_icon::Icon, String> {
+    // 优先使用嵌入的图标数据（更可靠）
+    if let Ok(icon) = try_embedded_icon() {
+        return Ok(icon);
+    }
 
-    // 如果 public/icons 不存在，回退到 src-tauri/icons
-    let icon_path = if icon_path.exists() {
-        icon_path
-    } else {
-        manifest_dir.join("icons/32x32.png")
-    };
+    // 尝试多个路径获取图标
+    let resource_paths = vec![
+        // 相对于资源目录的路径
+        "icons/32x32.png",
+        "public/icons/32x32.png",
+    ];
 
-    // 如果还是不存在，尝试 src-tauri/icons
-    let icon_path = if icon_path.exists() {
-        icon_path
-    } else {
-        let exe_dir = std::env::current_exe()
-            .map_err(|e| format!("Failed to get current exe dir: {}", e))?
-            .parent()
-            .map(|p| p.join("../../public/icons/32x32.png"))
-            .unwrap_or(std::path::PathBuf::from("public/icons/32x32.png"));
-        if exe_dir.exists() {
-            exe_dir
-        } else {
-            std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("icons/32x32.png")
+    let mut icon_data = None;
+    let mut tried_paths = Vec::new();
+
+    for path in resource_paths {
+        tried_paths.push(path.to_string());
+
+        // 尝试使用 Tauri 的资源解析器
+        if let Ok(resolved_path) = app_handle.path().resolve(path, tauri::path::BaseDirectory::Resource) {
+            if resolved_path.exists() {
+                if let Ok(data) = std::fs::read(&resolved_path) {
+                    icon_data = Some(data);
+                    break;
+                }
+            }
         }
-    };
 
-    // 读取图标文件
-    let icon_data = std::fs::read(&icon_path)
-        .map_err(|e| format!("Failed to read icon file from {:?}: {}", icon_path, e))?;
+        // 尝试直接读取（开发环境）
+        if std::path::Path::new(path).exists() {
+            if let Ok(data) = std::fs::read(path) {
+                icon_data = Some(data);
+                break;
+            }
+        }
+    }
+
+    let icon_data = icon_data.ok_or_else(|| {
+        format!(
+            "Failed to find icon. Tried paths: {:?}",
+            tried_paths
+        )
+    })?;
 
     // 使用 image crate 解析 PNG
     let image = image::load_from_memory(&icon_data)
-        .map_err(|e| format!("Failed to parse icon image from {:?}: {}", icon_path, e))?
+        .map_err(|e| format!("Failed to parse icon image: {}", e))?
         .to_rgba8();
 
     let icon = tray_icon::Icon::from_rgba(image.as_raw().to_vec(), image.width(), image.height())
         .map_err(|e| format!("Failed to create icon: {}", e))?;
 
     Ok(icon)
+}
+
+/// 尝试创建简单的内置图标（备用方案）
+#[cfg(any(target_os = "windows", target_os = "linux"))]
+fn try_embedded_icon() -> Result<tray_icon::Icon, String> {
+    use std::io::Cursor;
+
+    // 创建一个简单的 32x32 RGBA 图像
+    let mut img = image::RgbaImage::new(32, 32);
+
+    // 绘制一个简单的圆形图标
+    let center_x = 16;
+    let center_y = 16;
+    let radius = 14;
+
+    for y in 0..32 {
+        for x in 0..32 {
+            let dx = x as i32 - center_x;
+            let dy = y as i32 - center_y;
+            let dist = ((dx * dx + dy * dy) as f32).sqrt();
+
+            if dist <= radius as f32 {
+                // 渐变效果
+                let alpha = if dist < radius as f32 - 2.0 {
+                    255
+                } else {
+                    ((radius as f32 - dist) * 127.0).clamp(0.0, 255.0) as u8
+                };
+                // 使用蓝色作为图标颜色
+                img.put_pixel(x, y, image::Rgba([59, 130, 246, alpha]));
+            } else {
+                img.put_pixel(x, y, image::Rgba([0, 0, 0, 0]));
+            }
+        }
+    }
+
+    tray_icon::Icon::from_rgba(img.as_raw().to_vec(), img.width(), img.height())
+        .map_err(|e| format!("Failed to create embedded icon: {}", e))
 }
 
 /// 显示主窗口
