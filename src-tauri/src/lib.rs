@@ -1,4 +1,5 @@
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
+use tauri::Manager;
 mod api_sync;
 mod autostart;
 mod database;
@@ -15,9 +16,13 @@ mod window_manager;
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
-        .plugin(tauri_plugin_single_instance::init(|_app, _args, _cwd| {
-            // 当第二个实例启动时，显示并聚焦主窗口
-            // TODO: 实现窗口显示逻辑
+        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+            // 当第二个实例启动时，显示主窗口
+            if let Some(window) = app.get_webview_window("main") {
+                let _ = window.set_focus();
+                let _ = window.unminimize();
+                let _ = window.show();
+            }
         }))
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_updater::Builder::new().build())

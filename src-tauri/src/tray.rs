@@ -217,8 +217,6 @@ fn load_default_icon(app_handle: &AppHandle) -> Result<tray_icon::Icon, String> 
 /// 尝试创建简单的内置图标（备用方案）
 #[cfg(any(target_os = "windows", target_os = "linux"))]
 fn try_embedded_icon() -> Result<tray_icon::Icon, String> {
-    use std::io::Cursor;
-
     // 创建一个简单的 32x32 RGBA 图像
     let mut img = image::RgbaImage::new(32, 32);
 
