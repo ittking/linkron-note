@@ -83,18 +83,21 @@ fn create_macos_dock_menu(app_handle: &AppHandle) -> Result<(), String> {
         // 创建菜单
         let menu = NSMenu::new(nil).autorelease();
 
+        // 创建空字符串用于 keyEquivalent
+        let empty_key = NSString::alloc(nil).init_str("");
+
         // "打开主页" 菜单项
         let show_item_title = NSString::alloc(nil).init_str("打开主页");
         let show_item: id = msg_send![class!(NSMenuItem), newItemWithTitle: show_item_title
                                     action: sel!(showMainWindow:)
-                                     keyEquivalent::@""];
+                                     keyEquivalent: empty_key];
         show_item.setTarget_(app as *mut Object);
 
         // "退出应用" 菜单项
         let quit_item_title = NSString::alloc(nil).init_str("退出应用");
         let quit_item: id = msg_send![class!(NSMenuItem), newItemWithTitle: quit_item_title
                                     action: sel!(quitApp:)
-                                     keyEquivalent::@""];
+                                     keyEquivalent: empty_key];
         quit_item.setTarget_(app as *mut Object);
 
         // 添加到菜单
