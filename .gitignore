@@ -25,3 +25,7 @@ dist-ssr
 
 # Git worktrees
 .worktrees
+
+# Tauri signing keys
+.tauri-keys
+.tauri-keys.pub
