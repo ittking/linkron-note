@@ -30,6 +30,7 @@ declare module 'vue' {
     Select: typeof import('./components/ui/Select.vue')['default']
     SelectionMenu: typeof import('./components/SelectionMenu.vue')['default']
     Statistics: typeof import('./components/Statistics.vue')['default']
+    SyncSetting: typeof import('./components/SyncSetting.vue')['default']
     TagTreeNode: typeof import('./components/TagTreeNode.vue')['default']
     ThemeSetting: typeof import('./components/ThemeSetting.vue')['default']
     TodayTodoList: typeof import('./components/TodayTodoList.vue')['default']

@@ -1,14 +1,14 @@
 use serde::{Deserialize, Serialize};
+use serde_json::json;
 use std::fs;
 use std::path::PathBuf;
-use std::process::Command;
-use std::time::{SystemTime, UNIX_EPOCH};
+use base64::Engine as _;
 
-/// 云同步配置（简化版）
+/// 云同步配置
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ApiSyncConfig {
     pub repo_url: String,  // 仓库URL (如: https://gitee.com/user/repo.git 或 user/repo)
-    pub token: String,     // 访问 Token（用于 Git 认证）
+    pub token: String,     // 访问 Token（用于 API 认证）
     #[serde(default = "default_branch")]
     pub branch: String,    // 分支（默认 main）
 }
@@ -34,6 +34,51 @@ pub struct SyncDetails {
     pub total: usize,
 }
 
+/// 解析仓库地址获取 owner 和 repo
+fn parse_repo_url(repo_url: &str) -> Result<(String, String), String> {
+    let url = repo_url.trim();
+
+    // 如果是完整 URL
+    if url.contains("://") {
+        // 移除协议和可能的 .git 后缀
+        let clean_url: String = url
+            .replace("https://", "")
+            .replace("http://", "")
+            .trim_end_matches(".git")
+            .to_string();
+
+        // 提取 owner/repo
+        let parts: Vec<&str> = clean_url.split('/').collect();
+        if parts.len() >= 2 {
+            let owner = parts[parts.len() - 2].to_string();
+            let repo = parts[parts.len() - 1].to_string();
+            return Ok((owner, repo));
+        }
+    } else if url.contains('/') {
+        // 简短格式：owner/repo
+        let parts: Vec<&str> = url.split('/').collect();
+        if parts.len() == 2 {
+            return Ok((parts[0].to_string(), parts[1].to_string()));
+        }
+    }
+
+    Err("仓库地址格式无效，应为：用户名/仓库名 或完整的仓库URL".to_string())
+}
+
+/// Gitee API 文件信息响应
+#[derive(Debug, Serialize, Deserialize)]
+struct GiteeFileInfo {
+    name: String,
+    path: String,
+    #[serde(rename = "type")]
+    file_type: String,
+    sha: String,
+    size: i64,
+    content: Option<String>,
+    encoding: Option<String>,
+}
+
+
 /// 获取基础目录
 fn get_base_directory(work_directory: &Option<String>) -> Result<PathBuf, String> {
     if let Some(work_dir) = work_directory {
@@ -45,31 +90,17 @@ fn get_base_directory(work_directory: &Option<String>) -> Result<PathBuf, String
     }
 }
 
-/// 检查 Git 是否安装
-#[tauri::command]
-pub fn check_git_installed() -> Result<bool, String> {
-    let output = Command::new("git")
-        .arg("--version")
-        .output();
-
-    match output {
-        Ok(_) => Ok(true),
-        Err(_) => Ok(false),
-    }
+/// 构建API请求客户端
+fn build_client() -> Result<reqwest::Client, String> {
+    reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(30))
+        .build()
+        .map_err(|e| format!("创建HTTP客户端失败: {}", e))
 }
 
 /// 验证同步配置
 #[tauri::command]
 pub async fn validate_sync_config(config: ApiSyncConfig) -> Result<SyncResult, String> {
-    // 检查 Git 是否安装
-    if !check_git_installed()? {
-        return Ok(SyncResult {
-            success: false,
-            message: "Git 未安装，请先安装 Git: https://git-scm.com/downloads".to_string(),
-            details: None,
-        });
-    }
-
     // 验证必填字段
     if config.repo_url.is_empty() {
         return Ok(SyncResult {
@@ -86,49 +117,39 @@ pub async fn validate_sync_config(config: ApiSyncConfig) -> Result<SyncResult, S
         });
     }
 
-    // 尝试克隆仓库到临时目录测试连接
-    let temp_dir = std::env::temp_dir().join("linkron_sync_test");
+    // 解析仓库地址
+    let (owner, repo) = parse_repo_url(&config.repo_url)?;
 
-    // 清理临时目录
-    let _ = fs::remove_dir_all(&temp_dir);
+    // 测试获取仓库信息
+    let client = build_client()?;
+    let url = format!("https://gitee.com/api/v5/repos/{}/{}", owner, repo);
 
-    eprintln!("[DEBUG] 测试克隆仓库: {}", config.repo_url);
+    let response = client
+        .get(&url)
+        .header("Authorization", format!("Bearer {}", config.token))
+        .header("User-Agent", "linkron")
+        .send()
+        .await;
 
-    // 构建认证 URL
-    let auth_url = build_git_auth_url(&config.repo_url, &config.token)?;
-
-    let output = Command::new("git")
-        .arg("clone")
-        .arg("--depth")
-        .arg("1")
-        .arg("--branch")
-        .arg(&config.branch)
-        .arg(&auth_url)
-        .arg(&temp_dir)
-        .output();
-
-    // 清理临时目录
-    let _ = fs::remove_dir_all(&temp_dir);
-
-    match output {
-        Ok(result) => {
-            if result.status.success() {
+    match response {
+        Ok(resp) => {
+            if resp.status().is_success() {
                 Ok(SyncResult {
                     success: true,
                     message: "连接成功，仓库访问正常".to_string(),
                     details: None,
                 })
             } else {
-                let stderr = String::from_utf8_lossy(&result.stderr);
-                eprintln!("[DEBUG] 克隆失败: {}", stderr);
+                let status = resp.status();
+                let error_text = resp.text().await.unwrap_or_else(|_| "无法读取错误信息".to_string());
 
-                if stderr.contains("Authentication failed") || stderr.contains("could not read Username") {
+                if status.as_u16() == 401 {
                     Ok(SyncResult {
                         success: false,
                         message: "Token 无效或权限不足".to_string(),
                         details: None,
                     })
-                } else if stderr.contains("not found") || stderr.contains("Repository not found") {
+                } else if status.as_u16() == 404 {
                     Ok(SyncResult {
                         success: false,
                         message: "仓库不存在或无访问权限".to_string(),
@@ -137,7 +158,7 @@ pub async fn validate_sync_config(config: ApiSyncConfig) -> Result<SyncResult, S
                 } else {
                     Ok(SyncResult {
                         success: false,
-                        message: format!("连接失败: {}", stderr.trim()),
+                        message: format!("连接失败: {} - {}", status, error_text),
                         details: None,
                     })
                 }
@@ -145,38 +166,223 @@ pub async fn validate_sync_config(config: ApiSyncConfig) -> Result<SyncResult, S
         }
         Err(e) => Ok(SyncResult {
             success: false,
-            message: format!("执行 Git 命令失败: {}", e),
+            message: format!("网络请求失败: {}", e),
             details: None,
         }),
     }
 }
 
-/// 构建 Git 认证 URL
-fn build_git_auth_url(repo_url: &str, token: &str) -> Result<String, String> {
-    let url = repo_url.trim();
-
-    // 如果是完整 URL，插入 Token
-    if url.contains("://") {
-        if url.contains("@") {
-            // 已经包含认证信息
-            Ok(url.to_string())
-        } else {
-            // 插入 Token
-            let parts: Vec<&str> = url.splitn(2, "://").collect();
-            if parts.len() == 2 {
-                Ok(format!("{}://oauth2:{}@{}", parts[0], token, parts[1]))
-            } else {
-                Err("仓库地址格式无效".to_string())
-            }
-        }
-    } else if !url.contains('/') {
-        Err("仓库地址格式无效，应为：用户名/仓库名 或完整的仓库URL".to_string())
-    } else {
-        // 简短格式，转换为完整 URL
-        Ok(format!("https://oauth2:{}@gitee.com/{}.git", token, url))
-    }
+/// 读取本地文件内容并编码为base64
+fn read_file_as_base64(path: &PathBuf) -> Result<String, String> {
+    let content = fs::read(path).map_err(|e| format!("读取文件失败: {}", e))?;
+    let engine = base64::engine::general_purpose::STANDARD;
+    Ok(engine.encode(content))
 }
 
+/// 创建或更新远程文件
+async fn create_or_update_file(
+    config: &ApiSyncConfig,
+    path: &str,
+    content: &str,
+    is_binary: bool,
+    sha: Option<&str>,
+) -> Result<(), String> {
+    let (owner, repo) = parse_repo_url(&config.repo_url)?;
+    let client = build_client()?;
+
+    let url = format!(
+        "https://gitee.com/api/v5/repos/{}/{}/contents/{}",
+        owner, repo, path
+    );
+
+    let encoded_content = if is_binary {
+        content.to_string()
+    } else {
+        // 文本内容也需要base64编码
+        let engine = base64::engine::general_purpose::STANDARD;
+        engine.encode(content)
+    };
+
+    let mut request_body = json!({
+        "content": encoded_content,
+        "message": format!("Update {}", path)
+    });
+
+    if let Some(s) = sha {
+        request_body["sha"] = json!(s);
+    }
+
+    let response = client
+        .put(&url)
+        .header("Authorization", format!("Bearer {}", config.token))
+        .header("User-Agent", "linkron")
+        .json(&request_body)
+        .send()
+        .await
+        .map_err(|e| format!("上传文件失败: {}", e))?;
+
+    if !response.status().is_success() {
+        let status = response.status();
+        let error_text = response.text().await.unwrap_or_else(|_| "无法读取错误信息".to_string());
+        return Err(format!("上传文件 {}: {} - {}", path, status, error_text));
+    }
+
+    Ok(())
+}
+
+/// 下载远程文件到本地
+async fn download_file(
+    config: &ApiSyncConfig,
+    path: &str,
+    local_path: &PathBuf,
+) -> Result<(), String> {
+    let (owner, repo) = parse_repo_url(&config.repo_url)?;
+    let client = build_client()?;
+
+    let url = format!(
+        "https://gitee.com/api/v5/repos/{}/{}/contents/{}?ref={}",
+        owner, repo, path, config.branch
+    );
+
+    let response = client
+        .get(&url)
+        .header("Authorization", format!("Bearer {}", config.token))
+        .header("User-Agent", "linkron")
+        .send()
+        .await
+        .map_err(|e| format!("下载文件失败: {}", e))?;
+
+    if !response.status().is_success() {
+        let status = response.status();
+        let error_text = response.text().await.unwrap_or_else(|_| "无法读取错误信息".to_string());
+        return Err(format!("下载文件 {}: {} - {}", path, status, error_text));
+    }
+
+    let file_info: GiteeFileInfo = response
+        .json()
+        .await
+        .map_err(|e| format!("解析文件信息失败: {}", e))?;
+
+    // 解码base64内容
+    let engine = base64::engine::general_purpose::STANDARD;
+    let content = engine.decode(file_info.content.ok_or("文件内容为空")?)
+        .map_err(|e| format!("解码文件内容失败: {}", e))?;
+
+    // 确保父目录存在
+    if let Some(parent) = local_path.parent() {
+        fs::create_dir_all(parent).map_err(|e| format!("创建目录失败: {}", e))?;
+    }
+
+    // 写入文件
+    fs::write(local_path, content).map_err(|e| format!("写入文件失败: {}", e))?;
+
+    Ok(())
+}
+
+/// 递归收集本地文件
+fn collect_local_files(dir: &PathBuf, base_dir: &PathBuf) -> Result<Vec<(PathBuf, String)>, String> {
+    let mut files = vec![];
+
+    if !dir.exists() {
+        return Ok(files);
+    }
+
+    let entries = fs::read_dir(dir).map_err(|e| format!("读取目录失败: {}", e))?;
+
+    for entry in entries {
+        let entry = entry.map_err(|e| format!("读取目录项失败: {}", e))?;
+        let path = entry.path();
+
+        // 跳过 .git 目录
+        if path.file_name().map(|n| n == ".git").unwrap_or(false) {
+            continue;
+        }
+
+        if path.is_dir() {
+            // 递归处理子目录
+            let sub_files = collect_local_files(&path, base_dir)?;
+            files.extend(sub_files);
+        } else {
+            // 获取相对路径作为远程路径
+            let relative_path = path
+                .strip_prefix(base_dir)
+                .map_err(|e| format!("获取相对路径失败: {}", e))?
+                .to_str()
+                .ok_or("路径包含无效字符")?
+                .replace("\\", "/"); // Windows路径转Unix路径
+
+            files.push((path, relative_path));
+        }
+    }
+
+    Ok(files)
+}
+
+/// 收集远程文件（迭代方式）
+async fn collect_remote_files_recursive(
+    config: &ApiSyncConfig,
+    path: &str,
+) -> Result<Vec<String>, String> {
+    let mut all_files = vec![];
+    let mut dirs_to_process = vec![path.to_string()];
+
+    while let Some(current_path) = dirs_to_process.pop() {
+        let client = build_client()?;
+        let (owner, repo) = parse_repo_url(&config.repo_url)?;
+
+        let url = if current_path.is_empty() || current_path == "/" {
+            format!(
+                "https://gitee.com/api/v5/repos/{}/{}?ref={}",
+                owner, repo, config.branch
+            )
+        } else {
+            format!(
+                "https://gitee.com/api/v5/repos/{}/{}/contents/{}?ref={}",
+                owner, repo, current_path, config.branch
+            )
+        };
+
+        let response = client
+            .get(&url)
+            .header("Authorization", format!("Bearer {}", config.token))
+            .header("User-Agent", "linkron")
+            .send()
+            .await
+            .map_err(|e| format!("请求失败: {}", e))?;
+
+        if !response.status().is_success() {
+            // 如果目录不存在，跳过
+            if response.status().as_u16() == 404 {
+                continue;
+            }
+            let status = response.status();
+            let error_text = response.text().await.unwrap_or_else(|_| "无法读取错误信息".to_string());
+            return Err(format!("获取远程文件列表失败: {} - {}", status, error_text));
+        }
+
+        let json: serde_json::Value = response
+            .json()
+            .await
+            .map_err(|e| format!("解析响应失败: {}", e))?;
+
+        if let Some(items) = json.as_array() {
+            for item in items {
+                if let Some(file_type) = item.get("type").and_then(|t| t.as_str()) {
+                    let file_path = item.get("path").and_then(|p| p.as_str()).unwrap_or("");
+
+                    if file_type == "file" {
+                        all_files.push(file_path.to_string());
+                    } else if file_type == "dir" {
+                        // 将子目录添加到待处理列表
+                        dirs_to_process.push(file_path.to_string());
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(all_files)
+}
 
 /// 推送到云端
 #[tauri::command]
@@ -184,225 +390,60 @@ pub async fn sync_to_remote(
     config: ApiSyncConfig,
     work_directory: Option<String>,
 ) -> Result<SyncResult, String> {
-    // 检查 Git 是否安装
-    if !check_git_installed()? {
-        return Ok(SyncResult {
-            success: false,
-            message: "Git 未安装，请先安装 Git: https://git-scm.com/downloads".to_string(),
-            details: None,
-        });
-    }
-
     let base_dir = get_base_directory(&work_directory)?;
-    let git_dir = base_dir.join(".git");
 
     eprintln!("[DEBUG] 开始同步到云端");
     eprintln!("[DEBUG] 工作目录: {:?}", base_dir);
 
-    // 检查是否是 Git 仓库
-    if !git_dir.exists() {
-        eprintln!("[DEBUG] 不是 Git 仓库，初始化...");
-
-        // 初始化 Git 仓库
-        let output = Command::new("git")
-            .arg("init")
-            .current_dir(&base_dir)
-            .output()
-            .map_err(|e| format!("初始化 Git 仓库失败: {}", e))?;
-
-        if !output.status.success() {
-            let stderr = String::from_utf8_lossy(&output.stderr);
-            return Err(format!("初始化 Git 仓库失败: {}", stderr));
-        }
-
-        eprintln!("[DEBUG] Git 仓库初始化成功");
+    // 确保目录存在
+    if !base_dir.exists() {
+        fs::create_dir_all(&base_dir).map_err(|e| format!("创建目录失败: {}", e))?;
     }
 
-    // 配置远程仓库
-    let auth_url = build_git_auth_url(&config.repo_url, &config.token)?;
-    eprintln!("[DEBUG] 配置远程仓库: {}", auth_url.replace(&config.token, "***"));
+    // 收集本地文件
+    let local_files = collect_local_files(&base_dir, &base_dir)?;
+    eprintln!("[DEBUG] 本地文件数量: {}", local_files.len());
 
-    let output = Command::new("git")
-        .arg("remote")
-        .arg("set-url")
-        .arg("origin")
-        .arg(&auth_url)
-        .current_dir(&base_dir)
-        .output()
-        .map_err(|e| format!("配置远程仓库失败: {}", e))?;
+    let mut uploaded = 0;
+    let skipped = 0;
 
-    if !output.status.success() && !output.stderr.is_empty() {
-        // 远程仓库可能不存在，添加它
-        eprintln!("[DEBUG] 远程仓库不存在，添加...");
-        let output = Command::new("git")
-            .arg("remote")
-            .arg("add")
-            .arg("origin")
-            .arg(&auth_url)
-            .current_dir(&base_dir)
-            .output()
-            .map_err(|e| format!("添加远程仓库失败: {}", e))?;
+    // 上传每个文件
+    for (local_path, remote_path) in local_files {
+        eprintln!("[DEBUG] 上传文件: {}", remote_path);
 
-        if !output.status.success() {
-            let stderr = String::from_utf8_lossy(&output.stderr);
-            return Err(format!("添加远程仓库失败: {}", stderr));
-        }
-    }
+        // 判断是否为二进制文件
+        let is_binary = is_binary_file(&local_path);
 
-    // 添加所有文件
-    eprintln!("[DEBUG] 添加文件到暂存区...");
-    let output = Command::new("git")
-        .arg("add")
-        .arg("-A")
-        .current_dir(&base_dir)
-        .output()
-        .map_err(|e| format!("添加文件失败: {}", e))?;
-
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        return Err(format!("添加文件失败: {}", stderr));
-    }
-
-    // 提交更改（即使没有更改也尝试提交，可能会失败但没关系）
-    eprintln!("[DEBUG] 提交更改...");
-    let timestamp = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map_err(|e| format!("获取时间失败: {}", e))?
-        .as_secs();
-
-    let commit_output = Command::new("git")
-        .arg("commit")
-        .arg("-m")
-        .arg(format!("Sync at {}", timestamp))
-        .arg("--allow-empty")
-        .current_dir(&base_dir)
-        .output()
-        .map_err(|e| format!("提交失败: {}", e))?;
-
-    if !commit_output.status.success() {
-        let stderr = String::from_utf8_lossy(&commit_output.stderr);
-        // 如果是因为没有更改，继续推送
-        if !stderr.contains("nothing to commit") {
-            return Err(format!("提交失败: {}", stderr));
-        }
-        eprintln!("[DEBUG] 没有新更改需要提交");
-    } else {
-        eprintln!("[DEBUG] 提交成功");
-    }
-
-    // 推送到远程
-    eprintln!("[DEBUG] 推送到远程分支: {}", config.branch);
-
-    // 先强制拉取远程更新
-    eprintln!("[DEBUG] 强制拉取远程更新...");
-
-    // 配置使用 merge 策略
-    let _ = Command::new("git")
-        .arg("config")
-        .arg("pull.rebase")
-        .arg("false")
-        .current_dir(&base_dir)
-        .output();
-
-    let pull_output = Command::new("git")
-        .arg("pull")
-        .arg("origin")
-        .arg(&config.branch)
-        .arg("--allow-unrelated-histories")
-        .arg("--no-ff")
-        .arg("-X")
-        .arg("theirs")
-        .current_dir(&base_dir)
-        .output();
-
-    match pull_output {
-        Ok(result) => {
-            if result.status.success() {
-                eprintln!("[DEBUG] 拉取成功，已采用远程版本");
-            } else {
-                let stderr = String::from_utf8_lossy(&result.stderr);
-                eprintln!("[DEBUG] 拉取失败或无需拉取: {}", stderr.trim());
-                // 如果拉取失败（比如远程为空），继续尝试推送
+        match read_file_as_base64(&local_path) {
+            Ok(content) => {
+                // 尝试创建或更新文件（不提供sha，让API自动处理）
+                match create_or_update_file(&config, &remote_path, &content, is_binary, None).await {
+                    Ok(_) => {
+                        uploaded += 1;
+                        eprintln!("[DEBUG] 上传成功: {}", remote_path);
+                    }
+                    Err(e) => {
+                        eprintln!("[DEBUG] 上传失败: {} - {}", remote_path, e);
+                        // 继续上传其他文件
+                    }
+                }
+            }
+            Err(e) => {
+                eprintln!("[DEBUG] 读取文件失败: {} - {}", remote_path, e);
             }
         }
-        Err(e) => {
-            eprintln!("[DEBUG] 拉取命令执行失败，继续推送: {}", e);
-        }
     }
 
-    // 重新添加所有文件并提交（拉取后可能有新文件）
-    eprintln!("[DEBUG] 拉取后重新添加文件...");
-    let output = Command::new("git")
-        .arg("add")
-        .arg("-A")
-        .current_dir(&base_dir)
-        .output()
-        .map_err(|e| format!("添加文件失败: {}", e))?;
-
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        return Err(format!("添加文件失败: {}", stderr));
-    }
-
-    // 再次提交（合并拉取后的更改）
-    eprintln!("[DEBUG] 提交合并后的更改...");
-    let timestamp = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map_err(|e| format!("获取时间失败: {}", e))?
-        .as_secs();
-
-    let commit_output = Command::new("git")
-        .arg("commit")
-        .arg("-m")
-        .arg(format!("Sync at {}", timestamp))
-        .arg("--allow-empty")
-        .current_dir(&base_dir)
-        .output()
-        .map_err(|e| format!("提交失败: {}", e))?;
-
-    if !commit_output.status.success() {
-        let stderr = String::from_utf8_lossy(&commit_output.stderr);
-        if !stderr.contains("nothing to commit") {
-            return Err(format!("提交失败: {}", stderr));
-        }
-        eprintln!("[DEBUG] 没有新更改需要提交");
-    } else {
-        eprintln!("[DEBUG] 提交成功");
-    }
-
-    // 现在推送
-    let output = Command::new("git")
-        .arg("push")
-        .arg("-u")
-        .arg("origin")
-        .arg(&config.branch)
-        .current_dir(&base_dir)
-        .output()
-        .map_err(|e| format!("推送失败: {}", e))?;
-
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        eprintln!("[DEBUG] 推送失败: {}", stderr);
-
-        if stderr.contains("Authentication failed") {
-            return Err(format!("推送失败：Token 无效或权限不足"));
-        } else if stderr.contains("remote rejected") {
-            return Err(format!("推送失败：远程拒绝。可能是因为远程有更新，请先执行拉取操作"));
-        } else {
-            return Err(format!("推送失败: {}", stderr.trim()));
-        }
-    }
-
-    eprintln!("[DEBUG] 推送成功");
+    eprintln!("[DEBUG] 上传完成: {} 个文件", uploaded);
 
     Ok(SyncResult {
         success: true,
-        message: "同步成功".to_string(),
+        message: format!("同步成功，已上传 {} 个文件", uploaded),
         details: Some(SyncDetails {
-            uploaded: 1,
+            uploaded,
             downloaded: 0,
-            skipped: 0,
-            total: 1,
+            skipped,
+            total: uploaded + skipped,
         }),
     })
 }
@@ -413,120 +454,72 @@ pub async fn sync_from_remote(
     config: ApiSyncConfig,
     work_directory: Option<String>,
 ) -> Result<SyncResult, String> {
-    // 检查 Git 是否安装
-    if !check_git_installed()? {
-        return Ok(SyncResult {
-            success: false,
-            message: "Git 未安装，请先安装 Git: https://git-scm.com/downloads".to_string(),
-            details: None,
-        });
-    }
-
     let base_dir = get_base_directory(&work_directory)?;
-    let git_dir = base_dir.join(".git");
 
     eprintln!("[DEBUG] 开始从云端拉取");
     eprintln!("[DEBUG] 工作目录: {:?}", base_dir);
 
-    // 检查是否是 Git 仓库
-    if !git_dir.exists() {
-        // 不是 Git 仓库，需要先克隆
-        eprintln!("[DEBUG] 不是 Git 仓库，开始克隆...");
-
-        let auth_url = build_git_auth_url(&config.repo_url, &config.token)?;
-        eprintln!("[DEBUG] 克隆 URL: {}", auth_url.replace(&config.token, "***"));
-
-        // 备份现有文件
-        let backup_dir = std::env::temp_dir().join("linkron_backup");
-        let _ = fs::remove_dir_all(&backup_dir);
-
-        if base_dir.exists() {
-            let _ = fs::create_dir_all(&backup_dir);
-            for entry in fs::read_dir(&base_dir).map_err(|e| format!("读取目录失败: {}", e))? {
-                let entry = entry.map_err(|e| format!("读取目录项失败: {}", e))?;
-                let path = entry.path();
-                if path.is_dir() && path.file_name().map(|n| n != ".git").unwrap_or(true) {
-                    let dest = backup_dir.join(entry.file_name());
-                    fs::rename(&path, &dest).map_err(|e| format!("备份失败: {}", e))?;
-                }
-            }
-        }
-
-        // 克隆仓库
-        let output = Command::new("git")
-            .arg("clone")
-            .arg("--branch")
-            .arg(&config.branch)
-            .arg(&auth_url)
-            .arg(&base_dir)
-            .output()
-            .map_err(|e| format!("克隆失败: {}", e))?;
-
-        if !output.status.success() {
-            let stderr = String::from_utf8_lossy(&output.stderr);
-
-            // 恢复备份
-            if backup_dir.exists() {
-                for entry in fs::read_dir(&backup_dir).map_err(|e| format!("读取备份目录失败: {}", e))? {
-                    let entry = entry.map_err(|e| format!("读取备份项失败: {}", e))?;
-                    let src = entry.path();
-                    let dest = base_dir.join(entry.file_name());
-                    let _ = fs::rename(&src, &dest);
-                }
-            }
-
-            return Err(format!("克隆失败: {}", stderr.trim()));
-        }
-
-        eprintln!("[DEBUG] 克隆成功");
-    } else {
-        // 是 Git 仓库，拉取更新
-        eprintln!("[DEBUG] 是 Git 仓库，拉取更新...");
-
-        // 配置远程仓库
-        let auth_url = build_git_auth_url(&config.repo_url, &config.token)?;
-        let _ = Command::new("git")
-            .arg("remote")
-            .arg("set-url")
-            .arg("origin")
-            .arg(&auth_url)
-            .current_dir(&base_dir)
-            .output()
-            .map_err(|e| format!("配置远程仓库失败: {}", e))?;
-
-        // 拉取更新
-        let output = Command::new("git")
-            .arg("pull")
-            .arg("origin")
-            .arg(&config.branch)
-            .current_dir(&base_dir)
-            .output()
-            .map_err(|e| format!("拉取失败: {}", e))?;
-
-        if !output.status.success() {
-            let stderr = String::from_utf8_lossy(&output.stderr);
-            eprintln!("[DEBUG] 拉取失败: {}", stderr);
-
-            if stderr.contains("Authentication failed") {
-                return Err(format!("拉取失败：Token 无效或权限不足"));
-            } else if stderr.contains("conflict") {
-                return Err(format!("拉取失败：存在冲突，请手动解决"));
-            } else {
-                return Err(format!("拉取失败: {}", stderr.trim()));
-            }
-        }
-
-        eprintln!("[DEBUG] 拉取成功");
+    // 确保目录存在
+    if !base_dir.exists() {
+        fs::create_dir_all(&base_dir).map_err(|e| format!("创建目录失败: {}", e))?;
     }
+
+    // 获取远程文件列表
+    let remote_files = collect_remote_files_recursive(&config, "").await?;
+    eprintln!("[DEBUG] 远程文件数量: {}", remote_files.len());
+
+    let mut downloaded = 0;
+
+    // 下载每个文件
+    for remote_path in remote_files {
+        eprintln!("[DEBUG] 下载文件: {}", remote_path);
+
+        let local_path = base_dir.join(remote_path.replace("/", std::path::MAIN_SEPARATOR_STR));
+
+        match download_file(&config, &remote_path, &local_path).await {
+            Ok(_) => {
+                downloaded += 1;
+                eprintln!("[DEBUG] 下载成功: {}", remote_path);
+            }
+            Err(e) => {
+                eprintln!("[DEBUG] 下载失败: {} - {}", remote_path, e);
+                // 继续下载其他文件
+            }
+        }
+    }
+
+    eprintln!("[DEBUG] 下载完成: {} 个文件", downloaded);
 
     Ok(SyncResult {
         success: true,
-        message: "同步成功".to_string(),
+        message: format!("同步成功，已下载 {} 个文件", downloaded),
         details: Some(SyncDetails {
             uploaded: 0,
-            downloaded: 1,
+            downloaded,
             skipped: 0,
-            total: 1,
+            total: downloaded,
         }),
     })
+}
+
+/// 判断是否为二进制文件
+fn is_binary_file(path: &PathBuf) -> bool {
+    // 通过扩展名判断
+    if let Some(ext) = path.extension() {
+        let ext = ext.to_str().unwrap_or("").to_lowercase();
+        matches!(
+            ext.as_str(),
+            "png" | "jpg" | "jpeg" | "gif" | "bmp" | "ico" | "webp"
+                | "pdf" | "zip" | "rar" | "7z" | "tar" | "gz"
+                | "exe" | "dll" | "so" | "dylib"
+        )
+    } else {
+        false
+    }
+}
+
+/// 检查 Git 是否安装（保留兼容性，但不再使用）
+#[tauri::command]
+pub fn check_git_installed() -> Result<bool, String> {
+    Ok(true) // API方式不需要Git
 }

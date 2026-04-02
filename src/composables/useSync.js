@@ -57,6 +57,152 @@ export function useSync() {
   }
 
   /**
+   * 加载同步配置
+   */
+  async function loadConfig() {
+    try {
+      const config = await settingStore.get('syncConfig', null)
+      return config || {
+        repo_url: '',
+        token: '',
+        branch: 'main'
+      }
+    } catch (error) {
+      console.error('Failed to load sync config:', error)
+      return {
+        repo_url: '',
+        token: '',
+        branch: 'main'
+      }
+    }
+  }
+
+  /**
+   * 保存同步配置
+   */
+  async function saveConfig(config) {
+    try {
+      await settingStore.set('syncConfig', config)
+      return { success: true }
+    } catch (error) {
+      console.error('Failed to save sync config:', error)
+      return { success: false, error: error.message }
+    }
+  }
+
+  /**
+   * 测试连接
+   */
+  async function testConnection(config) {
+    try {
+      const result = await invoke('validate_sync_config', { config })
+      return result
+    } catch (error) {
+      console.error('Test connection failed:', error)
+      return {
+        success: false,
+        message: error.message || '连接测试失败'
+      }
+    }
+  }
+
+  /**
+   * 同步到云端
+   */
+  async function syncToCloud() {
+    const configured = await isSyncConfigured()
+    if (!configured) {
+      return {
+        success: false,
+        message: '请先配置同步信息'
+      }
+    }
+
+    if (isSyncing.value) {
+      return {
+        success: false,
+        message: '正在同步中，请稍候'
+      }
+    }
+
+    isSyncing.value = true
+
+    try {
+      const config = await settingStore.get('syncConfig')
+      const workDirectory = await settingStore.get('workDirectory')
+
+      const result = await invoke('sync_to_remote', {
+        config,
+        workDirectory
+      })
+
+      if (result.success) {
+        // 更新同步时间
+        lastSyncTime.value = Math.floor(Date.now() / 1000)
+        await settingStore.set('lastSyncTime', lastSyncTime.value)
+      }
+
+      return result
+    } catch (error) {
+      console.error('[Sync] Sync to cloud error:', error)
+      return {
+        success: false,
+        message: error.message || '同步失败'
+      }
+    } finally {
+      isSyncing.value = false
+    }
+  }
+
+  /**
+   * 从云端同步
+   */
+  async function syncFromCloud() {
+    const configured = await isSyncConfigured()
+    if (!configured) {
+      return {
+        success: false,
+        message: '请先配置同步信息'
+      }
+    }
+
+    if (isSyncing.value) {
+      return {
+        success: false,
+        message: '正在同步中，请稍候'
+      }
+    }
+
+    isSyncing.value = true
+
+    try {
+      const config = await settingStore.get('syncConfig')
+      const workDirectory = await settingStore.get('workDirectory')
+
+      const result = await invoke('sync_from_remote', {
+        config,
+        workDirectory
+      })
+
+      if (result.success) {
+        // 更新同步时间
+        lastSyncTime.value = Math.floor(Date.now() / 1000)
+        await settingStore.set('lastSyncTime', lastSyncTime.value)
+      }
+
+      return result
+    } catch (error) {
+      console.error('[Sync] Sync from cloud error:', error)
+      return {
+        success: false,
+        message: error.message || '同步失败'
+      }
+    } finally {
+      isSyncing.value = false
+    }
+  }
+
+  /**
    * 触发同步（使用防抖，避免频繁同步）
    */
   async function triggerSync() {
@@ -93,7 +239,7 @@ export function useSync() {
   }
 
   /**
-   * 执行同步
+   * 执行同步（内部方法，用于自动同步）
    */
   async function performSync() {
     const configured = await isSyncConfigured()
@@ -150,6 +296,11 @@ export function useSync() {
     lastSyncTime,
     formattedLastSyncTime,
     loadSyncTime,
+    loadConfig,
+    saveConfig,
+    testConnection,
+    syncToCloud,
+    syncFromCloud,
     triggerSync,
     syncNow
   }
