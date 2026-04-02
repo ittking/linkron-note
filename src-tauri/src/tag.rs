@@ -1,4 +1,4 @@
-use rusqlite::{Connection, Result as SqliteResult, params};
+use rusqlite::{params, Connection, Result as SqliteResult};
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 use ulid::Ulid;
@@ -34,15 +34,26 @@ pub fn init_tables(conn: &Connection) -> SqliteResult<()> {
         [],
     )?;
 
-    conn.execute("ALTER TABLE tags ADD COLUMN parent_id TEXT", []).ok();
-    conn.execute("ALTER TABLE tags ADD COLUMN name TEXT", []).ok();
-    conn.execute("ALTER TABLE tags ADD COLUMN full_name TEXT", []).ok();
-    conn.execute("ALTER TABLE tags ADD COLUMN display_name TEXT", []).ok();
-    conn.execute("ALTER TABLE tags ADD COLUMN pinned INTEGER DEFAULT 0", []).ok();
+    conn.execute("ALTER TABLE tags ADD COLUMN parent_id TEXT", [])
+        .ok();
+    conn.execute("ALTER TABLE tags ADD COLUMN name TEXT", [])
+        .ok();
+    conn.execute("ALTER TABLE tags ADD COLUMN full_name TEXT", [])
+        .ok();
+    conn.execute("ALTER TABLE tags ADD COLUMN display_name TEXT", [])
+        .ok();
+    conn.execute("ALTER TABLE tags ADD COLUMN pinned INTEGER DEFAULT 0", [])
+        .ok();
 
     // 创建索引
-    conn.execute("CREATE INDEX IF NOT EXISTS idx_tags_parent_id ON tags(parent_id)", [])?;
-    conn.execute("CREATE INDEX IF NOT EXISTS idx_tags_full_name ON tags(full_name)", [])?;
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_tags_parent_id ON tags(parent_id)",
+        [],
+    )?;
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_tags_full_name ON tags(full_name)",
+        [],
+    )?;
 
     Ok(())
 }
@@ -187,7 +198,8 @@ pub fn delete_tag(conn: &Connection, id: &str) -> SqliteResult<()> {
 /// 递归删除标签及其所有子标签
 fn delete_tag_recursive(conn: &Connection, id: &str) -> SqliteResult<()> {
     let mut stmt = conn.prepare("SELECT id FROM tags WHERE parent_id = ?1")?;
-    let child_ids: Vec<String> = stmt.query_map(params![id], |row| row.get(0))?
+    let child_ids: Vec<String> = stmt
+        .query_map(params![id], |row| row.get(0))?
         .collect::<Result<Vec<_>, _>>()?;
 
     for child_id in child_ids {

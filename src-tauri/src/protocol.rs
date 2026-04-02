@@ -1,7 +1,7 @@
 use std::path::{Path, PathBuf};
-use tauri::{Manager, AppHandle, UriSchemeContext};
 use tauri::http::Request;
 use tauri::http::Response;
+use tauri::{AppHandle, Manager, UriSchemeContext};
 
 /// 从配置文件读取工作目录
 pub fn read_work_directory<R: tauri::Runtime>(app_handle: &AppHandle<R>) -> Option<String> {
@@ -49,7 +49,10 @@ fn validate_and_normalize_path(base_dir: &Path, resource_path: &str) -> Option<P
             continue;
         }
         // 检查组件名称是否有效（不包含特殊字符）
-        if !component.chars().all(|c| c.is_alphanumeric() || c == '-' || c == '_' || c == '.') {
+        if !component
+            .chars()
+            .all(|c| c.is_alphanumeric() || c == '-' || c == '_' || c == '.')
+        {
             return None;
         }
     }
@@ -100,7 +103,9 @@ pub fn iterm_protocol_handler<R: tauri::Runtime>(
     // 只处理 /resources/ 路径
     let resource_path = match path.strip_prefix("/resources/") {
         Some(p) => p,
-        None => return build_error_response(400, "Invalid request path: must start with /resources/"),
+        None => {
+            return build_error_response(400, "Invalid request path: must start with /resources/")
+        }
     };
 
     let base_dir = get_base_directory(app);

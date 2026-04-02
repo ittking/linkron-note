@@ -1,7 +1,7 @@
-use rusqlite::{Connection, Result as SqliteResult, params};
+use chrono::Datelike;
+use rusqlite::{params, Connection, Result as SqliteResult};
 use serde::{Deserialize, Serialize};
 use ulid::Ulid;
-use chrono::Datelike;
 
 // 笔记数据结构
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -64,8 +64,14 @@ pub fn init_tables(conn: &Connection) -> SqliteResult<()> {
     )?;
 
     // 创建索引
-    conn.execute("CREATE INDEX IF NOT EXISTS idx_notes_updated_at ON notes(updated_at DESC)", [])?;
-    conn.execute("CREATE INDEX IF NOT EXISTS idx_notes_type ON notes(type)", [])?;
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_notes_updated_at ON notes(updated_at DESC)",
+        [],
+    )?;
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_notes_type ON notes(type)",
+        [],
+    )?;
 
     Ok(())
 }
@@ -73,17 +79,17 @@ pub fn init_tables(conn: &Connection) -> SqliteResult<()> {
 /// 获取所有笔记（分页）
 pub fn get_all_notes(conn: &Connection, page: u32, page_size: u32) -> SqliteResult<NotesResponse> {
     let offset = (page - 1) * page_size;
-    
+
     // 获取总数
     let total: i64 = conn.query_row("SELECT COUNT(*) FROM notes", [], |row| row.get(0))?;
-    
+
     // 获取分页数据
     let mut stmt = conn.prepare(
         "SELECT id, type, content, source_url,
          COALESCE(pinned, 0) as pinned,
          created_at, updated_at,
          extract_url
-         FROM notes ORDER BY pinned DESC, created_at DESC LIMIT ? OFFSET ?"
+         FROM notes ORDER BY pinned DESC, created_at DESC LIMIT ? OFFSET ?",
     )?;
 
     let notes = stmt.query_map(params![page_size, offset], |row| {
@@ -101,7 +107,7 @@ pub fn get_all_notes(conn: &Connection, page: u32, page_size: u32) -> SqliteResu
     })?;
 
     let notes_vec: Vec<Note> = notes.collect::<SqliteResult<Vec<Note>>>()?;
-    
+
     Ok(NotesResponse {
         notes: notes_vec,
         total,
@@ -120,7 +126,7 @@ pub fn get_note(conn: &Connection, id: &str) -> SqliteResult<Option<Note>> {
          COALESCE(pinned, 0) as pinned,
          created_at, updated_at,
          extract_url
-         FROM notes WHERE id = ?"
+         FROM notes WHERE id = ?",
     )?;
 
     let mut notes = stmt.query_map(params![id], |row| {
@@ -226,7 +232,7 @@ pub fn search_notes(conn: &Connection, keyword: &str) -> SqliteResult<NotesRespo
     let total: i64 = conn.query_row(
         "SELECT COUNT(*) FROM notes WHERE content LIKE ?1",
         params![search_pattern],
-        |row| row.get(0)
+        |row| row.get(0),
     )?;
 
     // 获取笔记列表
@@ -235,27 +241,26 @@ pub fn search_notes(conn: &Connection, keyword: &str) -> SqliteResult<NotesRespo
          COALESCE(pinned, 0) as pinned,
          created_at, updated_at
          FROM notes WHERE content LIKE ?1
-         ORDER BY pinned DESC, created_at DESC"
+         ORDER BY pinned DESC, created_at DESC",
     )?;
 
-    let notes: Vec<Note> = stmt.query_map(params![search_pattern], |row| {
-        let pinned: i32 = row.get(5)?;
-        Ok(Note {
-            id: row.get(0)?,
-            note_type: row.get(1)?,
-            content: row.get(2)?,
-            source_url: row.get(3)?,
-            extract_url: row.get(4)?,
-            pinned: pinned == 1,
-            created_at: row.get(6)?,
-            updated_at: row.get(7)?,
-        })
-    })?.collect::<SqliteResult<Vec<Note>>>()?;
+    let notes: Vec<Note> = stmt
+        .query_map(params![search_pattern], |row| {
+            let pinned: i32 = row.get(5)?;
+            Ok(Note {
+                id: row.get(0)?,
+                note_type: row.get(1)?,
+                content: row.get(2)?,
+                source_url: row.get(3)?,
+                extract_url: row.get(4)?,
+                pinned: pinned == 1,
+                created_at: row.get(6)?,
+                updated_at: row.get(7)?,
+            })
+        })?
+        .collect::<SqliteResult<Vec<Note>>>()?;
 
-    Ok(NotesResponse {
-        notes,
-        total,
-    })
+    Ok(NotesResponse { notes, total })
 }
 
 /// 根据标签筛选笔记
@@ -274,13 +279,16 @@ pub fn get_notes_by_tags(conn: &Connection, tags: Vec<String>) -> SqliteResult<N
     }
 
     let where_clause = where_clauses.join(" OR ");
-    
+
     // 获取总数
     let count_sql = format!("SELECT COUNT(*) FROM notes WHERE {}", where_clause);
     let mut count_stmt = conn.prepare(&count_sql)?;
-    let count_params_refs: Vec<&dyn rusqlite::ToSql> = all_params.iter().map(|p| p as &dyn rusqlite::ToSql).collect();
+    let count_params_refs: Vec<&dyn rusqlite::ToSql> = all_params
+        .iter()
+        .map(|p| p as &dyn rusqlite::ToSql)
+        .collect();
     let total: i64 = count_stmt.query_row(count_params_refs.as_slice(), |row| row.get(0))?;
-    
+
     // 获取笔记列表
     let sql = format!(
         "SELECT id, type, content, source_url,
@@ -292,26 +300,28 @@ pub fn get_notes_by_tags(conn: &Connection, tags: Vec<String>) -> SqliteResult<N
     );
 
     let mut stmt = conn.prepare(&sql)?;
-    let params_refs: Vec<&dyn rusqlite::ToSql> = all_params.iter().map(|p| p as &dyn rusqlite::ToSql).collect();
+    let params_refs: Vec<&dyn rusqlite::ToSql> = all_params
+        .iter()
+        .map(|p| p as &dyn rusqlite::ToSql)
+        .collect();
 
-    let notes: Vec<Note> = stmt.query_map(&params_refs[..], |row| {
-        let pinned: i32 = row.get(4)?;
-        Ok(Note {
-            id: row.get(0)?,
-            note_type: row.get(1)?,
-            content: row.get(2)?,
-            source_url: row.get(3)?,
-            extract_url: row.get(7)?,
-            pinned: pinned == 1,
-            created_at: row.get(5)?,
-            updated_at: row.get(6)?,
-        })
-    })?.collect::<SqliteResult<Vec<Note>>>()?;
+    let notes: Vec<Note> = stmt
+        .query_map(&params_refs[..], |row| {
+            let pinned: i32 = row.get(4)?;
+            Ok(Note {
+                id: row.get(0)?,
+                note_type: row.get(1)?,
+                content: row.get(2)?,
+                source_url: row.get(3)?,
+                extract_url: row.get(7)?,
+                pinned: pinned == 1,
+                created_at: row.get(5)?,
+                updated_at: row.get(6)?,
+            })
+        })?
+        .collect::<SqliteResult<Vec<Note>>>()?;
 
-    Ok(NotesResponse {
-        notes,
-        total,
-    })
+    Ok(NotesResponse { notes, total })
 }
 
 /// 根据标签获取笔记数量
@@ -333,7 +343,10 @@ pub fn count_notes_by_tags(conn: &Connection, tags: Vec<String>) -> SqliteResult
     let sql = format!("SELECT COUNT(*) FROM notes WHERE {}", where_clause);
 
     let mut stmt = conn.prepare(&sql)?;
-    let params_refs: Vec<&dyn rusqlite::ToSql> = all_params.iter().map(|p| p as &dyn rusqlite::ToSql).collect();
+    let params_refs: Vec<&dyn rusqlite::ToSql> = all_params
+        .iter()
+        .map(|p| p as &dyn rusqlite::ToSql)
+        .collect();
 
     stmt.query_row(&params_refs[..], |row| row.get(0))
 }
@@ -368,7 +381,7 @@ pub fn get_notes_heatmap(conn: &Connection) -> SqliteResult<Vec<crate::database:
          FROM notes
          WHERE created_at >= ?
          GROUP BY year, month, day
-         ORDER BY year, month, day"
+         ORDER BY year, month, day",
     )?;
 
     let mut rows = stmt.query_map([&start_date_str], |row| {
@@ -387,7 +400,10 @@ pub fn get_notes_heatmap(conn: &Connection) -> SqliteResult<Vec<crate::database:
     // 将查询结果填充到对应的月份中
     while let Some(Ok((year, month, day, count))) = rows.next() {
         // 找到对应的月份
-        if let Some(month_data) = result.iter_mut().find(|m| m.year == year && m.month == month) {
+        if let Some(month_data) = result
+            .iter_mut()
+            .find(|m| m.year == year && m.month == month)
+        {
             let week_index = ((day - 1) / 7).min(4) as usize;
             month_data.weeks[week_index] += count;
         }

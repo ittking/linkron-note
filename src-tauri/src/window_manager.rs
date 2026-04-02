@@ -8,7 +8,9 @@ use tauri::{App, Manager, WebviewWindow};
 #[cfg(windows)]
 use windows::Win32::Foundation::HWND;
 #[cfg(windows)]
-use windows::Win32::UI::WindowsAndMessaging::{GetWindowLongPtrW, SetWindowLongPtrW, GWL_EXSTYLE, WS_EX_TOOLWINDOW};
+use windows::Win32::UI::WindowsAndMessaging::{
+    GetWindowLongPtrW, SetWindowLongPtrW, GWL_EXSTYLE, WS_EX_TOOLWINDOW,
+};
 
 /// 设置窗口跨所有虚拟桌面显示
 pub fn set_window_on_all_desktops(window: &WebviewWindow) {

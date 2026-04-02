@@ -9,14 +9,17 @@ pub async fn check_directory_exists(path: String) -> Result<bool, String> {
 #[tauri::command]
 #[allow(dead_code)]
 pub async fn create_directory(path: String) -> Result<(), String> {
-    std::fs::create_dir_all(&path)
-        .map_err(|e| format!("Failed to create directory: {}", e))
+    std::fs::create_dir_all(&path).map_err(|e| format!("Failed to create directory: {}", e))
 }
 
 /// 保存图片文件
 /// 返回相对路径
 #[tauri::command]
-pub async fn save_image(file_data: Vec<u8>, file_name: String, work_directory: Option<String>) -> Result<String, String> {
+pub async fn save_image(
+    file_data: Vec<u8>,
+    file_name: String,
+    work_directory: Option<String>,
+) -> Result<String, String> {
     use std::path::PathBuf;
 
     // 确定图片保存目录
@@ -57,7 +60,10 @@ pub async fn save_image(file_data: Vec<u8>, file_name: String, work_directory: O
         .map_err(|e| format!("Failed to write image file: {}", e))?;
 
     // 返回完整 URL (统一使用 linkron:// 协议，前端根据平台转换)
-    Ok(format!("linkron://localhost/resources/images/{}", unique_file_name))
+    Ok(format!(
+        "linkron://localhost/resources/images/{}",
+        unique_file_name
+    ))
 }
 
 /// 保存文件（通用接口，支持图片和附件）
@@ -67,7 +73,7 @@ pub async fn save_file(
     file_data: Vec<u8>,
     file_name: String,
     file_type: String,
-    work_directory: Option<String>
+    work_directory: Option<String>,
 ) -> Result<String, String> {
     use std::path::PathBuf;
 
@@ -108,8 +114,7 @@ pub async fn save_file(
     let file_path = target_dir.join(&unique_file_name);
 
     // 写入文件
-    std::fs::write(&file_path, &file_data)
-        .map_err(|e| format!("Failed to write file: {}", e))?;
+    std::fs::write(&file_path, &file_data).map_err(|e| format!("Failed to write file: {}", e))?;
 
     // 返回完整 URL
     let resource_path = if file_type == "image" {
@@ -179,7 +184,10 @@ pub fn delete_resource_by_url(url: String, work_directory: Option<String>) -> Re
 /// - Ok(String): 本地文件路径
 /// - Err(String): 错误信息
 #[tauri::command]
-pub fn get_local_path_from_protocol(protocol_url: String, work_directory: Option<String>) -> Result<String, String> {
+pub fn get_local_path_from_protocol(
+    protocol_url: String,
+    work_directory: Option<String>,
+) -> Result<String, String> {
     use std::path::PathBuf;
 
     // 检查是否是本地资源 URL (支持 linkron:// 和 http://linkron.localhost/ 两种格式)
@@ -209,7 +217,8 @@ pub fn get_local_path_from_protocol(protocol_url: String, work_directory: Option
     }
 
     // 返回完整路径
-    full_path.to_str()
+    full_path
+        .to_str()
         .map(|s| s.to_string())
         .ok_or("Failed to convert path to string".to_string())
 }
@@ -221,14 +230,20 @@ pub fn delete_resources_from_note(note: &crate::database::Note, work_directory: 
     let img_regex = Regex::new(r#"<img[^>]+src="([^"]+)""#).unwrap();
     for caps in img_regex.captures_iter(&note.content) {
         if let Some(image_url) = caps.get(1) {
-            let _ = delete_resource_by_url(image_url.as_str().to_string(), work_directory.as_ref().map(|s| s.clone()));
+            let _ = delete_resource_by_url(
+                image_url.as_str().to_string(),
+                work_directory.as_ref().map(|s| s.clone()),
+            );
         }
     }
 
     // 2. 如果是附件笔记，删除 extractUrl 指向的文件
     if note.note_type == "file" {
         if let Some(extract_url) = &note.extract_url {
-            let _ = delete_resource_by_url(extract_url.clone(), work_directory.as_ref().map(|s| s.clone()));
+            let _ = delete_resource_by_url(
+                extract_url.clone(),
+                work_directory.as_ref().map(|s| s.clone()),
+            );
         }
     }
 }

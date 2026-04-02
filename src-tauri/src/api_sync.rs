@@ -1,16 +1,16 @@
+use base64::Engine as _;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::fs;
 use std::path::PathBuf;
-use base64::Engine as _;
 
 /// 云同步配置
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ApiSyncConfig {
-    pub repo_url: String,  // 仓库URL (如: https://gitee.com/user/repo.git 或 user/repo)
-    pub token: String,     // 访问 Token（用于 API 认证）
+    pub repo_url: String, // 仓库URL (如: https://gitee.com/user/repo.git 或 user/repo)
+    pub token: String,    // 访问 Token（用于 API 认证）
     #[serde(default = "default_branch")]
-    pub branch: String,    // 分支（默认 main）
+    pub branch: String, // 分支（默认 main）
 }
 
 fn default_branch() -> String {
@@ -79,7 +79,6 @@ fn parse_repo_url(repo_url: &str) -> Result<(String, String), String> {
     Err("仓库地址格式无效，应为：用户名/仓库名 或完整的仓库URL".to_string())
 }
 
-
 /// 获取基础目录
 fn get_base_directory(work_directory: &Option<String>) -> Result<PathBuf, String> {
     if let Some(work_dir) = work_directory {
@@ -137,7 +136,10 @@ pub async fn validate_sync_config(config: ApiSyncConfig) -> Result<SyncResult, S
         Ok(resp) => {
             if !resp.status().is_success() {
                 let status = resp.status();
-                let error_text = resp.text().await.unwrap_or_else(|_| "无法读取错误信息".to_string());
+                let error_text = resp
+                    .text()
+                    .await
+                    .unwrap_or_else(|_| "无法读取错误信息".to_string());
 
                 if status.as_u16() == 401 {
                     return Ok(SyncResult {
@@ -200,7 +202,10 @@ pub async fn validate_sync_config(config: ApiSyncConfig) -> Result<SyncResult, S
                             let available_branches: Vec<String> = branches
                                 .iter()
                                 .filter_map(|branch: &serde_json::Value| {
-                                    branch.get("name").and_then(|n: &serde_json::Value| n.as_str()).map(|s| s.to_string())
+                                    branch
+                                        .get("name")
+                                        .and_then(|n: &serde_json::Value| n.as_str())
+                                        .map(|s| s.to_string())
                                 })
                                 .collect();
 
@@ -209,8 +214,7 @@ pub async fn validate_sync_config(config: ApiSyncConfig) -> Result<SyncResult, S
                                 success: false,
                                 message: format!(
                                     "分支 '{}' 不存在。可用分支: {}",
-                                    config.branch,
-                                    branch_list
+                                    config.branch, branch_list
                                 ),
                                 details: None,
                             });
@@ -222,7 +226,10 @@ pub async fn validate_sync_config(config: ApiSyncConfig) -> Result<SyncResult, S
                 }
             } else {
                 let status = resp.status();
-                let error_text = resp.text().await.unwrap_or_else(|_| "无法读取错误信息".to_string());
+                let error_text = resp
+                    .text()
+                    .await
+                    .unwrap_or_else(|_| "无法读取错误信息".to_string());
                 return Ok(SyncResult {
                     success: false,
                     message: format!("获取分支列表失败: {} - {}", status, error_text),
@@ -280,7 +287,11 @@ async fn create_or_update_file(
 
     // 检查内容大小（base64编码后）
     if encoded_content.len() > MAX_FILE_SIZE {
-        return Err(format!("文件过大: {} 字节 (限制: {} 字节)", encoded_content.len(), MAX_FILE_SIZE));
+        return Err(format!(
+            "文件过大: {} 字节 (限制: {} 字节)",
+            encoded_content.len(),
+            MAX_FILE_SIZE
+        ));
     }
 
     let mut request_body = json!({
@@ -304,7 +315,10 @@ async fn create_or_update_file(
 
     if !response.status().is_success() {
         let status = response.status();
-        let error_text = response.text().await.unwrap_or_else(|_| "无法读取错误信息".to_string());
+        let error_text = response
+            .text()
+            .await
+            .unwrap_or_else(|_| "无法读取错误信息".to_string());
         return Err(format!("上传文件 {}: {} - {}", path, status, error_text));
     }
 
@@ -312,10 +326,7 @@ async fn create_or_update_file(
 }
 
 /// 获取远程文件的 sha 值
-async fn get_file_sha(
-    config: &ApiSyncConfig,
-    path: &str,
-) -> Result<Option<String>, String> {
+async fn get_file_sha(config: &ApiSyncConfig, path: &str) -> Result<Option<String>, String> {
     let (owner, repo) = parse_repo_url(&config.repo_url)?;
     let client = build_client()?;
 
@@ -339,8 +350,14 @@ async fn get_file_sha(
 
     if !response.status().is_success() {
         let status = response.status();
-        let error_text = response.text().await.unwrap_or_else(|_| "无法读取错误信息".to_string());
-        return Err(format!("获取文件信息 {}: {} - {}", path, status, error_text));
+        let error_text = response
+            .text()
+            .await
+            .unwrap_or_else(|_| "无法读取错误信息".to_string());
+        return Err(format!(
+            "获取文件信息 {}: {} - {}",
+            path, status, error_text
+        ));
     }
 
     let file_info: GiteeFileInfo = response
@@ -375,7 +392,10 @@ async fn download_file(
 
     if !response.status().is_success() {
         let status = response.status();
-        let error_text = response.text().await.unwrap_or_else(|_| "无法读取错误信息".to_string());
+        let error_text = response
+            .text()
+            .await
+            .unwrap_or_else(|_| "无法读取错误信息".to_string());
         return Err(format!("下载文件 {}: {} - {}", path, status, error_text));
     }
 
@@ -386,7 +406,8 @@ async fn download_file(
 
     // 解码base64内容
     let engine = base64::engine::general_purpose::STANDARD;
-    let content = engine.decode(file_info.content.ok_or("文件内容为空")?)
+    let content = engine
+        .decode(file_info.content.ok_or("文件内容为空")?)
         .map_err(|e| format!("解码文件内容失败: {}", e))?;
 
     // 确保父目录存在
@@ -401,7 +422,10 @@ async fn download_file(
 }
 
 /// 递归收集本地文件
-fn collect_local_files(dir: &PathBuf, base_dir: &PathBuf) -> Result<Vec<(PathBuf, String)>, String> {
+fn collect_local_files(
+    dir: &PathBuf,
+    base_dir: &PathBuf,
+) -> Result<Vec<(PathBuf, String)>, String> {
     let mut files = vec![];
 
     if !dir.exists() {
@@ -477,7 +501,10 @@ async fn collect_remote_files_recursive(
                 continue;
             }
             let status = response.status();
-            let error_text = response.text().await.unwrap_or_else(|_| "无法读取错误信息".to_string());
+            let error_text = response
+                .text()
+                .await
+                .unwrap_or_else(|_| "无法读取错误信息".to_string());
             return Err(format!("获取远程文件列表失败: {} - {}", status, error_text));
         }
 
@@ -534,14 +561,19 @@ pub async fn sync_to_remote(
         eprintln!("[DEBUG] 处理文件: {}", remote_path);
 
         // 检查文件大小
-        let file_size = fs::metadata(&local_path)
-            .map(|m| m.len())
-            .unwrap_or(0);
+        let file_size = fs::metadata(&local_path).map(|m| m.len()).unwrap_or(0);
 
         if file_size as usize > MAX_FILE_SIZE {
-            eprintln!("[DEBUG] 文件过大，跳过: {} ({} 字节)", remote_path, file_size);
+            eprintln!(
+                "[DEBUG] 文件过大，跳过: {} ({} 字节)",
+                remote_path, file_size
+            );
             skipped += 1;
-            failed_files.push(format!("{} (文件过大: {} MB)", remote_path, file_size / 1024 / 1024));
+            failed_files.push(format!(
+                "{} (文件过大: {} MB)",
+                remote_path,
+                file_size / 1024 / 1024
+            ));
             continue;
         }
 
@@ -554,7 +586,9 @@ pub async fn sync_to_remote(
         match read_file_as_base64(&local_path) {
             Ok(content) => {
                 // 尝试创建或更新文件（提供 sha 用于更新）
-                match create_or_update_file(&config, &remote_path, &content, is_binary, file_sha).await {
+                match create_or_update_file(&config, &remote_path, &content, is_binary, file_sha)
+                    .await
+                {
                     Ok(_) => {
                         uploaded += 1;
                         eprintln!("[DEBUG] 上传成功: {}", remote_path);
@@ -572,13 +606,21 @@ pub async fn sync_to_remote(
         }
     }
 
-    eprintln!("[DEBUG] 上传完成: 成功 {} 个，跳过 {} 个", uploaded, skipped);
+    eprintln!(
+        "[DEBUG] 上传完成: 成功 {} 个，跳过 {} 个",
+        uploaded, skipped
+    );
 
     // 构建消息
     let message = if failed_files.is_empty() {
         format!("同步成功，已上传 {} 个文件", uploaded)
     } else {
-        format!("同步完成: 成功 {} 个，跳过 {} 个，失败 {} 个", uploaded, skipped, failed_files.len())
+        format!(
+            "同步完成: 成功 {} 个，跳过 {} 个，失败 {} 个",
+            uploaded,
+            skipped,
+            failed_files.len()
+        )
     };
 
     Ok(SyncResult {
@@ -654,9 +696,23 @@ fn is_binary_file(path: &PathBuf) -> bool {
         let ext = ext.to_str().unwrap_or("").to_lowercase();
         matches!(
             ext.as_str(),
-            "png" | "jpg" | "jpeg" | "gif" | "bmp" | "ico" | "webp"
-                | "pdf" | "zip" | "rar" | "7z" | "tar" | "gz"
-                | "exe" | "dll" | "so" | "dylib"
+            "png"
+                | "jpg"
+                | "jpeg"
+                | "gif"
+                | "bmp"
+                | "ico"
+                | "webp"
+                | "pdf"
+                | "zip"
+                | "rar"
+                | "7z"
+                | "tar"
+                | "gz"
+                | "exe"
+                | "dll"
+                | "so"
+                | "dylib"
         )
     } else {
         false

@@ -31,7 +31,10 @@
       "Bash(echo:*)",
       "Bash(cargo --version)",
       "Bash(winget install:*)",
-      "mcp__web-search-prime__web_search_prime"
+      "mcp__web-search-prime__web_search_prime",
+      "Bash(pnpm install:*)",
+      "Bash(npm run:*)",
+      "Bash(pnpm tauri:*)"
     ]
   },
   "agents": {
