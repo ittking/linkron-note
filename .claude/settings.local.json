@@ -35,7 +35,9 @@
       "Bash(pnpm install:*)",
       "Bash(npm run:*)",
       "Bash(pnpm tauri:*)",
-      "Bash(cd:*)"
+      "Bash(cd:*)",
+      "Bash(git branch:*)",
+      "Bash(git push:*)"
     ]
   },
   "agents": {
