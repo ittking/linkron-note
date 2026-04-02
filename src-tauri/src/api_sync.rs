@@ -34,7 +34,21 @@ pub struct SyncDetails {
     pub total: usize,
 }
 
-/// 解析仓库地址获取 owner 和 repo
+/// Gitee API 文件信息响应
+#[derive(Debug, Serialize, Deserialize)]
+struct GiteeFileInfo {
+    name: String,
+    path: String,
+    #[serde(rename = "type")]
+    file_type: String,
+    sha: String,
+    size: i64,
+    content: Option<String>,
+    encoding: Option<String>,
+}
+
+/// 文件大小常量（Gitee API 限制）
+const MAX_FILE_SIZE: usize = 10 * 1024 * 1024; // 10MB
 fn parse_repo_url(repo_url: &str) -> Result<(String, String), String> {
     let url = repo_url.trim();
 
@@ -63,19 +77,6 @@ fn parse_repo_url(repo_url: &str) -> Result<(String, String), String> {
     }
 
     Err("仓库地址格式无效，应为：用户名/仓库名 或完整的仓库URL".to_string())
-}
-
-/// Gitee API 文件信息响应
-#[derive(Debug, Serialize, Deserialize)]
-struct GiteeFileInfo {
-    name: String,
-    path: String,
-    #[serde(rename = "type")]
-    file_type: String,
-    sha: String,
-    size: i64,
-    content: Option<String>,
-    encoding: Option<String>,
 }
 
 
@@ -185,7 +186,7 @@ async fn create_or_update_file(
     path: &str,
     content: &str,
     is_binary: bool,
-    sha: Option<&str>,
+    sha: Option<String>,
 ) -> Result<(), String> {
     let (owner, repo) = parse_repo_url(&config.repo_url)?;
     let client = build_client()?;
@@ -203,11 +204,17 @@ async fn create_or_update_file(
         engine.encode(content)
     };
 
+    // 检查内容大小（base64编码后）
+    if encoded_content.len() > MAX_FILE_SIZE {
+        return Err(format!("文件过大: {} 字节 (限制: {} 字节)", encoded_content.len(), MAX_FILE_SIZE));
+    }
+
     let mut request_body = json!({
         "content": encoded_content,
         "message": format!("Update {}", path)
     });
 
+    // 如果提供了 sha，添加到请求中（用于更新已存在的文件）
     if let Some(s) = sha {
         request_body["sha"] = json!(s);
     }
@@ -228,6 +235,46 @@ async fn create_or_update_file(
     }
 
     Ok(())
+}
+
+/// 获取远程文件的 sha 值
+async fn get_file_sha(
+    config: &ApiSyncConfig,
+    path: &str,
+) -> Result<Option<String>, String> {
+    let (owner, repo) = parse_repo_url(&config.repo_url)?;
+    let client = build_client()?;
+
+    let url = format!(
+        "https://gitee.com/api/v5/repos/{}/{}/contents/{}?ref={}",
+        owner, repo, path, config.branch
+    );
+
+    let response = client
+        .get(&url)
+        .header("Authorization", format!("Bearer {}", config.token))
+        .header("User-Agent", "linkron")
+        .send()
+        .await
+        .map_err(|e| format!("获取文件信息失败: {}", e))?;
+
+    // 如果文件不存在，返回 None
+    if response.status().as_u16() == 404 {
+        return Ok(None);
+    }
+
+    if !response.status().is_success() {
+        let status = response.status();
+        let error_text = response.text().await.unwrap_or_else(|_| "无法读取错误信息".to_string());
+        return Err(format!("获取文件信息 {}: {} - {}", path, status, error_text));
+    }
+
+    let file_info: GiteeFileInfo = response
+        .json()
+        .await
+        .map_err(|e| format!("解析文件信息失败: {}", e))?;
+
+    Ok(Some(file_info.sha))
 }
 
 /// 下载远程文件到本地
@@ -405,45 +452,69 @@ pub async fn sync_to_remote(
     eprintln!("[DEBUG] 本地文件数量: {}", local_files.len());
 
     let mut uploaded = 0;
-    let skipped = 0;
+    let mut skipped = 0;
+    let mut failed_files = vec![];
 
     // 上传每个文件
     for (local_path, remote_path) in local_files {
-        eprintln!("[DEBUG] 上传文件: {}", remote_path);
+        eprintln!("[DEBUG] 处理文件: {}", remote_path);
+
+        // 检查文件大小
+        let file_size = fs::metadata(&local_path)
+            .map(|m| m.len())
+            .unwrap_or(0);
+
+        if file_size as usize > MAX_FILE_SIZE {
+            eprintln!("[DEBUG] 文件过大，跳过: {} ({} 字节)", remote_path, file_size);
+            skipped += 1;
+            failed_files.push(format!("{} (文件过大: {} MB)", remote_path, file_size / 1024 / 1024));
+            continue;
+        }
+
+        // 获取远程文件的 sha（如果存在）
+        let file_sha = get_file_sha(&config, &remote_path).await.unwrap_or(None);
 
         // 判断是否为二进制文件
         let is_binary = is_binary_file(&local_path);
 
         match read_file_as_base64(&local_path) {
             Ok(content) => {
-                // 尝试创建或更新文件（不提供sha，让API自动处理）
-                match create_or_update_file(&config, &remote_path, &content, is_binary, None).await {
+                // 尝试创建或更新文件（提供 sha 用于更新）
+                match create_or_update_file(&config, &remote_path, &content, is_binary, file_sha).await {
                     Ok(_) => {
                         uploaded += 1;
                         eprintln!("[DEBUG] 上传成功: {}", remote_path);
                     }
                     Err(e) => {
                         eprintln!("[DEBUG] 上传失败: {} - {}", remote_path, e);
-                        // 继续上传其他文件
+                        failed_files.push(format!("{} ({})", remote_path, e));
                     }
                 }
             }
             Err(e) => {
                 eprintln!("[DEBUG] 读取文件失败: {} - {}", remote_path, e);
+                failed_files.push(format!("{} (读取失败: {})", remote_path, e));
             }
         }
     }
 
-    eprintln!("[DEBUG] 上传完成: {} 个文件", uploaded);
+    eprintln!("[DEBUG] 上传完成: 成功 {} 个，跳过 {} 个", uploaded, skipped);
+
+    // 构建消息
+    let message = if failed_files.is_empty() {
+        format!("同步成功，已上传 {} 个文件", uploaded)
+    } else {
+        format!("同步完成: 成功 {} 个，跳过 {} 个，失败 {} 个", uploaded, skipped, failed_files.len())
+    };
 
     Ok(SyncResult {
-        success: true,
-        message: format!("同步成功，已上传 {} 个文件", uploaded),
+        success: failed_files.is_empty(),
+        message,
         details: Some(SyncDetails {
             uploaded,
             downloaded: 0,
             skipped,
-            total: uploaded + skipped,
+            total: uploaded + skipped + failed_files.len(),
         }),
     })
 }

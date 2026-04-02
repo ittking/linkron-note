@@ -301,10 +301,12 @@ function getGiteeTokenHelpUrl() {
 
         <div class="mt-3 p-3 bg-base-300 rounded-lg">
           <p class="text-xs text-base-content/60 leading-relaxed">
-            <strong class="text-base-content/80">提示：</strong><br>
-            • 同步到云端：通过 Gitee API 上传本地文件到仓库<br>
-            • 从云端同步：通过 Gitee API 下载仓库文件到本地<br>
-            • 无需安装 Git，使用 API 直接操作文件<br>
+            <strong class="text-base-content/80">同步说明：</strong><br>
+            • <strong>同步到云端</strong>：通过 Gitee API 上传本地文件<br>
+            • <strong>从云端同步</strong>：通过 Gitee API 下载文件到本地<br>
+            • <strong>无需安装 Git</strong>：直接使用 API 操作文件<br>
+            • <strong>文件限制</strong>：单个文件最大 10MB<br>
+            • <strong>数据库文件</strong>：note.db 如果超过 10MB 将被跳过<br>
             • 首次同步请确保云端仓库为空，或先备份本地数据
           </p>
         </div>
