@@ -96,10 +96,7 @@ pub fn get_os() -> String {
     #[cfg(windows)]
     return "windows".to_string();
 
-    #[cfg(target_os = "linux")]
-    return "linux".to_string();
-
-    #[cfg(not(any(target_os = "macos", windows, target_os = "linux")))]
+    #[cfg(not(any(target_os = "macos", windows)))]
     return "unknown".to_string();
 }
 
