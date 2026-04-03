@@ -50,12 +50,12 @@ async function handleMaximizeWindow() {
   }
 }
 
-// 关闭窗口（隐藏到系统托盘）
+// 关闭窗口
 async function closeWindow() {
   try {
-    await appWindow.hide()
+    await appWindow.close()
   } catch (error) {
-    console.error('Failed to hide window:', error)
+    console.error('Failed to close window:', error)
   }
 }
 
