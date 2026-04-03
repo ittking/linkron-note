@@ -1,0 +1,97 @@
+# GitCode CI/CD 配置 for Linkron Note
+# 推送 tag (如 v1.0.0) 时自动构建 macOS 和 Windows 应用
+
+stages:
+  - build
+
+variables:
+  NODE_VERSION: "20"
+  PNPM_VERSION: "9"
+
+# macOS ARM64 (Apple Silicon) 构建
+build:macos-arm64:
+  stage: build
+  tags:
+    - macos
+    - arm64
+  script:
+    # 安装 Node.js
+    - curl -fsSL https://fnm.vercel.app/install | bash
+    - export PATH="$HOME/.fnm:$PATH"
+    - eval "$(fnm env --use-on-cd)"
+    - fnm install $NODE_VERSION
+    - fnm use $NODE_VERSION
+    # 安装 pnpm
+    - npm install -g pnpm@$PNPM_VERSION
+    # 安装依赖并构建
+    - pnpm install
+    - rustup target add aarch64-apple-darwin
+    - pnpm tauri build --target aarch64-apple-darwin
+  artifacts:
+    paths:
+      - src-tauri/target/aarch64-apple-darwin/release/bundle/dmg/*.dmg
+      - src-tauri/target/aarch64-apple-darwin/release/bundle/macos/*.app.tar.gz
+      - src-tauri/target/aarch64-apple-darwin/release/bundle/updater/
+    expire_in: 30 days
+  only:
+    - /^v\d+\.\d+\.\d+.*$/
+  except:
+    - branches
+
+# macOS x86_64 (Intel) 构建
+build:macos-x86_64:
+  stage: build
+  tags:
+    - macos
+    - amd64
+  script:
+    # 安装 Node.js
+    - curl -fsSL https://fnm.vercel.app/install | bash
+    - export PATH="$HOME/.fnm:$PATH"
+    - eval "$(fnm env --use-on-cd)"
+    - fnm install $NODE_VERSION
+    - fnm use $NODE_VERSION
+    # 安装 pnpm
+    - npm install -g pnpm@$PNPM_VERSION
+    # 安装依赖并构建
+    - pnpm install
+    - rustup target add x86_64-apple-darwin
+    - pnpm tauri build --target x86_64-apple-darwin
+  artifacts:
+    paths:
+      - src-tauri/target/x86_64-apple-darwin/release/bundle/dmg/*.dmg
+      - src-tauri/target/x86_64-apple-darwin/release/bundle/macos/*.app.tar.gz
+      - src-tauri/target/x86_64-apple-darwin/release/bundle/updater/
+    expire_in: 30 days
+  only:
+    - /^v\d+\.\d+\.\d+.*$/
+  except:
+    - branches
+
+# Windows 构建
+build:windows:
+  stage: build
+  tags:
+    - windows
+  script:
+    # 安装 Node.js (Windows PowerShell)
+    - |
+      $nodeUrl = "https://nodejs.org/dist/v$env:NODE_VERSION/node-v$env:NODE_VERSION-x64.msi"
+      Invoke-WebRequest -Uri $nodeUrl -OutFile "nodejs.msi"
+      Start-Process msiexec.exe -ArgumentList "/i nodejs.msi /quiet /norestart" -Wait
+      $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
+    # 安装 pnpm
+    - npm install -g pnpm@$env:PNPM_VERSION
+    # 安装依赖并构建
+    - pnpm install
+    - pnpm tauri build
+  artifacts:
+    paths:
+      - src-tauri/target/x86_64-pc-windows-msvc/release/bundle/msi/*.msi
+      - src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/*.exe
+      - src-tauri/target/x86_64-pc-windows-msvc/release/bundle/updater/
+    expire_in: 30 days
+  only:
+    - /^v\d+\.\d+\.\d+.*$/
+  except:
+    - branches
