@@ -1,4 +1,5 @@
 import axios from 'axios'
+import router from '@/router'
 
 // 创建 axios 实例
 const http = axios.create({
@@ -77,6 +78,8 @@ http.interceptors.response.use(
           errorInfo.message = '登录已过期，请重新登录'
           // 未授权，清除 token
           localStorage.removeItem('token')
+          // 跳转到登录页面
+          router.push('/login')
           break
         case 403:
           errorInfo.message = '没有权限访问'
