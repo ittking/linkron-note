@@ -1,10 +1,12 @@
 <script setup>
 import { ref, onMounted } from 'vue'
-import { Info, Mail, MessageCircle, ExternalLink, Heart, Code, Zap, Download, RefreshCw, CheckCircle, AlertCircle } from 'lucide-vue-next'
+import { Info, Mail, MessageCircle, Heart, Tag, Calendar, CheckSquare, Download, RefreshCw, CheckCircle, AlertCircle, ChevronDown } from 'lucide-vue-next'
 import Button from './ui/Button.vue'
 import { check } from '@tauri-apps/plugin-updater'
 import { relaunch } from '@tauri-apps/plugin-process'
 import { getVersion } from '@tauri-apps/api/app'
+import wechatQR from '@/assets/weixin_gz.jpg'
+import appLogo from '@/assets/128x128.png'
 
 const version = ref('1.0.0')
 const buildDate = '2025-02-16'
@@ -92,30 +94,35 @@ async function downloadAndInstallUpdate() {
 }
 
 const contactInfo = {
-  email: 'support@linkron.app',
-  wechat: 'linkron_official',
-  qqGroup: '123456789',
-  github: 'https://github.com/ittking/linkron',
-  website: 'https://linkron.app'
+  email: 'manongwuma@163.com',
+  wechat: 'linkron'
 }
 
 const features = [
   {
-    icon: Zap,
-    title: '高效笔记',
-    description: '快速创建、管理和搜索您的笔记'
-  },
-  {
-    icon: MessageCircle,
-    title: 'AI 助手',
-    description: '智能优化内容，提升笔记质量'
-  },
-  {
-    icon: Code,
-    title: '标签系统',
+    icon: Tag,
+    title: '标签',
     description: '灵活的标签分类，快速定位笔记'
+  },
+  {
+    icon: CheckSquare,
+    title: '待办',
+    description: '任务管理，清晰追踪每项工作'
+  },
+  {
+    icon: Calendar,
+    title: '日历',
+    description: '日历视图，直观规划时间'
+  },
+  {
+    icon: Mail,
+    title: '邮箱',
+    description: '邮箱支持，便捷收发邮件'
   }
 ]
+
+// 公众号二维码展开状态
+const showWechatQR = ref(false)
 </script>
 
 <template>
@@ -129,12 +136,12 @@ const features = [
         </h2>
 
         <div class="flex items-center gap-4 mb-4">
-          <div class="w-16 h-16 rounded-xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center">
-            <span class="text-2xl font-bold text-base-content">L</span>
+          <div class="w-16 h-16 rounded-xl overflow-hidden shadow-md">
+            <img :src="appLogo" alt="LINKRON Logo" class="w-full h-full object-cover" />
           </div>
           <div>
             <h3 class="text-lg font-semibold">LINKRON</h3>
-            <p class="text-sm text-base-content/60">智能笔记助手</p>
+            <p class="text-sm text-base-content/60">极简笔记，随时随记</p>
             <div class="flex items-center gap-2 mt-1">
               <span class="text-xs text-base-content/40">版本 {{ version }}</span>
               <span class="text-xs text-base-content/30">|</span>
@@ -144,7 +151,7 @@ const features = [
         </div>
 
         <p class="text-xs text-base-content/60 leading-relaxed mb-4">
-          LINKRON 是一款基于 Tauri + Vue 3 构建的跨平台桌面应用，旨在提供高效、智能的笔记管理体验。
+          LINKRON 是一款极简风格的跨平台桌面应用，集笔记、待办、日历、邮箱于一体，随时随记，简约高效。
         </p>
 
         <!-- 更新区域 -->
@@ -246,10 +253,10 @@ const features = [
     <div class="card bg-base-200 shadow-sm">
       <div class="card-body p-4">
         <h2 class="card-title text-sm font-medium mb-3">
-          <Zap :size="16" />
+          <Tag :size="16" />
           核心功能
         </h2>
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div class="grid grid-cols-2 gap-3">
           <div
             v-for="feature in features"
             :key="feature.title"
@@ -276,7 +283,7 @@ const features = [
           <div class="flex items-center justify-between p-2 rounded-lg bg-base-100">
             <div class="flex items-center gap-2">
               <Mail :size="14" class="text-base-content/40" />
-              <span class="text-sm">官方邮箱</span>
+              <span class="text-sm">邮箱</span>
             </div>
             <a
               :href="`mailto:${contactInfo.email}`"
@@ -286,52 +293,37 @@ const features = [
             </a>
           </div>
 
-          <div class="flex items-center justify-between p-2 rounded-lg bg-base-100">
-            <div class="flex items-center gap-2">
-              <MessageCircle :size="14" class="text-base-content/40" />
-              <span class="text-sm">微信公众号</span>
+          <!-- 公众号 - 带下拉二维码 -->
+          <div class="relative">
+            <div
+              @click="showWechatQR = !showWechatQR"
+              class="flex items-center justify-between p-2 rounded-lg bg-base-100 cursor-pointer hover:bg-base-200 transition-colors"
+            >
+              <div class="flex items-center gap-2">
+                <MessageCircle :size="14" class="text-base-content/40" />
+                <span class="text-sm">微信公众号</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <span class="text-xs text-base-content/60">{{ contactInfo.wechat }}</span>
+                <ChevronDown :size="12" class="text-base-content/40 transition-transform" :class="{ 'rotate-180': showWechatQR }" />
+              </div>
             </div>
-            <span class="text-xs text-base-content/60">{{ contactInfo.wechat }}</span>
-          </div>
 
-          <div class="flex items-center justify-between p-2 rounded-lg bg-base-100">
-            <div class="flex items-center gap-2">
-              <MessageCircle :size="14" class="text-base-content/40" />
-              <span class="text-sm">QQ 群</span>
+            <!-- 二维码下拉悬浮 -->
+            <div
+              v-if="showWechatQR"
+              class="absolute top-full left-0 right-0 mt-1 z-10 bg-base-100 rounded-lg shadow-lg border border-base-300 overflow-hidden"
+            >
+              <div class="p-4 flex flex-col items-center">
+                <img
+                  :src="wechatQR"
+                  alt="微信公众号二维码"
+                  class="w-32 h-32 object-contain"
+                />
+                <p class="text-xs text-base-content/60 mt-2">扫描关注公众号</p>
+              </div>
             </div>
-            <span class="text-xs text-base-content/60">{{ contactInfo.qqGroup }}</span>
           </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- 相关链接 -->
-    <div class="card bg-base-200 shadow-sm">
-      <div class="card-body p-4">
-        <h2 class="card-title text-sm font-medium mb-3">
-          <ExternalLink :size="16" />
-          相关链接
-        </h2>
-        <div class="space-y-2">
-          <a
-            :href="contactInfo.website"
-            target="_blank"
-            rel="noopener noreferrer"
-            class="flex items-center justify-between p-2 rounded-lg bg-base-100 hover:bg-base-200 transition-colors group"
-          >
-            <span class="text-sm">官方网站</span>
-            <ExternalLink :size="12" class="text-base-content/40 group-hover:text-primary transition-colors" />
-          </a>
-
-          <a
-            :href="contactInfo.github"
-            target="_blank"
-            rel="noopener noreferrer"
-            class="flex items-center justify-between p-2 rounded-lg bg-base-100 hover:bg-base-200 transition-colors group"
-          >
-            <span class="text-sm">GitHub 仓库</span>
-            <ExternalLink :size="12" class="text-base-content/40 group-hover:text-primary transition-colors" />
-          </a>
         </div>
       </div>
     </div>
