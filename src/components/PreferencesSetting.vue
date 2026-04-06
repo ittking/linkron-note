@@ -148,10 +148,10 @@ watch(noteImageMaxCount, async (newValue) => {
           开机启动
         </h2>
         <div class="form-control">
-          <label class="label cursor-pointer flex justify-between gap-4">
-            <span class="label-text">开机自动启动</span>
+          <div class="flex items-center justify-between gap-4">
+            <span class="text-sm">开机自动启动</span>
             <Toggle v-model="autoStartEnabled" size="sm" />
-          </label>
+          </div>
         </div>
       </div>
     </div>
