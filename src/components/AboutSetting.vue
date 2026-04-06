@@ -1,12 +1,15 @@
 <script setup>
-import { ref, onMounted } from 'vue'
-import { Info, Mail, MessageCircle, Heart, Tag, Calendar, CheckSquare, Download, RefreshCw, CheckCircle, AlertCircle, ChevronDown } from 'lucide-vue-next'
+import { ref, onMounted, onBeforeUnmount } from 'vue'
+import { Info, MessageCircle, Heart, Tag, Calendar, CheckSquare, Download, RefreshCw, CheckCircle, AlertCircle, ChevronDown } from 'lucide-vue-next'
 import Button from './ui/Button.vue'
 import { check } from '@tauri-apps/plugin-updater'
 import { relaunch } from '@tauri-apps/plugin-process'
 import { getVersion } from '@tauri-apps/api/app'
 import wechatQR from '@/assets/weixin_gz.jpg'
 import appLogo from '@/assets/128x128.png'
+
+// 公众号下拉容器 ref
+const wechatDropdownRef = ref(null)
 
 const version = ref('1.0.0')
 const buildDate = '2025-02-16'
@@ -94,7 +97,6 @@ async function downloadAndInstallUpdate() {
 }
 
 const contactInfo = {
-  email: 'manongwuma@163.com',
   wechat: 'linkron'
 }
 
@@ -113,16 +115,26 @@ const features = [
     icon: Calendar,
     title: '日历',
     description: '日历视图，直观规划时间'
-  },
-  {
-    icon: Mail,
-    title: '邮箱',
-    description: '邮箱支持，便捷收发邮件'
   }
 ]
 
 // 公众号二维码展开状态
 const showWechatQR = ref(false)
+
+// 点击外部关闭公众号下拉
+function handleClickOutside(event) {
+  if (wechatDropdownRef.value && !wechatDropdownRef.value.contains(event.target)) {
+    showWechatQR.value = false
+  }
+}
+
+onMounted(() => {
+  document.addEventListener('click', handleClickOutside)
+})
+
+onBeforeUnmount(() => {
+  document.removeEventListener('click', handleClickOutside)
+})
 </script>
 
 <template>
@@ -151,7 +163,7 @@ const showWechatQR = ref(false)
         </div>
 
         <p class="text-xs text-base-content/60 leading-relaxed mb-4">
-          LINKRON 是一款极简风格的跨平台桌面应用，集笔记、待办、日历、邮箱于一体，随时随记，简约高效。
+          LINKRON 是一款极简风格的跨平台桌面应用，集笔记、待办、日历于一体，随时随记，简约高效。
         </p>
 
         <!-- 更新区域 -->
@@ -256,7 +268,7 @@ const showWechatQR = ref(false)
           <Tag :size="16" />
           核心功能
         </h2>
-        <div class="grid grid-cols-2 gap-3">
+        <div class="grid grid-cols-3 gap-3">
           <div
             v-for="feature in features"
             :key="feature.title"
@@ -276,25 +288,12 @@ const showWechatQR = ref(false)
     <div class="card bg-base-200 shadow-sm">
       <div class="card-body p-4">
         <h2 class="card-title text-sm font-medium mb-3">
-          <Mail :size="16" />
+          <MessageCircle :size="16" />
           联系我们
         </h2>
         <div class="space-y-2">
-          <div class="flex items-center justify-between p-2 rounded-lg bg-base-100">
-            <div class="flex items-center gap-2">
-              <Mail :size="14" class="text-base-content/40" />
-              <span class="text-sm">邮箱</span>
-            </div>
-            <a
-              :href="`mailto:${contactInfo.email}`"
-              class="text-xs text-primary hover:text-primary/80 transition-colors"
-            >
-              {{ contactInfo.email }}
-            </a>
-          </div>
-
           <!-- 公众号 - 带下拉二维码 -->
-          <div class="relative">
+          <div class="relative" ref="wechatDropdownRef">
             <div
               @click="showWechatQR = !showWechatQR"
               class="flex items-center justify-between p-2 rounded-lg bg-base-100 cursor-pointer hover:bg-base-200 transition-colors"
@@ -312,13 +311,14 @@ const showWechatQR = ref(false)
             <!-- 二维码下拉悬浮 -->
             <div
               v-if="showWechatQR"
-              class="absolute top-full left-0 right-0 mt-1 z-10 bg-base-100 rounded-lg shadow-lg border border-base-300 overflow-hidden"
+              class="absolute top-full right-0 mt-1 z-10 bg-base-100 rounded-lg shadow-lg border border-base-300 overflow-hidden"
+              style="width: 160px;"
             >
               <div class="p-4 flex flex-col items-center">
                 <img
                   :src="wechatQR"
                   alt="微信公众号二维码"
-                  class="w-32 h-32 object-contain"
+                  class="w-24 h-24 object-contain"
                 />
                 <p class="text-xs text-base-content/60 mt-2">扫描关注公众号</p>
               </div>
