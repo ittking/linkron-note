@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, nextTick, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, nextTick, onMounted, onBeforeUnmount, watch } from 'vue'
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Clock, X } from 'lucide-vue-next'
 import dayjs from 'dayjs'
 import dayjsLocale from 'dayjs/locale/zh-cn'
@@ -122,6 +122,13 @@ const initValue = () => {
   tempSelectedHour.value = selectedHour.value
   tempSelectedMinute.value = selectedMinute.value
 }
+
+// 监听 modelValue 变化，同步更新内部状态
+watch(() => props.modelValue, (newValue) => {
+  if (newValue !== undefined && newValue !== null) {
+    initValue()
+  }
+}, { immediate: false })
 
 // 格式化显示值
 const displayValue = computed(() => {

@@ -175,19 +175,30 @@ function deleteTodo(todo) {
 
 function updateReminderTime(todo, value) {
   let reminder = null
-  
+
   if (value && value.trim() !== '') {
     const originalReminderType = todo.reminder?.type || 'onetime'
     let timeValue
 
     if (originalReminderType === 'onetime') {
-      const selectedDateObj = dayjs(selectedDate.value)
-      const timeOnly = value.includes('T') ? value.split('T')[1] : value
-      timeValue = `${selectedDateObj.format('YYYY-MM-DD')}T${timeOnly}`
+      // 一次性提醒：使用选中的日期
+      if (value.includes('T')) {
+        // 已经是完整格式
+        timeValue = value
+      } else {
+        // 只有时间部分，组合成完整格式
+        const selectedDateObj = dayjs(selectedDate.value)
+        timeValue = `${selectedDateObj.format('YYYY-MM-DD')}T${value}`
+      }
     } else {
-      const timeOnly = value.includes('T') ? value.split('T')[1] : value
-      const selectedDateObj = dayjs(selectedDate.value)
-      timeValue = timeOnly ? `${selectedDateObj.format('YYYY-MM-DD')}T${timeOnly}` : ''
+      // 重复提醒：使用固定日期格式存储（实际使用时只取时间部分）
+      if (value.includes('T')) {
+        timeValue = value
+      } else {
+        // 只有时间部分（HH:mm），组合成完整格式
+        const selectedDateObj = dayjs(selectedDate.value)
+        timeValue = `${selectedDateObj.format('YYYY-MM-DD')}T${value}`
+      }
     }
 
     const reminderObj = {

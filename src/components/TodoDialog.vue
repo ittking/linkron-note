@@ -444,7 +444,7 @@ function deleteTodo() {
             <div v-if="formRepeatType === 'weekday'">
               <div class="flex flex-wrap gap-1.5">
                 <button v-for="wd in WEEKDAYS" :key="wd.value" @click="toggleWeekday(wd.value)"
-                  class="w-8 h-8 rounded text-xs border transition-colors"
+                  class="px-3 py-1.5 rounded text-xs border transition-colors"
                   :class="formRepeatWeekdays.includes(wd.value) ? 'bg-primary text-primary-content border-primary' : 'bg-base-100 text-base-content/50 border-base-200'">
                   {{ wd.label }}
                 </button>
