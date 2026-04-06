@@ -18,6 +18,7 @@ declare module 'vue' {
     Dropdown: typeof import('./components/ui/Dropdown.vue')['default']
     ImageViewer: typeof import('./components/ImageViewer.vue')['default']
     Input: typeof import('./components/ui/Input.vue')['default']
+    Login: typeof import('./components/Login.vue')['default']
     NoteCard: typeof import('./components/NoteCard.vue')['default']
     NoteEditor: typeof import('./components/NoteEditor.vue')['default']
     NoteHeatmap: typeof import('./components/NoteHeatmap.vue')['default']

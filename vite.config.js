@@ -57,5 +57,13 @@ export default defineConfig(async () => ({
       // 3. tell Vite to ignore watching `src-tauri`
       ignored: ["**/src-tauri/**"],
     },
+    proxy: {
+      '/api': {
+        target: 'https://linkron.fireape.cn',
+        changeOrigin: true,
+        secure: true,
+        rewrite: (path) => path.replace(/^\/api/, '')
+      }
+    }
   },
 }));
