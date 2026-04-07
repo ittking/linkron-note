@@ -250,7 +250,7 @@ onBeforeUnmount(() => {
 
                 <!-- 过期遮罩 -->
                 <div v-if="localAuthStatus === 'expired'"
-                  class="absolute inset-0 rounded-2xl bg-base-100/80 backdrop-blur-sm flex flex-col items-center justify-center gap-3">
+                  class="absolute inset-0 rounded-2xl bg-base-100/60 backdrop-blur-[2px] flex flex-col items-center justify-center gap-3">
                   <Clock :size="32" class="text-error" />
                   <span class="text-sm font-medium text-error">二维码已过期</span>
                 </div>
