@@ -269,23 +269,17 @@ onBeforeUnmount(() => {
           </div>
         </transition>
 
-        <!-- 微信授权登录按钮 -->
-        <transition mode="out-in" enter-active-class="transition-opacity duration-300 ease-out"
-          enter-from-class="opacity-0" enter-to-class="opacity-100"
-          leave-active-class="transition-opacity duration-300 ease-in" leave-from-class="opacity-100"
-          leave-to-class="opacity-0">
-          <div v-if="!showQRCode" class="space-y-4">
-            <button @click="handleGetQRCode"
-              class="btn btn-primary w-full gap-2 h-12 text-base font-medium shadow-lg shadow-primary/25 hover:shadow-primary/30">
-              <QrCode :size="20" />
-              微信授权登录
-            </button>
+        <div v-if="!showQRCode" class="space-y-4">
+          <button @click="handleGetQRCode"
+            class="btn btn-primary w-full gap-2 h-12 text-base font-medium shadow-lg shadow-primary/25 hover:shadow-primary/30">
+            <QrCode :size="20" />
+            微信授权登录
+          </button>
 
-            <div class="text-center">
-              <p class="text-xs text-base-content/40">登录即表示同意《用户协议》和《隐私政策》</p>
-            </div>
+          <div class="text-center">
+            <p class="text-xs text-base-content/40">登录即表示同意《用户协议》和《隐私政策》</p>
           </div>
-        </transition>
+        </div>
       </div>
     </div>
   </div>
