@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, watch, onBeforeUnmount } from 'vue'
+import { ref, computed, watch, onBeforeUnmount, toRefs } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from './store/authStore'
 import { BookOpen } from 'lucide-vue-next'
@@ -17,8 +17,8 @@ const timer = ref(null)
 const logoUrl = ref('/src/assets/128x128.png')
 const appName = ref('LINKRON')
 
-// 从 authStore 解构响应式数据
-const { qrCodeData, authStatus, isLoading, isLoggedIn } = authStore
+// 使用 toRefs 保持响应性
+const { qrCodeData, authStatus, isLoading, isLoggedIn } = toRefs(authStore)
 
 // 状态显示文本
 const statusText = computed(() => {
@@ -29,6 +29,8 @@ const statusText = computed(() => {
       return '请使用微信扫描二维码'
     case 'authorized':
       return '授权成功，正在跳转...'
+    case 'expired':
+      return '二维码已过期'
     case 'error':
       return '获取二维码失败，请重试'
     default:
@@ -43,6 +45,7 @@ const statusIcon = computed(() => {
       return Loader2
     case 'authorized':
       return CheckCircle2
+    case 'expired':
     case 'error':
       return RefreshCw
     default:
@@ -57,6 +60,7 @@ const statusColor = computed(() => {
       return 'text-primary'
     case 'authorized':
       return 'text-success'
+    case 'expired':
     case 'error':
       return 'text-error'
     default:
@@ -90,11 +94,10 @@ function startCountdown() {
 
     if (countdown.value <= 0) {
       stopCountdown()
-      // 如果还在等待授权，标记为过期并隐藏二维码
+      // 如果还在等待授权，标记为过期
       if (authStatus.value === 'pending') {
         authStore.stopPolling()
-        authStore.resetAuth()
-        showQRCode.value = false
+        authStore.setExpired()
       }
     }
   }, 1000)
@@ -114,6 +117,8 @@ function handleRefresh() {
   authStore.resetAuth()
   showQRCode.value = false
   stopCountdown()
+  // 允许立即重新获取
+  canGetQRCode.value = true
 }
 
 // 监听登录状态变化
@@ -133,9 +138,9 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="h-screen flex flex-col bg-base-200">
+  <div class="h-screen flex flex-col bg-base-100">
     <!-- 顶部控制栏 -->
-    <div data-tauri-drag-region class="h-9 flex items-center justify-between px-3 flex-shrink-0 bg-base-100 border-b border-base-200">
+    <div data-tauri-drag-region class="h-9 flex items-center justify-between px-3 flex-shrink-0 border-b border-base-200">
       <div class="flex items-center gap-2">
         <BookOpen :size="16" class="text-primary" data-tauri-drag-region />
         <span class="text-sm font-medium text-base-content" data-tauri-drag-region>LINKRON</span>
@@ -161,7 +166,7 @@ onBeforeUnmount(() => {
           <p class="text-sm text-base-content/60">极简笔记，随时随记</p>
         </div>
 
-        <!-- 二维码卡片 -->
+        <!-- 二维码区域 -->
         <transition
           enter-active-class="transition-all duration-300 ease-out"
           enter-from-class="opacity-0 scale-95 translate-y-2"
@@ -170,27 +175,34 @@ onBeforeUnmount(() => {
           leave-from-class="opacity-100 scale-100 translate-y-0"
           leave-to-class="opacity-0 scale-95 -translate-y-2"
         >
-          <div v-if="showQRCode" class="card bg-base-100 ring-1 ring-base-200/50 shadow-xl shadow-primary/5">
-            <div class="card-body p-8">
-              <h2 class="card-title text-base font-semibold text-base-content mb-6 justify-center">
-                <Sparkles :size="18" class="text-primary" />
-                微信扫码登录
-              </h2>
+          <div v-if="showQRCode" class="p-8">
+            <h2 class="text-base font-semibold text-base-content mb-6 text-center flex items-center justify-center gap-2">
+              <Sparkles :size="18" class="text-primary" />
+              微信扫码登录
+            </h2>
 
-              <div class="flex flex-col items-center">
+            <div class="flex flex-col items-center">
                 <!-- 二维码图片 -->
                 <div v-if="qrCodeData?.base64" class="relative">
                   <div class="w-52 h-52 rounded-2xl p-3 bg-gradient-to-br from-base-50 to-base-100 ring-1 ring-base-200/50">
                     <img
                       :src="`data:${qrCodeData.contentType};base64,${qrCodeData.base64}`"
                       alt="登录二维码"
-                      class="w-full h-full object-contain"
+                      :class="['w-full h-full object-contain', { 'opacity-30': authStatus === 'expired' }]"
                     />
                   </div>
 
                   <!-- 扫描动画 -->
                   <div v-if="authStatus === 'pending'" class="absolute inset-0 rounded-2xl overflow-hidden pointer-events-none">
                     <div class="scan-line"></div>
+                  </div>
+
+                  <!-- 过期遮罩 -->
+                  <div v-if="authStatus === 'expired'" class="absolute inset-0 rounded-2xl flex items-center justify-center">
+                    <div class="text-center">
+                      <RefreshCw :size="24" class="mx-auto text-error mb-2" />
+                      <p class="text-sm text-error font-medium">二维码已过期</p>
+                    </div>
                   </div>
                 </div>
 
@@ -216,7 +228,7 @@ onBeforeUnmount(() => {
 
                 <!-- 重新获取按钮 -->
                 <button
-                  v-if="authStatus === 'error'"
+                  v-if="authStatus === 'expired' || authStatus === 'error'"
                   @click="handleRefresh"
                   class="mt-6 btn btn-outline btn-sm gap-2 border-base-200 hover:border-primary hover:text-primary"
                 >
@@ -225,7 +237,6 @@ onBeforeUnmount(() => {
                 </button>
               </div>
             </div>
-          </div>
         </transition>
 
         <!-- 微信授权登录按钮 -->
