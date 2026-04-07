@@ -199,6 +199,7 @@ export function useAuthStore() {
     logout,
     saveAuth,
     clearAuth,
-    stopPolling
+    stopPolling,
+    setExpired: () => { authStatus.value = 'expired' }
   }
 }

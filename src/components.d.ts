@@ -35,5 +35,6 @@ declare module 'vue' {
     TodayTodoList: typeof import('./components/TodayTodoList.vue')['default']
     TodoDialog: typeof import('./components/TodoDialog.vue')['default']
     Toggle: typeof import('./components/ui/Toggle.vue')['default']
+    WindowControls: typeof import('./components/ui/WindowControls.vue')['default']
   }
 }
