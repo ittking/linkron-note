@@ -4,7 +4,7 @@ import { useRouter } from 'vue-router'
 import { useAuthStore } from './store/authStore'
 import { BookOpen } from 'lucide-vue-next'
 import WindowControls from './components/ui/WindowControls.vue'
-import { Loader2, QrCode, Clock, CheckCircle2, XCircle, RefreshCw } from 'lucide-vue-next'
+import { Loader2, QrCode, Clock, CheckCircle2, RefreshCw } from 'lucide-vue-next'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -29,8 +29,6 @@ const statusText = computed(() => {
       return '请使用微信扫描二维码登录'
     case 'authorized':
       return '授权成功，正在跳转...'
-    case 'expired':
-      return '二维码已过期，请重新获取'
     case 'error':
       return '获取二维码失败，请重试'
     default:
@@ -45,8 +43,6 @@ const statusIcon = computed(() => {
       return Loader2
     case 'authorized':
       return CheckCircle2
-    case 'expired':
-      return XCircle
     case 'error':
       return XCircle
     default:
@@ -61,7 +57,6 @@ const statusColor = computed(() => {
       return 'text-info'
     case 'authorized':
       return 'text-success'
-    case 'expired':
     case 'error':
       return 'text-error'
     default:
@@ -95,10 +90,11 @@ function startCountdown() {
 
     if (countdown.value <= 0) {
       stopCountdown()
-      // 如果还在等待授权，标记为过期
+      // 如果还在等待授权，标记为过期并隐藏二维码
       if (authStatus.value === 'pending') {
         authStore.stopPolling()
-        authStore.setExpired()
+        authStore.resetAuth()
+        showQRCode.value = false
       }
     }
   }, 1000)
@@ -155,15 +151,15 @@ onBeforeUnmount(() => {
       <div class="w-full max-w-sm">
       <!-- Logo 和标题 -->
       <div class="text-center mb-8">
-        <div class="w-20 h-20 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center shadow-lg overflow-hidden">
-          <img :src="logoUrl" :alt="appName" class="w-full h-full object-cover" />
+        <div class="w-16 h-16 mx-auto mb-4">
+          <img :src="logoUrl" :alt="appName" class="w-full h-full object-contain" />
         </div>
         <h1 class="text-2xl font-bold text-base-content">{{ appName }}</h1>
         <p class="text-sm text-base-content/60 mt-1">极简笔记，随时随记</p>
       </div>
 
       <!-- 二维码区域 -->
-      <div v-if="showQRCode" class="card bg-base-100 shadow-xl">
+      <div v-if="showQRCode" class="card bg-base-100">
         <div class="card-body p-6">
           <h2 class="card-title text-lg font-medium mb-4 justify-center">微信扫码登录</h2>
 
@@ -176,13 +172,6 @@ onBeforeUnmount(() => {
                 alt="登录二维码"
                 class="w-48 h-48 rounded-lg border-2 border-base-300"
               />
-              <!-- 状态遮罩 -->
-              <div v-if="authStatus === 'expired'" class="absolute inset-0 bg-base-100/80 rounded-lg flex items-center justify-center">
-                <div class="text-center">
-                  <XCircle :size="32" class="mx-auto text-error mb-2" />
-                  <p class="text-sm text-error">已过期</p>
-                </div>
-              </div>
             </div>
 
             <!-- 加载状态 -->
@@ -204,7 +193,7 @@ onBeforeUnmount(() => {
 
             <!-- 重新获取按钮 -->
             <button
-              v-if="authStatus === 'expired' || authStatus === 'error'"
+              v-if="authStatus === 'error'"
               @click="handleRefresh"
               class="mt-4 btn btn-outline btn-sm gap-2"
             >
