@@ -131,10 +131,10 @@ function startPolling() {
   // 立即检查一次
   checkAuthStatus()
 
-  // 每2秒检查一次
+  // 每3秒检查一次
   pollingTimer = setInterval(() => {
     checkAuthStatus()
-  }, 2000)
+  }, 3000)
 }
 
 // 停止轮询
