@@ -2,6 +2,7 @@
 import { ref, computed, watch, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from './store/authStore'
+import { useReminder } from './composables/useReminder'
 import { BookOpen } from 'lucide-vue-next'
 import WindowControls from './components/ui/WindowControls.vue'
 import { QrCode, Clock, RefreshCw, Sparkles } from 'lucide-vue-next'
@@ -9,6 +10,7 @@ import { generateAuthCode, getQRCode, pollAuthStatus, getAppKey } from '@/api/au
 
 const router = useRouter()
 const authStore = useAuthStore()
+const { startReminderCheck } = useReminder()
 
 // 本地状态
 const countdown = ref(60)
@@ -173,6 +175,8 @@ async function handleRefresh() {
 // 监听登录状态变化
 watch(isLoggedIn, (newValue) => {
   if (newValue) {
+    // 启动提醒检查任务
+    startReminderCheck()
     setTimeout(() => {
       router.push('/note')
     }, 500)
