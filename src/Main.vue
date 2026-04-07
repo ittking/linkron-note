@@ -37,14 +37,6 @@ onMounted(async () => {
 
   // 只在主窗口中执行初始化操作
   if (windowLabel === 'main') {
-    // 应用启动时加载并应用主题
-    try {
-      const theme = await settingStore.get('theme', 'light')
-      // 将 data-theme 设置在 html 元素上
-      document.documentElement.setAttribute('data-theme', theme)
-    } catch (error) {
-      console.error('Failed to load theme:', error)
-    }
     // 初始化数据库
     try {
       await noteStore.initDatabase()

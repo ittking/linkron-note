@@ -4,7 +4,7 @@ import { useRouter } from 'vue-router'
 import { useAuthStore } from './store/authStore'
 import { BookOpen } from 'lucide-vue-next'
 import WindowControls from './components/ui/WindowControls.vue'
-import { Loader2, QrCode, Clock, CheckCircle2, RefreshCw } from 'lucide-vue-next'
+import { Loader2, QrCode, Clock, CheckCircle2, RefreshCw, Sparkles } from 'lucide-vue-next'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -26,7 +26,7 @@ const statusText = computed(() => {
     case 'idle':
       return ''
     case 'pending':
-      return '请使用微信扫描二维码登录'
+      return '请使用微信扫描二维码'
     case 'authorized':
       return '授权成功，正在跳转...'
     case 'error':
@@ -44,7 +44,7 @@ const statusIcon = computed(() => {
     case 'authorized':
       return CheckCircle2
     case 'error':
-      return XCircle
+      return RefreshCw
     default:
       return null
   }
@@ -54,7 +54,7 @@ const statusIcon = computed(() => {
 const statusColor = computed(() => {
   switch (authStatus.value) {
     case 'pending':
-      return 'text-info'
+      return 'text-primary'
     case 'authorized':
       return 'text-success'
     case 'error':
@@ -119,7 +119,6 @@ function handleRefresh() {
 // 监听登录状态变化
 watch(isLoggedIn, (newValue) => {
   if (newValue) {
-    // 登录成功，跳转到主页
     setTimeout(() => {
       router.push('/note')
     }, 500)
@@ -136,94 +135,154 @@ onBeforeUnmount(() => {
 <template>
   <div class="h-screen flex flex-col bg-base-200">
     <!-- 顶部控制栏 -->
-    <div data-tauri-drag-region class="h-9 flex items-center justify-between px-3 flex-shrink-0">
-      <!-- 左侧：应用图标和名称 -->
+    <div data-tauri-drag-region class="h-9 flex items-center justify-between px-3 flex-shrink-0 bg-base-100 border-b border-base-200">
       <div class="flex items-center gap-2">
         <BookOpen :size="16" class="text-primary" data-tauri-drag-region />
         <span class="text-sm font-medium text-base-content" data-tauri-drag-region>LINKRON</span>
       </div>
-      <!-- 右侧：窗口控制 -->
       <WindowControls />
     </div>
 
     <!-- 登录内容 -->
-    <div class="flex-1 flex items-center justify-center p-4">
-      <div class="w-full max-w-sm">
-      <!-- Logo 和标题 -->
-      <div class="text-center mb-8">
-        <div class="w-16 h-16 mx-auto mb-4">
-          <img :src="logoUrl" :alt="appName" class="w-full h-full object-contain" />
-        </div>
-        <h1 class="text-2xl font-bold text-base-content">{{ appName }}</h1>
-        <p class="text-sm text-base-content/60 mt-1">极简笔记，随时随记</p>
+    <div class="flex-1 flex items-center justify-center p-6 relative overflow-hidden">
+      <!-- 背景装饰 -->
+      <div class="absolute inset-0 overflow-hidden pointer-events-none">
+        <div class="absolute -top-40 -right-40 w-80 h-80 bg-primary/5 rounded-full blur-3xl"></div>
+        <div class="absolute -bottom-40 -left-40 w-80 h-80 bg-secondary/5 rounded-full blur-3xl"></div>
       </div>
 
-      <!-- 二维码区域 -->
-      <div v-if="showQRCode" class="card bg-base-100">
-        <div class="card-body p-6">
-          <h2 class="card-title text-lg font-medium mb-4 justify-center">微信扫码登录</h2>
-
-          <!-- 二维码显示 -->
-          <div class="flex flex-col items-center">
-            <!-- 二维码图片 -->
-            <div v-if="qrCodeData?.base64" class="relative mb-4">
-              <img
-                :src="`data:${qrCodeData.contentType};base64,${qrCodeData.base64}`"
-                alt="登录二维码"
-                class="w-48 h-48 rounded-lg border-2 border-base-300"
-              />
-            </div>
-
-            <!-- 加载状态 -->
-            <div v-else-if="showLoading" class="w-48 h-48 rounded-lg border-2 border-base-300 flex items-center justify-center">
-              <Loader2 :size="32" class="animate-spin text-primary" />
-            </div>
-
-            <!-- 状态文本 -->
-            <div v-if="statusText" :class="['flex items-center gap-2 text-sm', statusColor]">
-              <component v-if="statusIcon" :is="statusIcon" :size="16" :class="{ 'animate-spin': authStatus === 'pending' }" />
-              <span>{{ statusText }}</span>
-            </div>
-
-            <!-- 倒计时 -->
-            <div v-if="countdown > 0 && authStatus === 'pending'" class="flex items-center gap-1.5 text-xs text-base-content/60 mt-2">
-              <Clock :size="12" />
-              <span>有效期: {{ countdown }}秒</span>
-            </div>
-
-            <!-- 重新获取按钮 -->
-            <button
-              v-if="authStatus === 'error'"
-              @click="handleRefresh"
-              class="mt-4 btn btn-outline btn-sm gap-2"
-            >
-              <RefreshCw :size="14" />
-              重新获取
-            </button>
+      <div class="w-full max-w-sm relative z-10">
+        <!-- Logo 和标题 -->
+        <div class="text-center mb-10">
+          <div class="w-20 h-20 mx-auto mb-5 rounded-2xl bg-gradient-to-br from-primary/10 to-secondary/10 flex items-center justify-center ring-1 ring-base-200/50 shadow-lg shadow-primary/5">
+            <img :src="logoUrl" :alt="appName" class="w-12 h-12 object-contain" />
           </div>
+          <h1 class="text-3xl font-bold text-base-content tracking-tight mb-2">{{ appName }}</h1>
+          <p class="text-sm text-base-content/60">极简笔记，随时随记</p>
         </div>
-      </div>
 
-      <!-- 微信授权登录按钮 -->
-      <button
-        v-else
-        @click="handleGetQRCode"
-        :disabled="!canGetQRCode"
-        class="btn btn-primary w-full gap-2"
-      >
-        <QrCode :size="18" />
-        微信授权登录
-      </button>
+        <!-- 二维码卡片 -->
+        <transition
+          enter-active-class="transition-all duration-300 ease-out"
+          enter-from-class="opacity-0 scale-95 translate-y-2"
+          enter-to-class="opacity-100 scale-100 translate-y-0"
+          leave-active-class="transition-all duration-200 ease-in"
+          leave-from-class="opacity-100 scale-100 translate-y-0"
+          leave-to-class="opacity-0 scale-95 -translate-y-2"
+        >
+          <div v-if="showQRCode" class="card bg-base-100 ring-1 ring-base-200/50 shadow-xl shadow-primary/5">
+            <div class="card-body p-8">
+              <h2 class="card-title text-base font-semibold text-base-content mb-6 justify-center">
+                <Sparkles :size="18" class="text-primary" />
+                微信扫码登录
+              </h2>
 
-        <!-- 底部信息 -->
-        <div class="text-center mt-6 text-xs text-base-content/40">
-          <p>登录即表示同意《用户协议》和《隐私政策》</p>
-        </div>
+              <div class="flex flex-col items-center">
+                <!-- 二维码图片 -->
+                <div v-if="qrCodeData?.base64" class="relative">
+                  <div class="w-52 h-52 rounded-2xl p-3 bg-gradient-to-br from-base-50 to-base-100 ring-1 ring-base-200/50">
+                    <img
+                      :src="`data:${qrCodeData.contentType};base64,${qrCodeData.base64}`"
+                      alt="登录二维码"
+                      class="w-full h-full object-contain"
+                    />
+                  </div>
+
+                  <!-- 扫描动画 -->
+                  <div v-if="authStatus === 'pending'" class="absolute inset-0 rounded-2xl overflow-hidden pointer-events-none">
+                    <div class="scan-line"></div>
+                  </div>
+                </div>
+
+                <!-- 加载状态 -->
+                <div v-else-if="showLoading" class="w-52 h-52 rounded-2xl bg-base-100 ring-1 ring-base-200/50 flex items-center justify-center">
+                  <span class="loading loading-spinner loading-lg text-primary"></span>
+                </div>
+
+                <!-- 状态信息 -->
+                <div class="mt-6 text-center space-y-2">
+                  <div v-if="statusText" :class="['flex items-center justify-center gap-2 text-sm font-medium', statusColor]">
+                    <component v-if="statusIcon && authStatus !== 'pending'" :is="statusIcon" :size="16" />
+                    <span v-else-if="authStatus === 'pending'" class="loading loading-dots loading-sm"></span>
+                    <span>{{ statusText }}</span>
+                  </div>
+
+                  <!-- 倒计时 -->
+                  <div v-if="countdown > 0 && authStatus === 'pending'" class="flex items-center justify-center gap-1.5 text-xs text-base-content/50">
+                    <Clock :size="11" />
+                    <span>二维码有效期 {{ countdown }} 秒</span>
+                  </div>
+                </div>
+
+                <!-- 重新获取按钮 -->
+                <button
+                  v-if="authStatus === 'error'"
+                  @click="handleRefresh"
+                  class="mt-6 btn btn-outline btn-sm gap-2 border-base-200 hover:border-primary hover:text-primary"
+                >
+                  <RefreshCw :size="14" />
+                  重新获取二维码
+                </button>
+              </div>
+            </div>
+          </div>
+        </transition>
+
+        <!-- 微信授权登录按钮 -->
+        <transition
+          enter-active-class="transition-all duration-300 ease-out"
+          enter-from-class="opacity-0 scale-95 translate-y-2"
+          enter-to-class="opacity-100 scale-100 translate-y-0"
+          leave-active-class="transition-all duration-200 ease-in"
+          leave-from-class="opacity-100 scale-100 translate-y-0"
+          leave-to-class="opacity-0 scale-95 -translate-y-2"
+        >
+          <div v-if="!showQRCode" class="space-y-4">
+            <button
+              @click="handleGetQRCode"
+              :disabled="!canGetQRCode"
+              class="btn btn-primary w-full gap-2 h-12 text-base font-medium shadow-lg shadow-primary/25 hover:shadow-primary/30"
+            >
+              <QrCode :size="20" />
+              {{ canGetQRCode ? '微信授权登录' : '请稍候...' }}
+            </button>
+
+            <div class="text-center">
+              <p class="text-xs text-base-content/40">登录即表示同意《用户协议》和《隐私政策》</p>
+            </div>
+          </div>
+        </transition>
       </div>
     </div>
   </div>
 </template>
 
 <style scoped>
-/* 无额外样式，使用 DaisyUI */
+/* 扫描线动画 */
+.scan-line {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, hsl(var(--p)), transparent);
+  animation: scan 2s ease-in-out infinite;
+}
+
+@keyframes scan {
+  0% {
+    top: 0;
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  90% {
+    opacity: 1;
+  }
+  100% {
+    top: 100%;
+    opacity: 0;
+  }
+}
 </style>
