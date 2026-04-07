@@ -263,7 +263,7 @@ onBeforeUnmount(() => {
                   <img
                     :src="`data:${qrCodeData.contentType};base64,${qrCodeData.base64}`"
                     alt="登录二维码"
-                    class="w-full h-full object-contain"
+                    class="w-full h-full rounded-xl object-contain ring-1 ring-base-200/30"
                   />
                 </div>
 
