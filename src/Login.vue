@@ -191,7 +191,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="h-screen flex flex-col bg-base-100">
+  <div class="h-screen flex flex-col bg-base-100 select-none">
     <!-- 顶部控制栏 -->
     <div data-tauri-drag-region
       class="h-9 flex items-center justify-between px-3 flex-shrink-0 border-b border-base-200">
