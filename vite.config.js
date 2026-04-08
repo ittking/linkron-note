@@ -59,7 +59,7 @@ export default defineConfig(async () => ({
     },
     proxy: {
       '/api': {
-        target: 'http://127.0.0.1:3000',
+        target: 'https://linkron.fireape.cn',
         changeOrigin: true,
         secure: true
       }
