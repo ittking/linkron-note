@@ -1,14 +1,16 @@
 <script setup>
 import { ref } from 'vue'
-import { Settings, Cloud, Palette, Info } from 'lucide-vue-next'
+import { User, Settings, Cloud, Palette, Info } from 'lucide-vue-next'
+import AccountSetting from '../components/AccountSetting.vue'
 import PreferencesSetting from '../components/PreferencesSetting.vue'
 import SyncSetting from '../components/SyncSetting.vue'
 import ThemeSetting from '../components/ThemeSetting.vue'
 import AboutSetting from '../components/AboutSetting.vue'
 
-const activeTab = ref('preferences')
+const activeTab = ref('account')
 
 const tabs = [
+  { id: 'account', label: '账户', icon: User },
   { id: 'preferences', label: '偏好', icon: Settings },
   { id: 'sync', label: '同步', icon: Cloud },
   { id: 'theme', label: '主题', icon: Palette },
@@ -35,6 +37,7 @@ function setActiveTab(tabId) {
 
     <!-- Tab 内容 -->
     <div class="flex-1 p-4 pt-2 overflow-y-auto no-scrollbar w-full">
+      <AccountSetting v-if="activeTab === 'account'" />
       <PreferencesSetting v-if="activeTab === 'preferences'" />
       <SyncSetting v-if="activeTab === 'sync'" />
       <ThemeSetting v-if="activeTab === 'theme'" />
