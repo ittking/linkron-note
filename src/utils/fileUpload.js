@@ -225,8 +225,10 @@ export async function revealFile(protocolUrl, workDirectory) {
  */
 export function convertUrlsForExport(content) {
   if (!content) return content
-  // linkron://localhost/resources/xxx → resources/xxx
-  return content.replace(/linkron:\/\/localhost\/resources\//g, 'resources/')
+  // 统一转为相对路径 resources/xxx（同时处理 linkron:// 和 http://linkron.localhost/ 两种格式）
+  return content
+    .replace(/linkron:\/\/localhost\/resources\//g, 'resources/')
+    .replace(/http:\/\/linkron\.localhost\/resources\//g, 'resources/')
 }
 
 /**

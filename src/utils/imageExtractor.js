@@ -37,15 +37,19 @@ export function extractImagesFromHtml(html) {
 export async function convertImageUrlsInHtml(html) {
   if (!html) return html
 
+  // 先将相对路径 resources/ 恢复为 linkron:// 协议 URL
+  // DB 中存储的是 convertUrlsForExport 转换后的相对路径格式
+  let result = html.replace(/(src=["']| )resources\//g, '$1linkron://localhost/resources/')
+
   const platform = await getPlatform()
 
-  // macOS 不需要转换
+  // macOS 可以直接使用 linkron:// 协议
   if (platform === 'macos') {
-    return html
+    return result
   }
 
   // Windows/Linux 替换 linkron:// 为 http://linkron.localhost/
-  return html.replace(/linkron:\/\/localhost\//g, 'http://linkron.localhost/')
+  return result.replace(/linkron:\/\/localhost\//g, 'http://linkron.localhost/')
 }
 
 /**

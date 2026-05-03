@@ -8,6 +8,7 @@ import { useSettingStore } from './store/settingStore'
 import { useNoteStore } from './store/noteStore'
 import { useToast } from './composables/useToast'
 import { useSync } from './composables/useSync'
+import { useAutoUpdater } from './composables/useAutoUpdater'
 
 const router = useRouter()
 const route = useRoute()
@@ -15,6 +16,7 @@ const settingStore = useSettingStore()
 const noteStore = useNoteStore()
 const { toastVisible, toastMessage, toastType } = useToast()
 const { isSyncing, formattedLastSyncTime, loadSyncTime } = useSync()
+const { startAutoCheck, stopAutoCheck } = useAutoUpdater()
 
 const tabs = [
   { name: '笔记', path: '/note', icon: BookOpen },
@@ -57,11 +59,15 @@ onMounted(async () => {
 
     // 加载同步时间
     await loadSyncTime()
+
+    // 启动自动更新检查
+    startAutoCheck()
   }
 })
 
 onUnmounted(() => {
   // 清理工作
+  stopAutoCheck()
 })
 
 </script>

@@ -23,22 +23,20 @@ pub async fn save_image(
     use std::path::PathBuf;
 
     // 确定图片保存目录
-    let resources_dir = if let Some(work_dir) = work_directory {
-        // 使用工作空间目录
-        let mut path = PathBuf::from(&work_dir);
-        path.push("resources");
-        path
+    let base_dir = if let Some(work_dir) = work_directory {
+        PathBuf::from(&work_dir)
     } else {
-        // 使用应用数据目录
         let mut path = dirs::data_local_dir().ok_or("Failed to get data directory")?;
         path.push("linkron");
-        path.push("resources");
         path
     };
 
-    // 创建 resources 目录
-    std::fs::create_dir_all(&resources_dir)
-        .map_err(|e| format!("Failed to create resources directory: {}", e))?;
+    // 图片保存在 resources/images/ 子目录
+    let images_dir = base_dir.join("resources").join("images");
+
+    // 创建 images 目录
+    std::fs::create_dir_all(&images_dir)
+        .map_err(|e| format!("Failed to create images directory: {}", e))?;
 
     // 从原始文件名获取扩展名
     let file_path_buf = PathBuf::from(&file_name);
@@ -53,7 +51,7 @@ pub async fn save_image(
     let unique_file_name = format!("{}-{}.{}", timestamp, random, ext);
 
     // 构建完整文件路径
-    let file_path = resources_dir.join(&unique_file_name);
+    let file_path = images_dir.join(&unique_file_name);
 
     // 写入文件
     std::fs::write(&file_path, &file_data)
@@ -82,7 +80,7 @@ pub async fn save_file(
         PathBuf::from(&work_dir)
     } else {
         let mut path = dirs::data_local_dir().ok_or("Failed to get data directory")?;
-        path.push("iterm");
+        path.push("linkron");
         path
     };
 
@@ -155,7 +153,7 @@ pub fn delete_resource_by_url(url: String, work_directory: Option<String>) -> Re
         PathBuf::from(&work_dir)
     } else {
         let mut path = dirs::data_local_dir().ok_or("Failed to get data directory")?;
-        path.push("iterm");
+        path.push("linkron");
         path
     };
 

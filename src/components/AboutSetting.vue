@@ -46,9 +46,8 @@ async function checkForUpdate() {
   updateMessage.value = '正在检查更新...'
 
   try {
-    const update = await check({
-      headers: { Accept: 'application/json' }
-    })
+    // Tauri 2.x API
+    const update = await check()
 
     if (update) {
       updateInfo.value = update
@@ -64,7 +63,7 @@ async function checkForUpdate() {
     }
   } catch (error) {
     updateStatus.value = 'error'
-    updateMessage.value = `检查更新失败: ${error.message}`
+    updateMessage.value = `检查更新失败: ${error?.message || String(error)}`
     console.error('Update check failed:', error)
   }
 }
@@ -78,18 +77,13 @@ async function downloadAndInstallUpdate() {
   updateMessage.value = '正在下载更新...'
 
   try {
-    await updateInfo.value.downloadAndInstall((event) => {
-      switch (event.event) {
-        case 'Started':
-          updateMessage.value = '开始下载更新...'
-          break
-        case 'Progress':
-          updateProgress.value = Math.round((event.data.downloaded / event.data.contentLength) * 100)
+    await updateInfo.value.downloadAndInstall((progress) => {
+      if (progress && typeof progress === 'object') {
+        const { downloaded, contentLength } = progress
+        if (downloaded !== undefined && contentLength !== undefined) {
+          updateProgress.value = Math.round((downloaded / contentLength) * 100)
           updateMessage.value = `正在下载更新... ${updateProgress.value}%`
-          break
-        case 'Finished':
-          updateMessage.value = '下载完成，正在安装...'
-          break
+        }
       }
     })
 
@@ -102,7 +96,7 @@ async function downloadAndInstallUpdate() {
     await relaunch()
   } catch (error) {
     updateStatus.value = 'error'
-    updateMessage.value = `更新失败: ${error.message}`
+    updateMessage.value = `更新失败: ${error?.message || String(error)}`
     console.error('Update install failed:', error)
   }
 }

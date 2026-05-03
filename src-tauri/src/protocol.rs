@@ -48,12 +48,15 @@ fn validate_and_normalize_path(base_dir: &Path, resource_path: &str) -> Option<P
         if component.is_empty() || component == "." || component.contains("..") {
             continue;
         }
-        // 检查组件名称是否有效（不包含特殊字符）
-        if !component
-            .chars()
-            .all(|c| c.is_alphanumeric() || c == '-' || c == '_' || c == '.')
-        {
-            return None;
+        // 放宽限制：只要不包含明显的非法字符即可
+        // 允许字母、数字、横线、下划线、点、空格和中文字符
+        for c in component.chars() {
+            if !c.is_alphanumeric() && c != '-' && c != '_' && c != '.' && c != ' ' {
+                // 允许 Unicode 字符（包括中文）
+                if !('\u{4e00}'..='\u{9fff}').contains(&c) {
+                    return None;
+                }
+            }
         }
     }
 
@@ -92,30 +95,65 @@ fn build_error_response(status: u16, body: &'static str) -> Response<Vec<u8>> {
 }
 
 /// linkron:// 自定义协议处理器
-/// 统一使用 http://linkron.localhost/resources/ 格式
+/// URL 格式: linkron://localhost/resources/images/xxx.png
 pub fn iterm_protocol_handler<R: tauri::Runtime>(
     ctx: UriSchemeContext<'_, R>,
     request: Request<Vec<u8>>,
 ) -> Response<Vec<u8>> {
     let app = ctx.app_handle();
-    let path = request.uri().path();
+    let uri = request.uri();
+    let uri_str = uri.to_string();
 
-    // 只处理 /resources/ 路径
-    let resource_path = match path.strip_prefix("/resources/") {
-        Some(p) => p,
-        None => {
-            return build_error_response(400, "Invalid request path: must start with /resources/")
+    eprintln!("[Protocol] Full URI: {}", uri_str);
+    eprintln!("[Protocol] Path: {}", uri.path());
+    if let Some(host) = uri.host() {
+        eprintln!("[Protocol] Host: {}", host);
+    }
+
+    // 从完整 URI 中提取资源路径
+    // 可能的格式:
+    // 1. linkron://localhost/resources/images/xxx.png
+    // 2. linkron://resources/images/xxx.png
+    // 3. http://linkron.localhost/resources/images/xxx.png (Tauri 2.x 格式)
+    // 4. /resources/images/xxx.png (直接路径)
+    let resource_path = if uri_str.contains("/resources/") {
+        let parts: Vec<&str> = uri_str.split("/resources/").collect();
+        if parts.len() >= 2 {
+            // 移除可能的查询参数和协议前缀
+            let path = parts[1].split('?').next().unwrap_or(parts[1]);
+            eprintln!("[Protocol] Extracted resource path: {}", path);
+            path
+        } else {
+            eprintln!("[Protocol] Failed. URI: {}, cannot extract resource path", uri_str);
+            return build_error_response(400, "Invalid request path");
         }
+    } else if uri_str.starts_with("resources/") {
+        // 直接以 resources/ 开头的情况
+        let path = uri_str.strip_prefix("resources/").unwrap_or(&uri_str);
+        eprintln!("[Protocol] Direct resources path: {}", path);
+        path
+    } else {
+        eprintln!("[Protocol] Failed. URI: {}, does not contain /resources/", uri_str);
+        return build_error_response(400, "Invalid request: must contain /resources/");
     };
 
     let base_dir = get_base_directory(app);
     let resources_dir = base_dir.join("resources");
 
+    eprintln!("[Protocol] Base dir: {:?}", base_dir);
+    eprintln!("[Protocol] Resources dir: {:?}", resources_dir);
+    eprintln!("[Protocol] Full file path: {:?}", resources_dir.join(resource_path));
+
     // 验证并规范化路径
     let file_path = match validate_and_normalize_path(&resources_dir, resource_path) {
         Some(p) => p,
-        None => return build_error_response(400, "Invalid request path"),
+        None => {
+            eprintln!("[Protocol] Path validation failed for: {}", resource_path);
+            return build_error_response(400, "Invalid request path");
+        }
     };
+
+    eprintln!("[Protocol] Final file path: {:?}", file_path);
 
     match std::fs::read(&file_path) {
         Ok(content) => {
