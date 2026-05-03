@@ -1,15 +1,15 @@
 <script setup>
-import { ref, onMounted, onBeforeUnmount } from 'vue'
-import { Info, MessageCircle, Heart, Tag, Calendar, CheckSquare, Download, RefreshCw, CheckCircle, AlertCircle, ChevronDown } from 'lucide-vue-next'
+import { ref, onMounted } from 'vue'
+import { Info, MessageCircle, Heart, Download, RefreshCw, CheckCircle, AlertCircle, Settings } from 'lucide-vue-next'
 import Button from './ui/Button.vue'
 import { check } from '@tauri-apps/plugin-updater'
 import { relaunch } from '@tauri-apps/plugin-process'
 import { getVersion } from '@tauri-apps/api/app'
+import { useSettingStore } from '@/store/settingStore'
 import wechatQR from '@/assets/weixin_gz.jpg'
 import appLogo from '@/assets/128x128.png'
 
-// 公众号下拉容器 ref
-const wechatDropdownRef = ref(null)
+const settingStore = useSettingStore()
 
 const version = ref('1.0.0')
 const buildDate = '2025-02-16'
@@ -20,14 +20,25 @@ const updateInfo = ref(null)
 const updateProgress = ref(0)
 const updateMessage = ref('')
 
-// 获取应用版本
+// 自动更新设置
+const autoUpdate = ref(false)
+
+// 获取应用版本和设置
 onMounted(async () => {
   try {
     version.value = await getVersion()
+    // 加载自动更新设置
+    autoUpdate.value = await settingStore.get('autoUpdate', true)
   } catch (e) {
     console.error('Failed to get version:', e)
   }
 })
+
+// 切换自动更新
+async function toggleAutoUpdate() {
+  autoUpdate.value = !autoUpdate.value
+  await settingStore.set('autoUpdate', autoUpdate.value)
+}
 
 // 检查更新
 async function checkForUpdate() {
@@ -95,46 +106,6 @@ async function downloadAndInstallUpdate() {
     console.error('Update install failed:', error)
   }
 }
-
-const contactInfo = {
-  wechat: 'linkron'
-}
-
-const features = [
-  {
-    icon: Tag,
-    title: '标签',
-    description: '灵活的标签分类，快速定位笔记'
-  },
-  {
-    icon: CheckSquare,
-    title: '待办',
-    description: '任务管理，清晰追踪每项工作'
-  },
-  {
-    icon: Calendar,
-    title: '日历',
-    description: '日历视图，直观规划时间'
-  }
-]
-
-// 公众号二维码展开状态
-const showWechatQR = ref(false)
-
-// 点击外部关闭公众号下拉
-function handleClickOutside(event) {
-  if (wechatDropdownRef.value && !wechatDropdownRef.value.contains(event.target)) {
-    showWechatQR.value = false
-  }
-}
-
-onMounted(() => {
-  document.addEventListener('click', handleClickOutside)
-})
-
-onBeforeUnmount(() => {
-  document.removeEventListener('click', handleClickOutside)
-})
 </script>
 
 <template>
@@ -162,123 +133,119 @@ onBeforeUnmount(() => {
           </div>
         </div>
 
-        <p class="text-xs text-base-content/60 leading-relaxed mb-4">
+        <p class="text-xs text-base-content/60 leading-relaxed">
           LINKRON 是一款极简风格的跨平台桌面应用，集笔记、待办、日历于一体，随时随记，简约高效。
         </p>
-
-        <!-- 更新区域 -->
-        <div class="border-t border-base-300 pt-4">
-          <div class="flex items-center justify-between mb-3">
-            <span class="text-sm font-medium">自动更新</span>
-            <Button
-              v-if="updateStatus === 'idle' || updateStatus === 'error' || updateStatus === 'no-update'"
-              @click="checkForUpdate"
-              variant="ghost"
-              size="sm"
-              :loading="updateStatus === 'checking'"
-            >
-              <RefreshCw :size="12" />
-              检查更新
-            </Button>
-          </div>
-
-          <!-- 更新状态消息 -->
-          <div v-if="updateMessage" class="mb-3">
-            <div
-              :class="[
-                'flex items-center gap-2 p-2 rounded-lg text-xs',
-                updateStatus === 'error' ? 'bg-error/10 text-error' :
-                updateStatus === 'available' ? 'bg-success/10 text-success' :
-                updateStatus === 'no-update' ? 'bg-info/10 text-info' :
-                'bg-base-100'
-              ]"
-            >
-              <AlertCircle v-if="updateStatus === 'error'" :size="12" />
-              <CheckCircle v-else-if="updateStatus === 'no-update'" :size="12" />
-              <Download v-else-if="updateStatus === 'downloading' || updateStatus === 'installing'" :size="12" :class="{ 'animate-pulse': updateStatus === 'downloading' }" />
-              <RefreshCw v-else-if="updateStatus === 'checking'" :size="12" class="animate-spin" />
-              <CheckCircle v-else-if="updateStatus === 'available'" :size="12" />
-              <span>{{ updateMessage }}</span>
-            </div>
-          </div>
-
-          <!-- 更新信息卡片 -->
-          <div v-if="updateStatus === 'available' && updateInfo" class="bg-base-100 rounded-lg p-3 space-y-2">
-            <div class="flex items-center justify-between">
-              <span class="text-xs text-base-content/60">新版本</span>
-              <span class="text-sm font-medium">{{ updateInfo.version }}</span>
-            </div>
-            <div class="flex items-center justify-between">
-              <span class="text-xs text-base-content/60">发布日期</span>
-              <span class="text-xs">{{ updateInfo.date }}</span>
-            </div>
-            <div v-if="updateInfo.body" class="mt-2 pt-2 border-t border-base-300">
-              <p class="text-xs text-base-content/60 mb-1">更新内容</p>
-              <p class="text-xs text-base-content/80 leading-relaxed">{{ updateInfo.body }}</p>
-            </div>
-            <div class="flex gap-2 mt-3">
-              <Button
-                @click="downloadAndInstallUpdate"
-                variant="primary"
-                size="sm"
-                class="flex-1"
-              >
-                <Download :size="12" />
-                立即更新
-              </Button>
-              <Button
-                @click="updateStatus = 'idle'; updateMessage = ''; updateInfo = null"
-                variant="ghost"
-                size="sm"
-              >
-                稍后
-              </Button>
-            </div>
-          </div>
-
-          <!-- 下载进度 -->
-          <div v-if="updateStatus === 'downloading'" class="bg-base-100 rounded-lg p-3">
-            <div class="flex items-center justify-between mb-2">
-              <span class="text-xs text-base-content/60">下载进度</span>
-              <span class="text-xs font-medium">{{ updateProgress }}%</span>
-            </div>
-            <div class="w-full bg-base-300 rounded-full h-2">
-              <div
-                class="bg-primary h-2 rounded-full transition-all duration-300"
-                :style="{ width: `${updateProgress}%` }"
-              ></div>
-            </div>
-          </div>
-
-          <!-- 安装中 -->
-          <div v-if="updateStatus === 'installing'" class="bg-base-100 rounded-lg p-3">
-            <div class="flex items-center gap-2">
-              <RefreshCw :size="14" class="animate-spin text-primary" />
-              <span class="text-xs text-base-content/60">正在安装更新，应用将自动重启...</span>
-            </div>
-          </div>
-        </div>
       </div>
     </div>
 
-    <!-- 核心功能 -->
+    <!-- 更新设置 -->
     <div class="card bg-base-200 shadow-sm">
       <div class="card-body p-4">
-        <h2 class="card-title text-sm font-medium mb-3">
-          <Tag :size="16" />
-          核心功能
-        </h2>
-        <div class="grid grid-cols-3 gap-3">
-          <div
-            v-for="feature in features"
-            :key="feature.title"
-            class="p-3 rounded-lg bg-base-100 border border-base-300"
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="card-title text-sm font-medium m-0">
+            <RefreshCw :size="16" />
+            版本更新
+          </h2>
+          <Button
+            v-if="updateStatus === 'idle' || updateStatus === 'error' || updateStatus === 'no-update'"
+            @click="checkForUpdate"
+            variant="ghost"
+            size="sm"
+            :loading="updateStatus === 'checking'"
           >
-            <div class="flex items-center gap-2 mb-2">
-              <component :is="feature.icon" :size="14" class="text-primary" />
-              <span class="text-sm font-medium">{{ feature.title }}</span>
-            </div>
-            <p class="text-xs text-base-content/60">{{ feature.description }}</p>
+            <RefreshCw :size="12" />
+            检查更新
+          </Button>
+        </div>
+
+        <!-- 自动更新开关 -->
+        <div class="flex items-center justify-between p-3 rounded-lg bg-base-100">
+          <div class="flex items-center gap-2">
+            <RefreshCw :size="14" class="text-base-content/40" />
+            <span class="text-sm">自动检查更新</span>
+          </div>
+          <input
+            type="checkbox"
+            class="toggle toggle-sm toggle-primary"
+            :checked="autoUpdate"
+            @change="toggleAutoUpdate"
+          />
+        </div>
+
+        <!-- 更新状态消息 -->
+        <div v-if="updateMessage" class="mt-3 mb-3">
+          <div
+            :class="[
+              'flex items-center gap-2 p-2 rounded-lg text-xs',
+              updateStatus === 'error' ? 'bg-error/10 text-error' :
+              updateStatus === 'available' ? 'bg-success/10 text-success' :
+              updateStatus === 'no-update' ? 'bg-info/10 text-info' :
+              'bg-base-100'
+            ]"
+          >
+            <AlertCircle v-if="updateStatus === 'error'" :size="12" />
+            <CheckCircle v-else-if="updateStatus === 'no-update'" :size="12" />
+            <Download v-else-if="updateStatus === 'downloading' || updateStatus === 'installing'" :size="12" :class="{ 'animate-pulse': updateStatus === 'downloading' }" />
+            <RefreshCw v-else-if="updateStatus === 'checking'" :size="12" class="animate-spin" />
+            <CheckCircle v-else-if="updateStatus === 'available'" :size="12" />
+            <span>{{ updateMessage }}</span>
+          </div>
+        </div>
+
+        <!-- 更新信息卡片 -->
+        <div v-if="updateStatus === 'available' && updateInfo" class="bg-base-100 rounded-lg p-3 space-y-2">
+          <div class="flex items-center justify-between">
+            <span class="text-xs text-base-content/60">新版本</span>
+            <span class="text-sm font-medium">{{ updateInfo.version }}</span>
+          </div>
+          <div class="flex items-center justify-between">
+            <span class="text-xs text-base-content/60">发布日期</span>
+            <span class="text-xs">{{ updateInfo.date }}</span>
+          </div>
+          <div v-if="updateInfo.body" class="mt-2 pt-2 border-t border-base-300">
+            <p class="text-xs text-base-content/60 mb-1">更新内容</p>
+            <p class="text-xs text-base-content/80 leading-relaxed">{{ updateInfo.body }}</p>
+          </div>
+          <div class="flex gap-2 mt-3">
+            <Button
+              @click="downloadAndInstallUpdate"
+              variant="primary"
+              size="sm"
+              class="flex-1"
+            >
+              <Download :size="12" />
+              立即更新
+            </Button>
+            <Button
+              @click="updateStatus = 'idle'; updateMessage = ''; updateInfo = null"
+              variant="ghost"
+              size="sm"
+            >
+              稍后
+            </Button>
+          </div>
+        </div>
+
+        <!-- 下载进度 -->
+        <div v-if="updateStatus === 'downloading'" class="bg-base-100 rounded-lg p-3">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-xs text-base-content/60">下载进度</span>
+            <span class="text-xs font-medium">{{ updateProgress }}%</span>
+          </div>
+          <div class="w-full bg-base-300 rounded-full h-2">
+            <div
+              class="bg-primary h-2 rounded-full transition-all duration-300"
+              :style="{ width: `${updateProgress}%` }"
+            ></div>
+          </div>
+        </div>
+
+        <!-- 安装中 -->
+        <div v-if="updateStatus === 'installing'" class="bg-base-100 rounded-lg p-3">
+          <div class="flex items-center gap-2">
+            <RefreshCw :size="14" class="animate-spin text-primary" />
+            <span class="text-xs text-base-content/60">正在安装更新，应用将自动重启...</span>
           </div>
         </div>
       </div>
@@ -291,39 +258,19 @@ onBeforeUnmount(() => {
           <MessageCircle :size="16" />
           联系我们
         </h2>
-        <div class="space-y-2">
-          <!-- 公众号 - 带下拉二维码 -->
-          <div class="relative" ref="wechatDropdownRef">
-            <div
-              @click="showWechatQR = !showWechatQR"
-              class="flex items-center justify-between p-2 rounded-lg bg-base-100 cursor-pointer hover:bg-base-200 transition-colors"
-            >
-              <div class="flex items-center gap-2">
-                <MessageCircle :size="14" class="text-base-content/40" />
-                <span class="text-sm">微信公众号</span>
-              </div>
-              <div class="flex items-center gap-2">
-                <span class="text-xs text-base-content/60">{{ contactInfo.wechat }}</span>
-                <ChevronDown :size="12" class="text-base-content/40 transition-transform" :class="{ 'rotate-180': showWechatQR }" />
-              </div>
-            </div>
 
-            <!-- 二维码下拉悬浮 -->
-            <div
-              v-if="showWechatQR"
-              class="absolute top-full right-0 mt-1 z-10 bg-base-100 rounded-lg shadow-lg border border-base-300 overflow-hidden"
-              style="width: 160px;"
-            >
-              <div class="p-4 flex flex-col items-center">
-                <img
-                  :src="wechatQR"
-                  alt="微信公众号二维码"
-                  class="w-24 h-24 object-contain"
-                />
-                <p class="text-xs text-base-content/60 mt-2">扫描关注公众号</p>
-              </div>
-            </div>
+        <!-- 直接显示公众号二维码 -->
+        <div class="flex flex-col items-center">
+          <div class="w-32 h-32 rounded-lg overflow-hidden border border-base-300 bg-base-100">
+            <img
+              :src="wechatQR"
+              alt="微信公众号二维码"
+              class="w-full h-full object-contain"
+            />
           </div>
+          <p class="text-sm font-medium mt-3">微信公众号</p>
+          <p class="text-xs text-base-content/60 mt-1">linkron</p>
+          <p class="text-xs text-base-content/40 mt-2">扫描关注公众号获取最新资讯</p>
         </div>
       </div>
     </div>
