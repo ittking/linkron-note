@@ -62,12 +62,12 @@ jobs:
         with:
           name: ${{ matrix.name }}
           path: |
-            src-tauri/target/*/bundle/dmg/*.dmg
-            src-tauri/target/*/bundle/macos/*.app.tar.gz
-            src-tauri/target/*/bundle/msi/*.msi
-            src-tauri/target/*/bundle/nsis/*.exe
-            src-tauri/target/*/bundle/updater/*.tar.gz
-            src-tauri/target/*/bundle/updater/*.sig
+            src-tauri/target/**/bundle/dmg/*.dmg
+            src-tauri/target/**/bundle/macos/*.app.tar.gz
+            src-tauri/target/**/bundle/msi/*.msi
+            src-tauri/target/**/bundle/nsis/*.exe
+            src-tauri/target/**/bundle/updater/*.tar.gz
+            src-tauri/target/**/bundle/updater/*.sig
 
   release:
     needs: build
@@ -103,8 +103,8 @@ jobs:
             artifacts/**/*.app.tar.gz
             artifacts/**/*.msi
             artifacts/**/*.exe
-            artifacts/**/*.tar.gz
-            artifacts/**/*.sig
+            artifacts/**/updater/*.tar.gz
+            artifacts/**/updater/*.sig
             artifacts/**/latest*.json
           generate_release_notes: true
         env:
