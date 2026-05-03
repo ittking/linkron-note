@@ -195,8 +195,47 @@ pub fn delete_tag(conn: &Connection, id: &str) -> SqliteResult<()> {
     Ok(())
 }
 
+/// 从笔记内容中移除指定标签
+fn remove_tag_from_notes(conn: &Connection, tag_full_name: &str) -> SqliteResult<()> {
+    // 匹配包含该标签的笔记
+    let tag_pattern = format!("%<span class=\"tag\">#{}</span>%", tag_full_name);
+
+    // 获取所有包含该标签的笔记ID和内容
+    let mut stmt = conn.prepare(
+        "SELECT id, content FROM notes WHERE content LIKE ?1"
+    )?;
+
+    let notes_to_update: Vec<(String, String)> = stmt
+        .query_map(params![tag_pattern], |row| {
+            Ok((row.get(0)?, row.get(1)?))
+        })?
+        .collect::<Result<Vec<_>, _>>()?;
+
+    // 为每个笔记移除标签
+    let pattern = format!("<span class=\"tag\">#{}</span>", tag_full_name);
+    let now = chrono::Utc::now().to_rfc3339();
+
+    for (note_id, content) in notes_to_update {
+        let new_content = content.replace(&pattern, "");
+        conn.execute(
+            "UPDATE notes SET content = ?1, updated_at = ?2 WHERE id = ?3",
+            params![new_content, now, note_id],
+        )?;
+    }
+
+    Ok(())
+}
+
 /// 递归删除标签及其所有子标签
 fn delete_tag_recursive(conn: &Connection, id: &str) -> SqliteResult<()> {
+    // 先获取标签的 full_name
+    let full_name: String = conn.query_row(
+        "SELECT full_name FROM tags WHERE id = ?1",
+        params![id],
+        |row| row.get(0),
+    )?;
+
+    // 递归删除子标签
     let mut stmt = conn.prepare("SELECT id FROM tags WHERE parent_id = ?1")?;
     let child_ids: Vec<String> = stmt
         .query_map(params![id], |row| row.get(0))?
@@ -206,6 +245,10 @@ fn delete_tag_recursive(conn: &Connection, id: &str) -> SqliteResult<()> {
         delete_tag_recursive(conn, &child_id)?;
     }
 
+    // 从所有笔记中移除该标签
+    remove_tag_from_notes(conn, &full_name)?;
+
+    // 删除标签
     conn.execute("DELETE FROM tags WHERE id = ?", params![id])?;
     Ok(())
 }

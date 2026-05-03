@@ -865,6 +865,6 @@ async function filterNotesByTags() {
         </button>
 
         <!-- 侧边栏 -->
-        <NoteSidebar :is-open="isSidebarOpen" @close="closeSidebar" @select-tag="handleSelectTag" />
+        <NoteSidebar :is-open="isSidebarOpen" @close="closeSidebar" @select-tag="handleSelectTag" @refresh-notes="() => loadNotes(true)" />
     </div>
 </template>

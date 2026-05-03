@@ -4,6 +4,7 @@ import { invoke } from '@tauri-apps/api/core'
 import { X, Tag } from 'lucide-vue-next'
 import { useWorkDirectory } from '@/composables/useWorkDirectory'
 import { useSync } from '@/composables/useSync'
+import { useConfirmDialog } from '@/composables/useConfirmDialog'
 import TagTreeNode from './TagTreeNode.vue'
 import NoteHeatmap from './NoteHeatmap.vue'
 import Statistics from './Statistics.vue'
@@ -15,11 +16,12 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['close', 'select-tag'])
+const emit = defineEmits(['close', 'select-tag', 'refresh-notes'])
 
-// 使用 useWorkDirectory composable
+// 使用 composables
 const { getWorkDirectory } = useWorkDirectory('setting')
 const { triggerSync } = useSync()
+const { confirmVisible, confirmTitle, confirmContent, showConfirm, handleConfirmOk } = useConfirmDialog()
 
 // 标签列表
 const tags = ref([])
@@ -106,19 +108,24 @@ const tagTree = computed(() => {
 // 删除标签
 async function deleteTag(tagId, event) {
   event.stopPropagation()
-  try {
-    const workDirectory = await getWorkDirectory()
-    await invoke('delete_tag', { id: tagId, workDirectory })
-    await loadTags()
-    // 刷新统计数据
-    if (statisticsRef.value && statisticsRef.value.refresh) {
-      statisticsRef.value.refresh()
+
+  showConfirm('确认删除标签', '删除后，所有笔记中的该标签也会同步移除。此操作不可恢复。', async () => {
+    try {
+      const workDirectory = await getWorkDirectory()
+      await invoke('delete_tag', { id: tagId, workDirectory })
+      await loadTags()
+      // 刷新统计数据
+      if (statisticsRef.value && statisticsRef.value.refresh) {
+        statisticsRef.value.refresh()
+      }
+      // 刷新首页笔记列表
+      emit('refresh-notes')
+      // 触发自动同步
+      triggerSync()
+    } catch (error) {
+      console.error('删除标签失败:', error)
     }
-    // 触发自动同步
-    triggerSync()
-  } catch (error) {
-    console.error('删除标签失败:', error)
-  }
+  })
 }
 
 // 置顶/取消置顶标签
@@ -185,6 +192,23 @@ function handleTagClick(tag) {
             @toggle-node="toggleNode" @delete-tag="deleteTag" @toggle-pin="togglePin" @click="handleTagClick" />
         </div>
       </div>
+    </div>
+
+    <!-- 确认删除标签对话框 -->
+    <div v-if="confirmVisible" class="modal modal-open">
+      <div class="modal-box">
+        <h3 class="font-bold text-lg">{{ confirmTitle }}</h3>
+        <p class="py-4 text-base-content/70">{{ confirmContent }}</p>
+        <div class="modal-action">
+          <button @click="confirmVisible = false" class="btn btn-ghost btn-sm">
+            取消
+          </button>
+          <button @click="handleConfirmOk" class="btn btn-error btn-sm">
+            确认删除
+          </button>
+        </div>
+      </div>
+      <div class="modal-backdrop" @click="confirmVisible = false"></div>
     </div>
   </div>
 </template>
