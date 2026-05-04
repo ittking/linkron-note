@@ -6,6 +6,7 @@ import Button from './ui/Button.vue'
 import Toggle from './ui/Toggle.vue'
 import { useSync } from '../composables/useSync'
 import { useToast } from '../composables/useToast'
+import { useSettingStore } from '../store/settingStore'
 
 const { showToast } = useToast()
 const {
@@ -49,9 +50,9 @@ onMounted(async () => {
 
   // 加载自动同步延时配置
   try {
-    const { useSettingStore } = await import('../store/settingStore')
     const settingStore = useSettingStore()
-    autoSyncDelay.value = await settingStore.get('autoSyncDelay', 5000)
+    const value = await settingStore.get('autoSyncDelay', 5000)
+    autoSyncDelay.value = value ?? 5000
   } catch (error) {
     console.error('Failed to load auto sync delay:', error)
   }
@@ -61,7 +62,6 @@ onMounted(async () => {
 async function handleAutoSyncDelayChange(value) {
   autoSyncDelay.value = Number(value)
   try {
-    const { useSettingStore } = await import('../store/settingStore')
     const settingStore = useSettingStore()
     await settingStore.set('autoSyncDelay', autoSyncDelay.value)
     showToast('自动同步设置已更新', 'success')
