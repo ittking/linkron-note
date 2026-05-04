@@ -45,7 +45,19 @@
       "Bash(cargo update *)",
       "WebFetch(domain:github.com)",
       "WebFetch(domain:v2.tauri.app)",
-      "Bash(python3)"
+      "Bash(python3)",
+      "Bash(gh release *)",
+      "Bash(gh auth *)",
+      "WebFetch(domain:api.github.com)",
+      "Bash(curl -s \"https://api.github.com/repos/ittking/linkron-note/actions/runs?per_page=3\")",
+      "Bash(python3 -c ' *)",
+      "Bash(curl -s \"https://api.github.com/repos/ittking/linkron-note/actions/runs/25298650492/jobs\")",
+      "Bash(curl -s \"https://api.github.com/repos/ittking/linkron-note/actions/runs/25298650492/logs\" -o /tmp/run-logs.zip)",
+      "Bash(unzip -o /tmp/run-logs.zip -d /tmp/run-logs)",
+      "Read(//tmp/**)",
+      "Bash(curl -sL -H \"Accept: application/vnd.github+json\" \"https://api.github.com/repos/ittking/linkron-note/actions/runs/25298650492/logs\" -o /tmp/run-logs.zip)",
+      "Read(//private/tmp/**)",
+      "Bash(unzip -l /tmp/run-logs.zip)"
     ]
   },
   "agents": {

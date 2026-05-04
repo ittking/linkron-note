@@ -93,52 +93,63 @@ jobs:
           REPO="${{ github.event.repository.name }}"
           BASE_URL="https://github.com/${OWNER}/${REPO}/releases/download/${TAG}"
           PUB_DATE="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          VERSION="${TAG#v}"
 
-          # Start building latest.json
-          echo '{}' > latest.json
+          # Initialize latest.json with required fields
+          jq -n --arg version "$VERSION" --arg date "$PUB_DATE" \
+            '{version: $version, pub_date: $date, platforms: {}}' > latest.json
+
+          # Debug: list all artifacts
+          echo "=== All artifacts ==="
+          find artifacts -type f | sort
+          echo "===================="
 
           # Process macOS ARM64
           SIG_FILE=$(find artifacts/macos-arm64 -name "*.app.tar.gz.sig" | head -1)
           TAR_FILE=$(find artifacts/macos-arm64 -name "*.app.tar.gz" -not -name "*.sig" | head -1)
+          echo "macOS ARM64: SIG_FILE=$SIG_FILE TAR_FILE=$TAR_FILE"
           if [ -n "$SIG_FILE" ] && [ -n "$TAR_FILE" ]; then
             SIG=$(cat "$SIG_FILE")
             TAR_NAME=$(basename "$TAR_FILE")
             jq --arg sig "$SIG" --arg url "${BASE_URL}/${TAR_NAME}" \
               '.platforms["darwin-aarch64"] = {"signature": $sig, "url": $url}' latest.json > tmp.json && mv tmp.json latest.json
+            echo "Added darwin-aarch64 entry"
+          else
+            echo "WARNING: Missing .sig or .tar.gz for macOS ARM64"
           fi
 
           # Process macOS x86_64
           SIG_FILE=$(find artifacts/macos-x86_64 -name "*.app.tar.gz.sig" | head -1)
           TAR_FILE=$(find artifacts/macos-x86_64 -name "*.app.tar.gz" -not -name "*.sig" | head -1)
+          echo "macOS x86_64: SIG_FILE=$SIG_FILE TAR_FILE=$TAR_FILE"
           if [ -n "$SIG_FILE" ] && [ -n "$TAR_FILE" ]; then
             SIG=$(cat "$SIG_FILE")
             TAR_NAME=$(basename "$TAR_FILE")
             jq --arg sig "$SIG" --arg url "${BASE_URL}/${TAR_NAME}" \
               '.platforms["darwin-x86_64"] = {"signature": $sig, "url": $url}' latest.json > tmp.json && mv tmp.json latest.json
+            echo "Added darwin-x86_64 entry"
+          else
+            echo "WARNING: Missing .sig or .tar.gz for macOS x86_64"
           fi
 
           # Process Windows (NSIS .exe)
-          SIG_FILE=$(find artifacts/windows -name "*.nsis.exe.sig" | head -1)
-          if [ -z "$SIG_FILE" ]; then
-            SIG_FILE=$(find artifacts/windows -name "*.exe.sig" | head -1)
-          fi
+          SIG_FILE=$(find artifacts/windows -name "*.exe.sig" | head -1)
           EXE_FILE=""
           if [ -n "$SIG_FILE" ]; then
             EXE_FILE="${SIG_FILE%.sig}"
           fi
+          echo "Windows: SIG_FILE=$SIG_FILE EXE_FILE=$EXE_FILE"
           if [ -n "$SIG_FILE" ] && [ -n "$EXE_FILE" ]; then
             SIG=$(cat "$SIG_FILE")
             EXE_NAME=$(basename "$EXE_FILE")
             jq --arg sig "$SIG" --arg url "${BASE_URL}/${EXE_NAME}" \
               '.platforms["windows-x86_64"] = {"signature": $sig, "url": $url}' latest.json > tmp.json && mv tmp.json latest.json
+            echo "Added windows-x86_64 entry"
+          else
+            echo "WARNING: Missing .sig or .exe for Windows"
           fi
 
-          # Set top-level fields
-          VERSION="${TAG#v}"
-          jq --arg version "$VERSION" --arg date "$PUB_DATE" \
-            '.version = $version | .pub_date = $date' latest.json > tmp.json && mv tmp.json latest.json
-
-          echo "Generated latest.json:"
+          echo "=== Generated latest.json ==="
           cat latest.json
 
       - name: Create Release
