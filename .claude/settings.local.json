@@ -41,7 +41,8 @@
       "Bash(mkdir -p icons)",
       "Bash(cp -r public/icons/* icons/)",
       "Bash(git remote:*)",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Bash(cargo update *)"
     ]
   },
   "agents": {

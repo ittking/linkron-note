@@ -243,16 +243,17 @@ const calendarWeeks = computed(() => {
 const scrollContainerRef = ref(null)
 
 // 处理滚轮事件，将垂直滚轮转换为水平滚动
+// 仅对传统鼠标滚轮（只产生 deltaY）做转换，触摸板已有原生 deltaX 支持
 function handleWheel(event) {
   const container = scrollContainerRef.value
   if (!container) return
 
+  // 触摸板会产生 deltaX，此时不需要转换，交给浏览器原生处理
+  if (Math.abs(event.deltaX) > 0) return
+
   // 只有当容器有水平滚动条时才转换
   if (container.scrollWidth > container.clientWidth) {
-    // 阻止默认的垂直滚动
     event.preventDefault()
-
-    // 将垂直滚轮的 deltaY 转换为水平滚动
     container.scrollLeft += event.deltaY
   }
 }
