@@ -226,9 +226,17 @@ export async function revealFile(protocolUrl, workDirectory) {
 export function convertUrlsForExport(content) {
   if (!content) return content
   // 统一转为相对路径 resources/xxx（同时处理 linkron:// 和 http://linkron.localhost/ 两种格式）
-  return content
+  let result = content
     .replace(/linkron:\/\/localhost\/resources\//g, 'resources/')
     .replace(/http:\/\/linkron\.localhost\/resources\//g, 'resources/')
+
+  // 保存时将块级元素末尾的尾随空格转为 &nbsp;，防止 HTML 解析时被丢弃
+  result = result.replace(
+    /(<\/span>)( +)(<\/(?:p|li|h[1-6]|div|blockquote|td|th|caption)>)/g,
+    (m, closeSpan, spaces, closeTag) => closeSpan + ' '.repeat(spaces.length) + closeTag
+  )
+
+  return result
 }
 
 /**

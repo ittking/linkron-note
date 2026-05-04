@@ -44,7 +44,8 @@
       "Bash(npx tsc:*)",
       "Bash(cargo update *)",
       "WebFetch(domain:github.com)",
-      "WebFetch(domain:v2.tauri.app)"
+      "WebFetch(domain:v2.tauri.app)",
+      "Bash(python3)"
     ]
   },
   "agents": {
