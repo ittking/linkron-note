@@ -145,117 +145,75 @@ function toggleMonthDay(value) {
   }
 }
 
-// 监听 show 和 todo 变化
+// 用函数统一处理编辑模式表单初始化
+function initFormFromTodo(todo) {
+  if (!todo) return
 
-watch(() => props.show, (newVal) => {
+  newTodoText.value = todo.text
+  formStatus.value = todo.status || 'todo'
 
-  if (newVal && props.todo) {
+  // 判断是否启用了提醒：必须是 onetime 或 repeat 类型，且有有效的 repeatTime
+  const reminder = todo.reminder
+  if (reminder && (reminder.type === 'onetime' || reminder.type === 'repeat') && reminder.repeatTime) {
+    formReminderEnabled.value = true
+    formReminderType.value = reminder.type === 'onetime' ? 'once' : 'repeat'
 
-    // 编辑模式
+    // 一次性提醒：使用 repeatTime（完整日期时间）
+    formReminderTime.value = reminder.repeatTime || ''
 
-    newTodoText.value = props.todo.text
-
-    formStatus.value = props.todo.status || 'todo'
-
-
-
-    // 判断是否启用了提醒：必须是 onetime 或 repeat 类型，且有有效的 repeatTime
-
-    const reminder = props.todo.reminder
-
-    if (reminder && (reminder.type === 'onetime' || reminder.type === 'repeat') && reminder.repeatTime) {
-
-      formReminderEnabled.value = true
-
-      formReminderType.value = reminder.type === 'onetime' ? 'once' : 'repeat'
-
-      
-
-      // 一次性提醒：使用 repeatTime（完整日期时间）
-
-      formReminderTime.value = reminder.repeatTime || ''
-
-      
-
-      // 重复提醒：使用 repeatTime（只有 HH:mm），需要转换为完整格式供 time 模式使用
-
-      if (reminder.type === 'repeat') {
-
-        const timeValue = reminder.repeatTime
-
-        // 检查是否已经是完整格式
-
-        if (timeValue.includes('T') || timeValue.includes('-')) {
-
-          // 已经是完整格式，直接使用
-
-          formRepeatTime.value = timeValue
-
-        } else {
-
-          // 只有 HH:mm，补全为完整格式
-
-          formRepeatTime.value = `${dayjs().format('YYYY-MM-DD')}T${timeValue}`
-
-        }
-
+    // 重复提醒：使用 repeatTime（只有 HH:mm），需要转换为完整格式供 time 模式使用
+    if (reminder.type === 'repeat') {
+      const timeValue = reminder.repeatTime
+      // 检查是否已经是完整格式
+      if (timeValue.includes('T') || timeValue.includes('-')) {
+        // 已经是完整格式，直接使用
+        formRepeatTime.value = timeValue
       } else {
-
-        formRepeatTime.value = ''
-
+        // 只有 HH:mm，补全为完整格式
+        formRepeatTime.value = `${dayjs().format('YYYY-MM-DD')}T${timeValue}`
       }
-
-
-
-      if (reminder.type === 'repeat' && reminder.repeatRule) {
-
-        const rule = reminder.repeatRule
-
-        formRepeatType.value = rule
-
-
-
-        if (rule === 'day') {
-
-          formRepeatInterval.value = reminder.repeatInterval || 1
-
-        } else if (rule === 'weekday') {
-
-          formRepeatWeekdays.value = Array.isArray(reminder.repeatDayOfWeek) ? reminder.repeatDayOfWeek : [reminder.repeatDayOfWeek || 1]
-
-        } else if (rule === 'month') {
-
-          formRepeatMonthDays.value = Array.isArray(reminder.repeatDayOfMonth) ? reminder.repeatDayOfMonth : [reminder.repeatDayOfMonth || 1]
-
-        } else if (rule === 'year') {
-
-          formRepeatYearMonth.value = reminder.repeatMonth || 1
-
-          formRepeatYearDay.value = reminder.repeatDayOfMonth || 1
-
-        }
-
-      }
-
     } else {
-
-      // 没有启用提醒
-
-      formReminderEnabled.value = false
-
+      formRepeatTime.value = ''
     }
 
+    if (reminder.type === 'repeat' && reminder.repeatRule) {
+      const rule = reminder.repeatRule
+      formRepeatType.value = rule
 
-
-  } else if (newVal) {
-
-    // 新增模式
-
-    resetForm()
-
+      if (rule === 'day') {
+        formRepeatInterval.value = reminder.repeatInterval || 1
+      } else if (rule === 'weekday') {
+        formRepeatWeekdays.value = Array.isArray(reminder.repeatDayOfWeek) ? reminder.repeatDayOfWeek : [reminder.repeatDayOfWeek || 1]
+      } else if (rule === 'month') {
+        formRepeatMonthDays.value = Array.isArray(reminder.repeatDayOfMonth) ? reminder.repeatDayOfMonth : [reminder.repeatDayOfMonth || 1]
+      } else if (rule === 'year') {
+        formRepeatYearMonth.value = reminder.repeatMonth || 1
+        formRepeatYearDay.value = reminder.repeatDayOfMonth || 1
+      }
+    }
+  } else {
+    // 没有启用提醒
+    formReminderEnabled.value = false
   }
+}
 
+// 监听 show 变化，打开弹窗时初始化表单
+watch(() => props.show, (newVal) => {
+  if (newVal && props.todo) {
+    // 编辑模式
+    initFormFromTodo(props.todo)
+  } else if (newVal) {
+    // 新增模式
+    resetForm()
+  }
 })
+
+// 监听 todo 变化（异步更新完成后数据到达，或弹窗已打开时外部修改）
+watch(() => props.todo, (newTodo) => {
+  if (props.show && newTodo) {
+    initFormFromTodo(newTodo)
+  }
+}, { deep: true })
 
 // 监听待办内容变化，清除错误提示
 watch(newTodoText, () => {
