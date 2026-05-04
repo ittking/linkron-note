@@ -246,15 +246,17 @@ watch(() => props.shouldClear, (shouldClear) => {
 })
 
 // 监听 modelValue 变化
-watch(() => props.modelValue, (newValue) => {
+watch(() => props.modelValue, async (newValue) => {
   // 如果正在卸载，不处理
   if (isUnmounting.value) return
 
   // 如果编辑器已初始化且内容不同，则更新
   if (editor.value && !editor.value.isDestroyed && newValue && newValue !== editor.value.getHTML()) {
     isSettingContent.value = true
+    // 转换图片 URL 为当前平台可显示的格式
+    const content = await convertImageUrlsInHtml(newValue)
     // 设置内容，不触发更新事件
-    editor.value.commands.setContent(newValue, false)
+    editor.value.commands.setContent(content, false)
     // 在下一个事件循环中标记初始化完成
     setTimeout(() => {
       if (!isUnmounting.value) {
