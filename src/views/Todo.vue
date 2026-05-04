@@ -33,7 +33,15 @@ const today = computed(() => dayjs().format('YYYY-MM-DD'))
 // 编辑对话框状态
 const showEditDialog = ref(false)
 const editDialogDate = ref('')
-const editDialogTodo = ref(null)
+const editDialogTodoId = ref(null)
+
+// 合并所有待办列表，供对话框实时查找当前 todo
+const allTodos = computed(() => {
+  const map = new Map()
+  for (const t of todayTodos.value) map.set(t.id, t)
+  for (const t of monthTodos.value) map.set(t.id, t)
+  return Array.from(map.values())
+})
 
 // 删除确认对话框
 const { confirmVisible, confirmTitle, confirmContent, showConfirm, handleConfirmOk } = useConfirmDialog()
@@ -42,7 +50,7 @@ const pendingDeleteId = ref(null)
 // 打开编辑对话框
 function openEditDialog(date, todo = null) {
   editDialogDate.value = date
-  editDialogTodo.value = todo
+  editDialogTodoId.value = todo?.id || null
   showEditDialog.value = true
 }
 
@@ -324,7 +332,8 @@ onMounted(() => {
      <TodoDialog
        v-model:show="showEditDialog"
        :date="editDialogDate"
-       :todo="editDialogTodo"
+       :todo-id="editDialogTodoId"
+       :todos="allTodos"
        @save="handleDialogSave"
        @delete="handleDialogDelete"
      />

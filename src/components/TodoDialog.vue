@@ -17,10 +17,20 @@ const props = defineProps({
     type: String,
     default: ''
   },
-  todo: {
-    type: Object,
+  todoId: {
+    type: [Number, String, null],
     default: null
+  },
+  todos: {
+    type: Array,
+    default: () => []
   }
+})
+
+// 从 todos 数组实时派生当前 todo（数组更新后 computed 自动重新求值）
+const currentTodo = computed(() => {
+  if (!props.todoId) return null
+  return props.todos.find(t => t.id === props.todoId) || null
 })
 
 const emit = defineEmits(['update:show', 'save', 'delete'])
@@ -97,7 +107,7 @@ const intervalDayOptions = Array.from({ length: 31 }, (_, i) => ({
 }))
 
 // 是否是编辑模式
-const isEditing = computed(() => !!props.todo)
+const isEditing = computed(() => !!currentTodo.value)
 
 // 重置表单
 function resetForm() {
@@ -199,17 +209,17 @@ function initFormFromTodo(todo) {
 
 // 监听 show 变化，打开弹窗时初始化表单
 watch(() => props.show, (newVal) => {
-  if (newVal && props.todo) {
+  if (newVal && currentTodo.value) {
     // 编辑模式
-    initFormFromTodo(props.todo)
+    initFormFromTodo(currentTodo.value)
   } else if (newVal) {
     // 新增模式
     resetForm()
   }
 })
 
-// 监听 todo 变化（异步更新完成后数据到达，或弹窗已打开时外部修改）
-watch(() => props.todo, (newTodo) => {
+// 监听 currentTodo 变化（异步更新后 todos 数组更新，computed 重新求值）
+watch(currentTodo, (newTodo) => {
   if (props.show && newTodo) {
     initFormFromTodo(newTodo)
   }
@@ -297,7 +307,7 @@ function saveTodo() {
   }
 
   emit('save', {
-    id: props.todo?.id,
+    id: currentTodo.value?.id,
     date: props.date,
     text: newTodoText.value,
     status: formStatus.value,
@@ -309,8 +319,8 @@ function saveTodo() {
 
 // 删除待办
 function deleteTodo() {
-  if (!props.todo) return
-  emit('delete', props.todo.id)
+  if (!currentTodo.value) return
+  emit('delete', currentTodo.value.id)
   closeDialog()
 }
 </script>
