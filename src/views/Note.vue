@@ -2,7 +2,7 @@
 import { ref, onMounted, onBeforeUnmount, onActivated, nextTick, computed } from 'vue'
 import { onBeforeRouteLeave } from 'vue-router'
 import { invoke } from '@tauri-apps/api/core'
-import { Download, FileText, ChevronUp, Sidebar } from 'lucide-vue-next'
+import { Download, FileText, ChevronUp, Sidebar, Search as SearchIcon } from 'lucide-vue-next'
 import NoteCard from '@/components/NoteCard.vue'
 import NoteEditor from '@/components/NoteEditor.vue'
 import NoteSidebar from '@/components/NoteSidebar.vue'
@@ -123,6 +123,8 @@ async function getCachedWorkDirectory() {
 // 标签筛选相关状态
 const selectedTags = ref([])
 const filteredNoteCount = ref(0)
+const isSearchMode = ref(false)
+const searchKeyword = ref('')
 const isTagFilterMode = ref(false)
 
 // 分页相关状态
@@ -270,7 +272,7 @@ onBeforeUnmount(() => {
 
 // 加载笔记
 async function loadNotes(reset = false) {
-    if (isLoading.value || isTagFilterMode.value) return
+    if (isLoading.value || isTagFilterMode.value || isSearchMode.value) return
 
     if (reset) {
         currentPage.value = 1
@@ -343,6 +345,46 @@ async function handleEditorSubmit(noteData) {
             editorSourceUrl.value = ''
         }
     }
+}
+
+// 编辑器搜索笔记
+async function handleEditorSearch(keyword) {
+    if (!keyword || !keyword.trim()) return
+    searchKeyword.value = keyword.trim()
+    isSearchMode.value = true
+    isTagFilterMode.value = false
+    isLoading.value = true
+    try {
+        const result = await noteStore.searchNotes(keyword.trim())
+        notes.value = result.notes || []
+        filteredNoteCount.value = result.total || notes.value.length
+    } catch (error) {
+        showToast('搜索笔记失败：' + error.message, 'error')
+    } finally {
+        isLoading.value = false
+    }
+}
+
+// 退出搜索模式
+function exitSearchMode() {
+    isSearchMode.value = false
+    searchKeyword.value = ''
+    editorContent.value = ''
+    noteEditorRef.value?.clearEditor(true)
+    loadNotes(true)
+}
+
+// 编辑器清空按钮点击，同步清空列表筛选状态
+function handleEditorClear() {
+    if (isSearchMode.value) {
+        isSearchMode.value = false
+        searchKeyword.value = ''
+    }
+    if (isTagFilterMode.value) {
+        isTagFilterMode.value = false
+        selectedTags.value = []
+    }
+    loadNotes(true)
 }
 
 // 判断放置位置是否在编辑器范围内
@@ -753,7 +795,7 @@ async function filterNotesByTags() {
 
                 <NoteEditor ref="noteEditorRef" v-model="editorContent" placeholder="现在的想法是..."
                     :is-scrolled-to-top="isNoteListScrolledToTop" :is-editing="isEditing"
-                    :should-clear="shouldClearEditor" @submit="handleEditorSubmit">
+                    :should-clear="shouldClearEditor" @submit="handleEditorSubmit" @search="handleEditorSearch" @clear="handleEditorClear">
                     <template #actions>
                         <button v-if="isEditing" @click="handleCancelEdit"
                             class="px-3 h-7 rounded-md flex items-center justify-center transition-all duration-200 bg-base-300 text-base-content/60 hover:bg-base-200 hover:text-base-content text-xs"
@@ -797,6 +839,23 @@ async function filterNotesByTags() {
                 </div>
             </div>
 
+            <!-- 搜索结果栏 -->
+            <div v-if="isSearchMode" class="px-4 py-3 border-t border-base-200 bg-base-100">
+                <div class="flex items-center justify-between gap-2">
+                    <div class="flex items-center gap-2 flex-1 min-w-0">
+                        <SearchIcon :size="14" class="text-primary flex-shrink-0" />
+                        <span class="text-xs text-base-content/60 truncate">"{{ searchKeyword }}"</span>
+                    </div>
+                    <div class="flex items-center gap-3 flex-shrink-0">
+                        <span class="text-xs text-base-content/60">共 {{ filteredNoteCount }} 条笔记</span>
+                        <button @click="exitSearchMode"
+                            class="text-xs text-base-content/40 hover:text-base-content/60 transition-colors">
+                            清除
+                        </button>
+                    </div>
+                </div>
+            </div>
+
             <!-- 笔记列表 -->
             <div class="flex-1 overflow-hidden relative">
                 <!-- 笔记列表拖拽遮罩 -->
@@ -812,8 +871,10 @@ async function filterNotesByTags() {
                     <div v-if="notes.length === 0"
                         class="flex flex-col select-none items-center justify-center h-full text-base-content/40 text-center p-5">
                         <FileText :size="64" class="mb-4 opacity-50" />
-                        <div class="text-base font-medium mb-2 text-base-content/60">暂无笔记</div>
-                        <div class="text-sm leading-relaxed max-w-[240px]">拖拽链接或文字到这里创建笔记</div>
+                        <div v-if="isSearchMode" class="text-base font-medium mb-2 text-base-content/60">未找到匹配的笔记</div>
+                        <div v-else class="text-base font-medium mb-2 text-base-content/60">暂无笔记</div>
+                        <div v-if="isSearchMode" class="text-sm leading-relaxed max-w-[240px]">尝试其他关键词搜索</div>
+                        <div v-else class="text-sm leading-relaxed max-w-[240px]">拖拽链接或文字到这里创建笔记</div>
                     </div>
 
                     <NoteCard v-for="note in notes" :key="note.id" :ref="(ref) => setNoteCardRef(note.id, ref)"

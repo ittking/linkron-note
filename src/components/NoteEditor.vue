@@ -25,7 +25,8 @@ import {
   List,
   Send,
   Code,
-  X
+  X,
+  Search
 } from 'lucide-vue-next'
 
 // 创建 lowlight 实例
@@ -58,7 +59,7 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['update:modelValue', 'submit', 'image-upload'])
+const emit = defineEmits(['update:modelValue', 'submit', 'image-upload', 'search', 'clear'])
 
 const settingStore = useSettingStore()
 const imageInputRef = ref(null)
@@ -342,9 +343,22 @@ async function handleImageUpload(event) {
 }
 
 // 清空编辑器内容
-function clearEditor() {
+function clearEditor(silent = false) {
   if (editor.value) {
     editor.value.commands.clearContent()
+  }
+  if (!silent) {
+    emit('clear')
+  }
+}
+
+// 搜索笔记
+function handleSearch() {
+  if (hasContent.value && editor.value) {
+    const text = editor.value.getText().trim()
+    if (text) {
+      emit('search', text)
+    }
   }
 }
 
@@ -383,7 +397,8 @@ function addImages(newImages) {
 
 // 暴露方法给父组件
 defineExpose({
-  addImages
+  addImages,
+  clearEditor
 })
 </script>
 
@@ -437,10 +452,21 @@ defineExpose({
         <slot name="actions"></slot>
 
         <!-- 清空按钮：只在新建笔记模式且有内容时显示 -->
-        <button v-if="!props.isEditing && hasContent" @click="clearEditor"
+        <button v-if="!props.isEditing && hasContent" @click="clearEditor()"
           class="px-2 h-6 rounded-md flex items-center justify-center text-xs text-base-content/50 hover:text-base-content hover:bg-base-200 transition-all duration-200"
           title="清空内容">
           清空
+        </button>
+
+        <!-- 搜索按钮：有内容时显示 -->
+        <button v-if="hasContent" @click="handleSearch"
+          class="w-6 h-6 rounded-md flex items-center justify-center transition-all duration-200"
+          :class="[
+            hasContent
+              ? 'bg-primary text-primary-content hover:bg-primary/90'
+              : 'bg-base-300 text-base-content/40 cursor-not-allowed'
+          ]" title="搜索相关笔记">
+          <Search :size="13" />
         </button>
 
         <!-- 发送按钮 -->
