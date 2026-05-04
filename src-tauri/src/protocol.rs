@@ -104,12 +104,6 @@ pub fn iterm_protocol_handler<R: tauri::Runtime>(
     let uri = request.uri();
     let uri_str = uri.to_string();
 
-    eprintln!("[Protocol] Full URI: {}", uri_str);
-    eprintln!("[Protocol] Path: {}", uri.path());
-    if let Some(host) = uri.host() {
-        eprintln!("[Protocol] Host: {}", host);
-    }
-
     // 从完整 URI 中提取资源路径
     // 可能的格式:
     // 1. linkron://localhost/resources/images/xxx.png
@@ -121,39 +115,28 @@ pub fn iterm_protocol_handler<R: tauri::Runtime>(
         if parts.len() >= 2 {
             // 移除可能的查询参数和协议前缀
             let path = parts[1].split('?').next().unwrap_or(parts[1]);
-            eprintln!("[Protocol] Extracted resource path: {}", path);
             path
         } else {
-            eprintln!("[Protocol] Failed. URI: {}, cannot extract resource path", uri_str);
             return build_error_response(400, "Invalid request path");
         }
     } else if uri_str.starts_with("resources/") {
         // 直接以 resources/ 开头的情况
         let path = uri_str.strip_prefix("resources/").unwrap_or(&uri_str);
-        eprintln!("[Protocol] Direct resources path: {}", path);
         path
     } else {
-        eprintln!("[Protocol] Failed. URI: {}, does not contain /resources/", uri_str);
         return build_error_response(400, "Invalid request: must contain /resources/");
     };
 
     let base_dir = get_base_directory(app);
     let resources_dir = base_dir.join("resources");
 
-    eprintln!("[Protocol] Base dir: {:?}", base_dir);
-    eprintln!("[Protocol] Resources dir: {:?}", resources_dir);
-    eprintln!("[Protocol] Full file path: {:?}", resources_dir.join(resource_path));
-
     // 验证并规范化路径
     let file_path = match validate_and_normalize_path(&resources_dir, resource_path) {
         Some(p) => p,
         None => {
-            eprintln!("[Protocol] Path validation failed for: {}", resource_path);
             return build_error_response(400, "Invalid request path");
         }
     };
-
-    eprintln!("[Protocol] Final file path: {:?}", file_path);
 
     match std::fs::read(&file_path) {
         Ok(content) => {
