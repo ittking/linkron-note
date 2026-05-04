@@ -42,7 +42,9 @@
       "Bash(cp -r public/icons/* icons/)",
       "Bash(git remote:*)",
       "Bash(npx tsc:*)",
-      "Bash(cargo update *)"
+      "Bash(cargo update *)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:v2.tauri.app)"
     ]
   },
   "agents": {
