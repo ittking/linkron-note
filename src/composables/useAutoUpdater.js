@@ -1,80 +1,93 @@
 import { ref } from 'vue'
-import { check } from '@tauri-apps/plugin-updater'
-import { useSettingStore } from '@/store/settingStore'
+import { fetch } from '@tauri-apps/plugin-http'
 
-const settingStore = useSettingStore()
+const UPDATE_JSON_URL = 'https://github.com/ittking/linkron-note/releases/latest/download/latest.json'
 
-// 更新状态
+// 更新状态（模块级共享）
 const updateAvailable = ref(false)
-const latestVersion = ref(null)
-const updateBody = ref(null)
+const latestVersion = ref('')
+const checking = ref(false)
 
 // 自动检查更新定时器
 let autoCheckTimer = null
 const ONE_HOUR = 60 * 60 * 1000
 
-/**
- * 检查更新（静默模式，不显示加载状态）
- */
-async function checkUpdateSilent() {
+function parseVersion(v) {
+  return (v || '').replace(/^v/, '').split('.').map(Number)
+}
+
+function isNewer(latest, current, appVersion) {
+  const a = parseVersion(latest)
+  const b = parseVersion(current || appVersion)
+  for (let i = 0; i < Math.max(a.length, b.length); i++) {
+    const an = a[i] || 0
+    const bn = b[i] || 0
+    if (an > bn) return true
+    if (an < bn) return false
+  }
+  return false
+}
+
+async function doCheck(appVersion) {
   try {
-    const autoUpdate = await settingStore.get('autoUpdate', true)
-    if (!autoUpdate) {
-      return
-    }
+    const resp = await fetch(UPDATE_JSON_URL)
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
+    const data = await resp.json()
 
-    console.log('[AutoUpdater] Checking for updates...')
-    const update = await check()
-
-    if (update) {
-      console.log('[AutoUpdater] New version available:', update.version)
+    if (data.version && isNewer(data.version, appVersion)) {
+      latestVersion.value = data.version
       updateAvailable.value = true
-      latestVersion.value = update.version
-      updateBody.value = update.body
     } else {
-      console.log('[AutoUpdater] No update available')
       updateAvailable.value = false
-      latestVersion.value = null
-      updateBody.value = null
+      latestVersion.value = ''
     }
   } catch (error) {
     console.error('[AutoUpdater] Check update failed:', error)
+  } finally {
+    checking.value = false
   }
 }
 
-/**
- * 启动自动检查更新
- */
-function startAutoCheck() {
-  // 立即检查一次
-  setTimeout(() => {
-    checkUpdateSilent()
-  }, 5000) // 启动后 5 秒开始检查
+export function useAutoUpdater(appVersionRef) {
+  function startAutoCheck() {
+    if (!appVersionRef?.value) {
+      // 如果还没拿到版本号，延迟重试
+      setTimeout(() => startAutoCheck(), 2000)
+      return
+    }
 
-  // 每小时检查一次
-  if (autoCheckTimer) {
-    clearInterval(autoCheckTimer)
+    const check = () => {
+      checking.value = true
+      doCheck(appVersionRef.value)
+    }
+
+    // 启动后 5 秒检查一次
+    setTimeout(check, 5000)
+
+    // 每小时检查一次
+    if (autoCheckTimer) clearInterval(autoCheckTimer)
+    autoCheckTimer = setInterval(check, ONE_HOUR)
   }
-  autoCheckTimer = setInterval(checkUpdateSilent, ONE_HOUR)
-}
 
-/**
- * 停止自动检查更新
- */
-function stopAutoCheck() {
-  if (autoCheckTimer) {
-    clearInterval(autoCheckTimer)
-    autoCheckTimer = null
+  function stopAutoCheck() {
+    if (autoCheckTimer) {
+      clearInterval(autoCheckTimer)
+      autoCheckTimer = null
+    }
   }
-}
 
-export function useAutoUpdater() {
+  async function manualCheck(version) {
+    checking.value = true
+    await doCheck(version)
+    return { updateAvailable, latestVersion, checking }
+  }
+
   return {
     updateAvailable,
     latestVersion,
-    updateBody,
+    checking,
     startAutoCheck,
     stopAutoCheck,
-    checkUpdateSilent
+    manualCheck
   }
 }

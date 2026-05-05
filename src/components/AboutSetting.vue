@@ -3,61 +3,43 @@ import { ref, onMounted } from 'vue'
 import { Info, MessageCircle, Heart, Download, RefreshCw, CheckCircle, AlertCircle, ExternalLink } from 'lucide-vue-next'
 import Button from './ui/Button.vue'
 import { getVersion } from '@tauri-apps/api/app'
-import { fetch } from '@tauri-apps/plugin-http'
+import { useAutoUpdater } from '@/composables/useAutoUpdater'
 import wechatQR from '@/assets/weixin_gz.jpg'
 import appLogo from '@/assets/128x128.png'
 
 const RELEASES_URL = 'https://github.com/ittking/linkron-note/releases'
-const UPDATE_JSON_URL = 'https://github.com/ittking/linkron-note/releases/latest/download/latest.json'
 
-const version = ref('1.0.0')
+const appVersion = ref('')
 const buildDate = '2025-02-16'
-
-// 更新相关状态
 const updateStatus = ref('idle') // idle, checking, available, error, no-update
-const latestVersion = ref('')
 const updateMessage = ref('')
+const latestVersion = ref('')
+
+const { manualCheck } = useAutoUpdater(appVersion)
 
 onMounted(async () => {
   try {
-    version.value = await getVersion()
+    appVersion.value = await getVersion()
   } catch (e) {
     console.error('Failed to get version:', e)
   }
 })
-
-function parseVersion(v) {
-  return (v || '').replace(/^v/, '').split('.').map(Number)
-}
-
-function isNewer(latest, current) {
-  const a = parseVersion(latest)
-  const b = parseVersion(current)
-  for (let i = 0; i < Math.max(a.length, b.length); i++) {
-    const an = a[i] || 0
-    const bn = b[i] || 0
-    if (an > bn) return true
-    if (an < bn) return false
-  }
-  return false
-}
 
 async function checkForUpdate() {
   updateStatus.value = 'checking'
   updateMessage.value = '正在检查更新...'
 
   try {
-    const resp = await fetch(UPDATE_JSON_URL)
-    if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
-    const data = await resp.json()
+    const result = await manualCheck(appVersion.value)
 
-    if (data.version && isNewer(data.version, version.value)) {
-      latestVersion.value = data.version
+    if (result.updateAvailable.value) {
+      latestVersion.value = result.latestVersion.value
       updateStatus.value = 'available'
-      updateMessage.value = `发现新版本 v${data.version}`
+      updateMessage.value = `发现新版本 v${latestVersion.value}`
     } else {
       updateStatus.value = 'no-update'
       updateMessage.value = '已是最新版本'
+      latestVersion.value = ''
       setTimeout(() => {
         updateStatus.value = 'idle'
         updateMessage.value = ''
@@ -93,7 +75,7 @@ function openReleases() {
             <h3 class="text-lg font-semibold">LINKRON</h3>
             <p class="text-sm text-base-content/60">极简笔记，随时随记</p>
             <div class="flex items-center gap-2 mt-1">
-              <span class="text-xs text-base-content/40">版本 {{ version }}</span>
+              <span class="text-xs text-base-content/40">版本 {{ appVersion }}</span>
               <span class="text-xs text-base-content/30">|</span>
               <span class="text-xs text-base-content/40">{{ buildDate }}</span>
             </div>
@@ -135,7 +117,7 @@ function openReleases() {
         <!-- 当前版本 -->
         <div class="flex items-center justify-between p-3 rounded-lg bg-base-100">
           <span class="text-sm">当前版本</span>
-          <span class="text-sm font-medium">{{ version }}</span>
+          <span class="text-sm font-medium">{{ appVersion }}</span>
         </div>
 
         <!-- 最新版本 -->
