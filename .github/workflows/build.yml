@@ -64,8 +64,10 @@ jobs:
           path: |
             src-tauri/target/**/bundle/dmg/*.dmg
             src-tauri/target/**/bundle/macos/*.app.tar.gz
+            src-tauri/target/**/bundle/macos/*.sig
             src-tauri/target/**/bundle/msi/*.msi
             src-tauri/target/**/bundle/nsis/*.exe
+            src-tauri/target/**/bundle/nsis/*.sig
             src-tauri/target/**/bundle/updater/*.tar.gz
             src-tauri/target/**/bundle/updater/*.sig
 

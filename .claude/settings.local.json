@@ -62,7 +62,8 @@
       "Bash(curl -sL \"https://api.github.com/repos/ittking/linkron-note/releases/latest\")",
       "Bash(python3 -c \"import sys,json; r=json.load\\(sys.stdin\\); print\\('tag:', r.get\\('tag_name'\\)\\); [print\\(f'  asset: {a[\\\\\"name\\\\\"]} \\({a[\\\\\"size\\\\\"]} bytes\\)'\\) for a in r.get\\('assets',[]\\)]\")",
       "Bash(bash bundle_dmg.sh)",
-      "Bash(sw_vers)"
+      "Bash(sw_vers)",
+      "Bash(pnpm add *)"
     ]
   },
   "agents": {
