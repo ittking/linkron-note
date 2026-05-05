@@ -57,7 +57,12 @@
       "Read(//tmp/**)",
       "Bash(curl -sL -H \"Accept: application/vnd.github+json\" \"https://api.github.com/repos/ittking/linkron-note/actions/runs/25298650492/logs\" -o /tmp/run-logs.zip)",
       "Read(//private/tmp/**)",
-      "Bash(unzip -l /tmp/run-logs.zip)"
+      "Bash(unzip -l /tmp/run-logs.zip)",
+      "Bash(curl -sL \"https://github.com/ittking/linkron-note/releases/latest/download/latest.json\")",
+      "Bash(curl -sL \"https://api.github.com/repos/ittking/linkron-note/releases/latest\")",
+      "Bash(python3 -c \"import sys,json; r=json.load\\(sys.stdin\\); print\\('tag:', r.get\\('tag_name'\\)\\); [print\\(f'  asset: {a[\\\\\"name\\\\\"]} \\({a[\\\\\"size\\\\\"]} bytes\\)'\\) for a in r.get\\('assets',[]\\)]\")",
+      "Bash(bash bundle_dmg.sh)",
+      "Bash(sw_vers)"
     ]
   },
   "agents": {
