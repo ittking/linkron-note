@@ -2,6 +2,7 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import { getCurrentWindow } from '@tauri-apps/api/window'
 import { getVersion } from '@tauri-apps/api/app'
+import { openUrl } from '@tauri-apps/plugin-opener'
 import { useSettingStore } from '@/store/settingStore'
 import { useAutoUpdater } from '@/composables/useAutoUpdater'
 import { Download, ExternalLink, X } from 'lucide-vue-next'
@@ -40,7 +41,7 @@ onUnmounted(() => {
 })
 
 function openReleases() {
-  window.open(RELEASES_URL, '_blank')
+  openUrl(RELEASES_URL)
 }
 </script>
 

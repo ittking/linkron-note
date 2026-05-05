@@ -3,6 +3,7 @@ import { ref, onMounted } from 'vue'
 import { Info, MessageCircle, Heart, Download, RefreshCw, CheckCircle, AlertCircle, ExternalLink } from 'lucide-vue-next'
 import Button from './ui/Button.vue'
 import { getVersion } from '@tauri-apps/api/app'
+import { openUrl } from '@tauri-apps/plugin-opener'
 import { useAutoUpdater } from '@/composables/useAutoUpdater'
 import wechatQR from '@/assets/weixin_gz.jpg'
 import appLogo from '@/assets/128x128.png'
@@ -53,7 +54,7 @@ async function checkForUpdate() {
 }
 
 function openReleases() {
-  window.open(RELEASES_URL, '_blank')
+  openUrl(RELEASES_URL)
 }
 </script>
 

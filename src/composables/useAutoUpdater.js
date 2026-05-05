@@ -48,6 +48,24 @@ async function doCheck(appVersion) {
   }
 }
 
+/**
+ * 模拟更新 — 用于测试更新弹窗 UI
+ * 在浏览器控制台调用: window.__mockUpdate__()
+ * 取消模拟:            window.__clearMock__()
+ */
+if (typeof window !== 'undefined') {
+  window.__mockUpdate__ = (ver = '99.9.9') => {
+    latestVersion.value = ver
+    updateAvailable.value = true
+    console.log(`[MockUpdate] 已模拟新版本 v${ver}，弹窗应出现`)
+  }
+  window.__clearMock__ = () => {
+    latestVersion.value = ''
+    updateAvailable.value = false
+    console.log('[MockUpdate] 已清除模拟状态')
+  }
+}
+
 export function useAutoUpdater(appVersionRef) {
   function startAutoCheck() {
     if (!appVersionRef?.value) {
