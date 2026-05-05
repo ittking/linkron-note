@@ -1,6 +1,8 @@
 use base64::Engine as _;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
+use sha2::{Sha256, Digest};
+use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
 
@@ -541,6 +543,35 @@ async fn collect_remote_files_recursive(
     Ok(all_files)
 }
 
+/// 同步清单文件（追踪已同步文件的 hash，实现增量同步）
+const MANIFEST_FILE: &str = ".sync_manifest.json";
+
+fn load_manifest(base_dir: &PathBuf) -> HashMap<String, String> {
+    let path = base_dir.join(MANIFEST_FILE);
+    if path.exists() {
+        fs::read_to_string(&path)
+            .ok()
+            .and_then(|s| serde_json::from_str(&s).ok())
+            .unwrap_or_default()
+    } else {
+        HashMap::new()
+    }
+}
+
+fn save_manifest(base_dir: &PathBuf, manifest: &HashMap<String, String>) {
+    let path = base_dir.join(MANIFEST_FILE);
+    if let Ok(json) = serde_json::to_string(manifest) {
+        let _ = fs::write(path, json);
+    }
+}
+
+fn compute_file_hash(local_path: &PathBuf) -> Result<String, String> {
+    let content = fs::read(local_path).map_err(|e| format!("读取文件失败: {}", e))?;
+    let mut hasher = Sha256::new();
+    hasher.update(&content);
+    Ok(format!("{:x}", hasher.finalize()))
+}
+
 /// 推送到云端
 #[tauri::command]
 pub async fn sync_to_remote(
@@ -561,13 +592,22 @@ pub async fn sync_to_remote(
     let local_files = collect_local_files(&base_dir, &base_dir)?;
     eprintln!("[DEBUG] 本地文件数量: {}", local_files.len());
 
+    // 加载同步清单（追踪文件 hash，实现增量同步）
+    let mut manifest = load_manifest(&base_dir);
+
     let mut uploaded = 0;
     let mut skipped = 0;
+    let mut unchanged = 0;
     let mut failed_files = vec![];
 
     // 上传每个文件
     for (local_path, remote_path) in local_files {
         eprintln!("[DEBUG] 处理文件: {}", remote_path);
+
+        // 跳过清单文件本身
+        if remote_path == MANIFEST_FILE {
+            continue;
+        }
 
         // 检查文件大小
         let file_size = fs::metadata(&local_path).map(|m| m.len()).unwrap_or(0);
@@ -586,6 +626,24 @@ pub async fn sync_to_remote(
             continue;
         }
 
+        // 计算本地文件 hash，与清单对比，未变更则跳过
+        let local_hash = match compute_file_hash(&local_path) {
+            Ok(h) => h,
+            Err(e) => {
+                eprintln!("[DEBUG] 计算hash失败: {} - {}", remote_path, e);
+                failed_files.push(format!("{} (hash失败: {})", remote_path, e));
+                continue;
+            }
+        };
+
+        if let Some(cached_hash) = manifest.get(&remote_path) {
+            if *cached_hash == local_hash {
+                eprintln!("[DEBUG] 未变更，跳过: {}", remote_path);
+                unchanged += 1;
+                continue;
+            }
+        }
+
         // 获取远程文件的 sha（如果存在）
         let file_sha = get_file_sha(&config, &remote_path).await.unwrap_or(None);
 
@@ -600,6 +658,7 @@ pub async fn sync_to_remote(
                 {
                     Ok(_) => {
                         uploaded += 1;
+                        manifest.insert(remote_path.clone(), local_hash);
                         eprintln!("[DEBUG] 上传成功: {}", remote_path);
                     }
                     Err(e) => {
@@ -615,20 +674,26 @@ pub async fn sync_to_remote(
         }
     }
 
+    // 保存同步清单
+    save_manifest(&base_dir, &manifest);
+
     eprintln!(
-        "[DEBUG] 上传完成: 成功 {} 个，跳过 {} 个",
-        uploaded, skipped
+        "[DEBUG] 上传完成: 成功 {} 个，未变更 {} 个，跳过 {} 个",
+        uploaded, unchanged, skipped
     );
 
     // 构建消息
+    let total_skipped = unchanged + skipped;
     let message = if failed_files.is_empty() {
-        format!("同步成功，已上传 {} 个文件", uploaded)
+        format!(
+            "同步成功，已上传 {} 个文件{}",
+            uploaded,
+            if total_skipped > 0 { format!("，已是最新 {} 个", total_skipped) } else { String::new() }
+        )
     } else {
         format!(
-            "同步完成: 成功 {} 个，跳过 {} 个，失败 {} 个",
-            uploaded,
-            skipped,
-            failed_files.len()
+            "同步完成: 成功 {} 个，未变更 {} 个，跳过 {} 个，失败 {} 个",
+            uploaded, unchanged, skipped, failed_files.len()
         )
     };
 

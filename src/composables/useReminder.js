@@ -108,17 +108,8 @@ export function useReminder() {
 
       const currentTime = dayjs()
 
-      debugCount++
-      if (!result || result.length === 0) {
-        if (debugCount === 1 || debugCount % 60 === 0) {
-          console.log('[Reminder] No reminders found (checked', debugCount, 'times), result:', JSON.stringify(result), 'currentTime:', currentTime.format('MM-DD HH:mm:ss'))
-        }
-        return
-      }
+      if (!result || result.length === 0) return
 
-      debugCount = 0
-      console.log('[Reminder] Found', result.length, 'todos with reminders')
-      // 发送通知
       for (const todo of reminders.value) {
         if (!todo.reminder) continue
 
@@ -127,17 +118,13 @@ export function useReminder() {
 
         if (reminder.type === 'onetime') {
           shouldNotify = shouldSendOneTimeReminder(reminder, currentTime)
-          console.log('[Reminder] OneTime check:', todo.text, 'shouldNotify:', shouldNotify, 'reminderTime:', reminder.repeatTime, 'current:', currentTime.format('YYYY-MM-DD HH:mm'))
         } else if (reminder.type === 'repeat') {
           shouldNotify = shouldSendRepeatReminder(reminder, todo, currentTime)
-          console.log('[Reminder] Repeat check:', todo.text, 'shouldNotify:', shouldNotify, 'reminderTime:', reminder.repeatTime, 'current:', currentTime.format('HH:mm'))
         }
 
         if (shouldNotify) {
-          console.log('[Reminder] Triggering notification for:', todo.text)
           const { showToast } = useToast()
 
-          // 系统通知（macOS 可能不显示）
           if (permissionGranted) {
             try {
               await sendNotification({
@@ -149,9 +136,7 @@ export function useReminder() {
             }
           }
 
-          // 兜底：应用内 Toast 提示
           showToast(`⏰ ${todo.text}`, 'info')
-          console.log('[Reminder] Toast shown for:', todo.text)
         }
       }
     } catch (error) {
@@ -164,7 +149,6 @@ export function useReminder() {
   // 启动提醒检查任务
   let reminderInterval = null
   let permissionGranted = false
-  let debugCount = 0
 
   async function startReminderCheck() {
     // 先请求权限
