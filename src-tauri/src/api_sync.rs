@@ -32,6 +32,7 @@ pub struct SyncDetails {
     pub downloaded: usize,
     pub skipped: usize,
     pub total: usize,
+    pub failed_files: Vec<String>,
 }
 
 /// Gitee API 文件信息响应
@@ -274,7 +275,7 @@ async fn create_or_update_file(
 
     let url = format!(
         "https://gitee.com/api/v5/repos/{}/{}/contents/{}",
-        owner, repo, path
+        owner, repo, url_encode_path(path)
     );
 
     let encoded_content = if is_binary {
@@ -296,22 +297,30 @@ async fn create_or_update_file(
 
     let mut request_body = json!({
         "content": encoded_content,
-        "message": format!("Update {}", path)
+        "message": format!("Update {}", path),
+        "branch": config.branch.clone(),
+        "access_token": config.token.clone(),
     });
 
-    // 如果提供了 sha，添加到请求中（用于更新已存在的文件）
-    if let Some(s) = sha {
+    // 新建用 POST，更新用 PUT（需提供 sha）
+    let (method, action) = if let Some(s) = sha {
         request_body["sha"] = json!(s);
-    }
+        ("PUT", "更新")
+    } else {
+        ("POST", "创建")
+    };
 
     let response = client
-        .put(&url)
+        .request(
+            reqwest::Method::from_bytes(method.as_bytes()).unwrap(),
+            &url,
+        )
         .header("Authorization", format!("Bearer {}", config.token))
         .header("User-Agent", "linkron")
         .json(&request_body)
         .send()
         .await
-        .map_err(|e| format!("上传文件失败: {}", e))?;
+        .map_err(|e| format!("{}文件失败: {}", action, e))?;
 
     if !response.status().is_success() {
         let status = response.status();
@@ -332,7 +341,7 @@ async fn get_file_sha(config: &ApiSyncConfig, path: &str) -> Result<Option<Strin
 
     let url = format!(
         "https://gitee.com/api/v5/repos/{}/{}/contents/{}?ref={}",
-        owner, repo, path, config.branch
+        owner, repo, url_encode_path(path), config.branch
     );
 
     let response = client
@@ -379,7 +388,7 @@ async fn download_file(
 
     let url = format!(
         "https://gitee.com/api/v5/repos/{}/{}/contents/{}?ref={}",
-        owner, repo, path, config.branch
+        owner, repo, url_encode_path(path), config.branch
     );
 
     let response = client
@@ -483,7 +492,7 @@ async fn collect_remote_files_recursive(
         } else {
             format!(
                 "https://gitee.com/api/v5/repos/{}/{}/contents/{}?ref={}",
-                owner, repo, current_path, config.branch
+                owner, repo, url_encode_path(&current_path), config.branch
             )
         };
 
@@ -631,6 +640,7 @@ pub async fn sync_to_remote(
             downloaded: 0,
             skipped,
             total: uploaded + skipped + failed_files.len(),
+            failed_files: failed_files.clone(),
         }),
     })
 }
@@ -685,8 +695,30 @@ pub async fn sync_from_remote(
             downloaded,
             skipped: 0,
             total: downloaded,
+            failed_files: vec![],
         }),
     })
+}
+
+/// URL 编码文件路径（用于 Gitee API）
+fn url_encode_path(path: &str) -> String {
+    path.split('/')
+        .map(|seg| {
+            let mut encoded = String::new();
+            for byte in seg.bytes() {
+                match byte {
+                    b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'_' | b'.' | b'~' => {
+                        encoded.push(byte as char);
+                    }
+                    _ => {
+                        encoded.push_str(&format!("%{:02X}", byte));
+                    }
+                }
+            }
+            encoded
+        })
+        .collect::<Vec<_>>()
+        .join("/")
 }
 
 /// 判断是否为二进制文件

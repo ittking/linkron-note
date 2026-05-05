@@ -129,7 +129,12 @@ async function handleSyncToCloud() {
   if (result.success) {
     showToast('同步成功', 'success')
   } else {
-    showToast('同步失败: ' + result.message, 'error')
+    let msg = result.message
+    // 附带失败文件名
+    if (result.details?.failed_files?.length) {
+      msg += '\n失败文件: ' + result.details.failed_files.join(', ')
+    }
+    showToast(msg, 'error')
   }
 }
 
