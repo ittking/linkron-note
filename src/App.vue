@@ -5,6 +5,7 @@ import { getVersion } from '@tauri-apps/api/app'
 import { openUrl } from '@tauri-apps/plugin-opener'
 import { useSettingStore } from '@/store/settingStore'
 import { useAutoUpdater } from '@/composables/useAutoUpdater'
+import { useReminder } from '@/composables/useReminder'
 import { Download, ExternalLink, X } from 'lucide-vue-next'
 import Button from '@/components/ui/Button.vue'
 
@@ -14,6 +15,7 @@ const settingStore = useSettingStore()
 const appVersion = ref('')
 
 const { updateAvailable, latestVersion, startAutoCheck, stopAutoCheck } = useAutoUpdater(appVersion)
+const { startReminderCheck, stopReminderCheck } = useReminder()
 
 onMounted(async () => {
   const currentWindow = getCurrentWindow()
@@ -34,10 +36,14 @@ onMounted(async () => {
   } catch (error) {
     console.error('Failed to get version:', error)
   }
+
+  // 启动待办提醒检查
+  startReminderCheck()
 })
 
 onUnmounted(() => {
   stopAutoCheck()
+  stopReminderCheck()
 })
 
 function openReleases() {
